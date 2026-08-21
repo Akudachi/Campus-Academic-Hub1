@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+    --font-cinzel: 'Cinzel', serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #1E293B;
+    background-color: #F3F6FB;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Mobile App Animations & Keyframes */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.18s ease-out forwards;
+}
+
+/* Native-feel touch scroll container for mobile tables & lists */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* Custom design system utilities */
+.brand-navy {
+  color: #13284A;
+}
+
+.bg-brand-navy {
+  background-color: #13284A;
+}
+
+.brand-blue {
+  color: #2E6FB0;
+}
+
+.bg-brand-blue {
+  background-color: #2E6FB0;
+}
+
+.brand-amber {
+  color: #E0982A;
+}
+
+.bg-brand-amber {
+  background-color: #E0982A;
+}
+
+.brand-green {
+  color: #1E8E5A;
+}
+
+.bg-brand-green {
+  background-color: #1E8E5A;
+}
+
+.brand-red {
+  color: #C0392B;
+}
+
+.bg-brand-red {
+  background-color: #C0392B;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
