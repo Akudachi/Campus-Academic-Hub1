@@ -550,6 +550,22 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  switchSemesterTerm: (payload: {
+    termType: 'even' | 'odd' | 'custom';
+    academicYear?: string;
+    customTermName?: string;
+    activateMatchingSemesters?: boolean;
+  }) =>
+    request<{
+      success: boolean;
+      message: string;
+      settings: CampusSettings;
+      activatedCount: number;
+      createdCount: number;
+    }>('/api/admin/semesters/switch-term', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getSystemStatus: () => request<{ status: SystemStatusInfo }>('/api/admin/system/status'),
   restoreDatabase: (data: any) =>
     request<{ success: boolean; message: string }>('/api/admin/restore', {

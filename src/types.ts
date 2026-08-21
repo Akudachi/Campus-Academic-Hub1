@@ -320,6 +320,7 @@ export interface CampusSettings {
   campusCode: string;
   academicYear: string;
   currentSemesterTerm: string;
+  semesterTermType?: 'even' | 'odd' | 'custom';
   minAttendanceWarning: number;
   adminContactEmail: string;
   systemStatus: 'ready' | 'operational';

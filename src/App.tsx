@@ -7,6 +7,8 @@ import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { Modal } from './components/common/Modal';
 import { LoginView } from './components/auth/LoginView';
 import { OfflineBanner } from './components/common/OfflineBanner';
+import { SplashScreen } from './components/common/SplashScreen';
+import { api } from './lib/api';
 
 // Admin Components
 import { AdminOverview } from './components/admin/AdminOverview';
@@ -49,6 +51,24 @@ const MainLayout: React.FC = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [campusInfo, setCampusInfo] = useState({
+    institutionName: 'Apex Institute of Technology',
+    campusCode: 'AIT-2026',
+  });
+
+  useEffect(() => {
+    api.getCampusSettings()
+      .then((res) => {
+        if (res?.settings) {
+          setCampusInfo({
+            institutionName: res.settings.institutionName,
+            campusCode: res.settings.campusCode,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Set default tab when role switches
   useEffect(() => {
@@ -248,6 +268,14 @@ const MainLayout: React.FC = () => {
           );
         })}
       </div>
+      {/* Dynamic SaaS Splash Screen - Plays on app boot */}
+      {showSplash && (
+        <SplashScreen
+          campusName={campusInfo.institutionName}
+          campusCode={campusInfo.campusCode}
+          onComplete={() => setShowSplash(false)}
+        />
+      )}
     </div>
   );
 };

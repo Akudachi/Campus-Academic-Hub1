@@ -23,7 +23,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { Semester, Department } from '../../types';
+import { Semester, Department, CampusSettings } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
@@ -62,9 +62,11 @@ const DEFAULT_DEPARTMENTS: Department[] = [
 export const SemesterManagerView: React.FC = () => {
   const [semesters, setSemesters] = useState<EnrichedSemester[]>([]);
   const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
+  const [settings, setSettings] = useState<CampusSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [switchingTerm, setSwitchingTerm] = useState(false);
   const { showToast } = useAuth();
 
   // Create Semester Modal State
@@ -87,13 +89,17 @@ export const SemesterManagerView: React.FC = () => {
   const fetchSemesters = async () => {
     setLoading(true);
     try {
-      const [semRes, deptRes] = await Promise.all([
+      const [semRes, deptRes, settingsRes] = await Promise.all([
         api.getSemesters(),
         api.getDepartments().catch(() => ({ departments: DEFAULT_DEPARTMENTS })),
+        api.getCampusSettings().catch(() => ({ settings: null })),
       ]);
       setSemesters(semRes.semesters as EnrichedSemester[]);
       if (deptRes.departments && deptRes.departments.length > 0) {
         setDepartments(deptRes.departments);
+      }
+      if (settingsRes.settings) {
+        setSettings(settingsRes.settings);
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to load semester cycles', 'error');
@@ -105,6 +111,26 @@ export const SemesterManagerView: React.FC = () => {
   useEffect(() => {
     fetchSemesters();
   }, []);
+
+  const handleSwitchTerm = async (termType: 'even' | 'odd') => {
+    setSwitchingTerm(true);
+    try {
+      const res = await api.switchSemesterTerm({
+        termType,
+        activateMatchingSemesters: true,
+      });
+      setSettings(res.settings);
+      showToast(
+        `Switched operational term to ${termType === 'even' ? 'Even Semesters (2, 4, 6, 8)' : 'Odd Semesters (1, 3, 5, 7)'}! Updated semester cycles.`,
+        'success'
+      );
+      await fetchSemesters();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to switch semester term', 'error');
+    } finally {
+      setSwitchingTerm(false);
+    }
+  };
 
   const handleActivate = async (semesterId: string) => {
     setIsProcessing(true);
@@ -244,6 +270,64 @@ export const SemesterManagerView: React.FC = () => {
           <Plus className="w-4 h-4" />
           Create New Semester Cycle
         </button>
+      </div>
+
+      {/* Campus Term Parity Quick-Switch Banner */}
+      <div className="p-4 rounded-xl bg-white border border-[#DCE3ED] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-100 text-[#2E6FB0]">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#13284A]">Active Institutional Term:</span>
+              <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-blue-100 text-[#13284A] border border-blue-200">
+                {settings?.semesterTermType === 'even'
+                  ? 'Even Semester (2, 4, 6, 8)'
+                  : settings?.semesterTermType === 'odd'
+                  ? 'Odd Semester (1, 3, 5, 7)'
+                  : settings?.currentSemesterTerm || 'Even Semester (2, 4, 6, 8)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#667085] mt-0.5">
+              {settings?.semesterTermType === 'even'
+                ? 'Currently running even terms (Semesters 2, 4, 6, 8). Switch below to activate odd terms across all branches.'
+                : settings?.semesterTermType === 'odd'
+                ? 'Currently running odd terms (Semesters 1, 3, 5, 7). Switch below to activate even terms across all branches.'
+                : 'Custom active term configured in Campus Settings.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => handleSwitchTerm('even')}
+            disabled={switchingTerm || settings?.semesterTermType === 'even'}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+              settings?.semesterTermType === 'even'
+                ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-extrabold cursor-default'
+                : 'bg-white border-[#DCE3ED] text-[#667085] hover:bg-slate-50 hover:border-blue-300'
+            }`}
+          >
+            <CheckCircle2 className={`w-3.5 h-3.5 ${settings?.semesterTermType === 'even' ? 'text-[#2E6FB0]' : 'text-slate-300'}`} />
+            Even Term (2, 4, 6, 8)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSwitchTerm('odd')}
+            disabled={switchingTerm || settings?.semesterTermType === 'odd'}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+              settings?.semesterTermType === 'odd'
+                ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-extrabold cursor-default'
+                : 'bg-white border-[#DCE3ED] text-[#667085] hover:bg-slate-50 hover:border-blue-300'
+            }`}
+          >
+            <CheckCircle2 className={`w-3.5 h-3.5 ${settings?.semesterTermType === 'odd' ? 'text-[#2E6FB0]' : 'text-slate-300'}`} />
+            Odd Term (1, 3, 5, 7)
+          </button>
+        </div>
       </div>
 
       {/* Visual Progression Map */}

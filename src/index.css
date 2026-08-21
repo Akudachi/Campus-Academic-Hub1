@@ -2,9 +2,10 @@
 
 @layer base {
   :root {
+    --font-outfit: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
     --font-cinzel: 'Cinzel', serif;
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
@@ -15,8 +16,9 @@
     touch-action: manipulation;
   }
 
-  h1, h2, h3, .font-display {
-    font-family: var(--font-serif);
+  h1, h2, h3, h4, .font-display, .font-heading {
+    font-family: var(--font-outfit);
+    letter-spacing: -0.02em;
   }
 }
 

@@ -24,6 +24,9 @@ import {
   WifiOff,
   Wifi,
   HardDrive,
+  Calendar,
+  Sparkles,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { storageService } from '../../lib/storageService';
@@ -58,6 +61,7 @@ export const CampusSettingsView: React.FC = () => {
   // System Status State
   const [systemStatus, setSystemStatus] = useState<SystemStatusInfo | null>(null);
   const [refreshingStatus, setRefreshingStatus] = useState(false);
+  const [switchingTerm, setSwitchingTerm] = useState(false);
 
   // Restore file ref
   const restoreFileRef = useRef<HTMLInputElement | null>(null);
@@ -94,6 +98,44 @@ export const CampusSettingsView: React.FC = () => {
       showToast(err.message || 'Failed to update campus settings', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleQuickSwitchTerm = async (termType: 'even' | 'odd' | 'custom') => {
+    let customName = '';
+    if (termType === 'even') {
+      customName = 'Even Semester (Semesters 2, 4, 6, 8)';
+    } else if (termType === 'odd') {
+      customName = 'Odd Semester (Semesters 1, 3, 5, 7)';
+    } else {
+      customName = settings.currentSemesterTerm || 'Custom Semester Term';
+    }
+
+    setSettings({
+      ...settings,
+      semesterTermType: termType,
+      currentSemesterTerm: customName,
+    });
+
+    if (termType === 'even' || termType === 'odd') {
+      setSwitchingTerm(true);
+      try {
+        const res = await api.switchSemesterTerm({
+          termType,
+          academicYear: settings.academicYear,
+          customTermName: customName,
+          activateMatchingSemesters: true,
+        });
+        setSettings(res.settings);
+        showToast(
+          `Switched campus term to ${termType === 'even' ? 'Even Semester (2, 4, 6, 8)' : 'Odd Semester (1, 3, 5, 7)'}! Synchronized active semesters across all branches.`,
+          'success'
+        );
+      } catch (err: any) {
+        showToast(err.message || 'Failed to switch semester term', 'error');
+      } finally {
+        setSwitchingTerm(false);
+      }
     }
   };
 
@@ -333,18 +375,127 @@ export const CampusSettingsView: React.FC = () => {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Current Semester Term
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={settings.currentSemesterTerm}
-                        onChange={(e) => setSettings({ ...settings, currentSemesterTerm: e.target.value })}
-                        placeholder="e.g. Even Semester (Sem 4 & 6)"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                      />
+                    <div className="sm:col-span-2 p-4 rounded-xl border border-blue-200 bg-linear-to-b from-blue-50/50 to-slate-50/50 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-[#2E6FB0]" />
+                          <label className="block text-xs font-bold text-[#13284A]">
+                            Academic Semester Term (Even / Odd Cycle)
+                          </label>
+                        </div>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-[#13284A] border border-blue-200">
+                          {settings.semesterTermType === 'even'
+                            ? 'Even Semesters (2, 4, 6, 8)'
+                            : settings.semesterTermType === 'odd'
+                            ? 'Odd Semesters (1, 3, 5, 7)'
+                            : 'Custom Term'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#667085]">
+                        Select whether the campus is running an <strong>Even Semester Cycle (Semesters 2, 4, 6, 8)</strong> or <strong>Odd Semester Cycle (Semesters 1, 3, 5, 7)</strong>.
+                      </p>
+
+                      {/* Quick Presets */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickSwitchTerm('even')}
+                          disabled={switchingTerm}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            settings.semesterTermType === 'even'
+                              ? 'border-[#2E6FB0] bg-blue-50/80 shadow-xs ring-1 ring-[#2E6FB0]'
+                              : 'border-[#DCE3ED] bg-white hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#13284A]">Even Semesters</span>
+                            {settings.semesterTermType === 'even' && <CheckCircle2 className="w-3.5 h-3.5 text-[#2E6FB0]" />}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-medium">Spring Cycle</p>
+                          <div className="flex gap-1 mt-2">
+                            {['2', '4', '6', '8'].map((num) => (
+                              <span
+                                key={num}
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                  settings.semesterTermType === 'even'
+                                    ? 'bg-[#2E6FB0] text-white'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                Sem {num}
+                              </span>
+                            ))}
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleQuickSwitchTerm('odd')}
+                          disabled={switchingTerm}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            settings.semesterTermType === 'odd'
+                              ? 'border-[#2E6FB0] bg-blue-50/80 shadow-xs ring-1 ring-[#2E6FB0]'
+                              : 'border-[#DCE3ED] bg-white hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#13284A]">Odd Semesters</span>
+                            {settings.semesterTermType === 'odd' && <CheckCircle2 className="w-3.5 h-3.5 text-[#2E6FB0]" />}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-medium">Fall Cycle</p>
+                          <div className="flex gap-1 mt-2">
+                            {['1', '3', '5', '7'].map((num) => (
+                              <span
+                                key={num}
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                  settings.semesterTermType === 'odd'
+                                    ? 'bg-[#2E6FB0] text-white'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                Sem {num}
+                              </span>
+                            ))}
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleQuickSwitchTerm('custom')}
+                          disabled={switchingTerm}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            settings.semesterTermType === 'custom'
+                              ? 'border-[#2E6FB0] bg-blue-50/80 shadow-xs ring-1 ring-[#2E6FB0]'
+                              : 'border-[#DCE3ED] bg-white hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-[#13284A]">Custom Term</span>
+                            {settings.semesterTermType === 'custom' && <CheckCircle2 className="w-3.5 h-3.5 text-[#2E6FB0]" />}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-medium">Bespoke / Summer</p>
+                          <span className="inline-block mt-2 text-[9px] font-medium text-slate-500">
+                            Custom description
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Display String input */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Term Title / Display Name
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={settings.currentSemesterTerm}
+                            onChange={(e) => setSettings({ ...settings, currentSemesterTerm: e.target.value })}
+                            placeholder="e.g. Even Semester (Semesters 2, 4, 6, 8)"
+                            className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     <div>
@@ -385,7 +536,7 @@ export const CampusSettingsView: React.FC = () => {
                   <div className="flex justify-end pt-4 border-t border-slate-100">
                     <button
                       type="submit"
-                      disabled={saving}
+                      disabled={saving || switchingTerm}
                       className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                     >
                       <Save className="w-4 h-4 text-[#5B93D1]" />
@@ -424,6 +575,19 @@ export const CampusSettingsView: React.FC = () => {
                         <span className="text-[10px] text-[#667085]">Min Attendance:</span>
                         <p className="font-bold text-rose-700">{settings.minAttendanceWarning}%</p>
                       </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200">
+                      <span className="text-[10px] text-[#667085]">Current Operational Term:</span>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-100 text-[#2E6FB0] border border-blue-200">
+                          {settings.semesterTermType === 'even'
+                            ? 'Even Term (2, 4, 6, 8)'
+                            : settings.semesterTermType === 'odd'
+                            ? 'Odd Term (1, 3, 5, 7)'
+                            : 'Custom Term'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-medium text-slate-700 mt-1">{settings.currentSemesterTerm}</p>
                     </div>
                   </div>
 

@@ -28,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
   const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
   const [institutionName, setInstitutionName] = useState('Apex Institute of Technology');
   const [academicYear, setAcademicYear] = useState('2025–26');
+  const [currentTerm, setCurrentTerm] = useState('Even Sem (2, 4, 6, 8)');
   const [isOnline, setIsOnline] = useState<boolean>(storageService.isOnline());
 
   useEffect(() => {
@@ -43,6 +44,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
         if (res.settings) {
           setInstitutionName(res.settings.institutionName);
           setAcademicYear(res.settings.academicYear);
+          if (res.settings.semesterTermType === 'even') {
+            setCurrentTerm('Even Sem (2, 4, 6, 8)');
+          } else if (res.settings.semesterTermType === 'odd') {
+            setCurrentTerm('Odd Sem (1, 3, 5, 7)');
+          } else if (res.settings.currentSemesterTerm) {
+            setCurrentTerm(res.settings.currentSemesterTerm);
+          }
         }
       })
       .catch(() => {});
@@ -93,8 +101,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
                     SaaS App
                   </span>
                 </div>
-                <p className="text-[11px] text-[#667085] truncate hidden sm:block">
-                  {institutionName} • AY {academicYear}
+                <p className="text-[11px] text-[#667085] truncate hidden sm:flex items-center gap-1.5">
+                  <span>{institutionName}</span>
+                  <span>•</span>
+                  <span>AY {academicYear}</span>
+                  <span>•</span>
+                  <span className="font-semibold text-[#2E6FB0] bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200/60">{currentTerm}</span>
                 </p>
                 <div className="sm:hidden mt-0.5">
                   {getRoleBadge()}

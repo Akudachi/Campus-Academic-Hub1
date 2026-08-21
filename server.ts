@@ -404,6 +404,7 @@ app.post('/api/admin/settings', requireRole('admin'), (req: AuthenticatedRequest
     campusCode,
     academicYear,
     currentSemesterTerm,
+    semesterTermType,
     minAttendanceWarning,
     adminContactEmail,
   } = req.body;
@@ -413,7 +414,8 @@ app.post('/api/admin/settings', requireRole('admin'), (req: AuthenticatedRequest
     shortName: shortName || 'AIT',
     campusCode: campusCode || 'AIT-2026',
     academicYear: academicYear || '2025-2026',
-    currentSemesterTerm: currentSemesterTerm || 'Even Semester (Sem 4 & 6)',
+    currentSemesterTerm: currentSemesterTerm || 'Even Semester (Semesters 2, 4, 6, 8)',
+    semesterTermType: semesterTermType || 'even',
     minAttendanceWarning: Number(minAttendanceWarning) || 75,
     adminContactEmail: adminContactEmail || 'admin@campus.edu',
   });
@@ -423,10 +425,80 @@ app.post('/api/admin/settings', requireRole('admin'), (req: AuthenticatedRequest
     req.user!.name,
     'admin',
     'SETTINGS_UPDATED',
-    `Updated campus configuration for ${updated.institutionName}`
+    `Updated campus configuration for ${updated.institutionName} [Term: ${updated.currentSemesterTerm}]`
   );
 
   res.json({ success: true, settings: updated });
+});
+
+// Admin: 1-Click Term Switch (Even Semesters: 2, 4, 6, 8 vs Odd Semesters: 1, 3, 5, 7)
+app.post('/api/admin/semesters/switch-term', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { termType, academicYear, customTermName, activateMatchingSemesters = true } = req.body;
+  const store = db.getStore();
+
+  const isEven = termType === 'even';
+  const targetNumbers = isEven ? [2, 4, 6, 8] : [1, 3, 5, 7];
+  const ay = (academicYear || store.settings.academicYear || '2025-2026').trim();
+  const termName = customTermName || (isEven ? 'Even Semester (Semesters 2, 4, 6, 8)' : 'Odd Semester (Semesters 1, 3, 5, 7)');
+
+  // 1. Update campus settings
+  store.settings.currentSemesterTerm = termName;
+  store.settings.semesterTermType = termType || (isEven ? 'even' : 'odd');
+  if (academicYear) {
+    store.settings.academicYear = ay;
+  }
+
+  let activatedCount = 0;
+  let createdCount = 0;
+
+  if (activateMatchingSemesters) {
+    store.departments.forEach((dept) => {
+      targetNumbers.forEach((semNum) => {
+        let sem = store.semesters.find((s) => s.number === semNum && s.departmentCode === dept.code);
+        if (!sem) {
+          sem = {
+            id: `sem-${dept.code.toLowerCase()}-${semNum}-${Date.now().toString(36)}`,
+            number: semNum,
+            academicYear: ay,
+            departmentCode: dept.code,
+            section: 'A',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          };
+          store.semesters.push(sem);
+          createdCount++;
+        } else {
+          sem.status = 'active';
+          sem.academicYear = ay;
+          activatedCount++;
+        }
+      });
+
+      // Archive opposite parity active semesters for clean active term state
+      const oppositeNumbers = isEven ? [1, 3, 5, 7] : [2, 4, 6, 8];
+      store.semesters
+        .filter((s) => s.departmentCode === dept.code && oppositeNumbers.includes(s.number) && s.status === 'active')
+        .forEach((s) => {
+          s.status = 'archived';
+        });
+    });
+  }
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'TERM_SWITCHED',
+    `Switched campus operational term to ${termName} [Term Type: ${termType}]`
+  );
+
+  res.json({
+    success: true,
+    message: `Campus term updated to ${termName}. Active semester cycles synchronised across all branches.`,
+    settings: store.settings,
+    activatedCount,
+    createdCount,
+  });
 });
 
 // Admin: Full Database Backup Export
