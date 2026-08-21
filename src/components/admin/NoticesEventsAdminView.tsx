@@ -16,9 +16,15 @@ import { api } from '../../lib/api';
 import { Notice, Event } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 
-export const NoticesEventsAdminView: React.FC = () => {
+interface NoticesEventsAdminViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const NoticesEventsAdminView: React.FC<NoticesEventsAdminViewProps> = ({ onBack, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'notices' | 'events'>('notices');
   const [notices, setNotices] = useState<Notice[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -114,9 +120,16 @@ export const NoticesEventsAdminView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Overview" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">Campus Notices & Event Announcements</h2>
           <p className="text-xs text-[#667085] mt-1">

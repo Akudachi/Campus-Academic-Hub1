@@ -103,62 +103,25 @@ function initializeCleanData(): DatabaseStore {
     },
   ];
 
-  const semesters: Semester[] = [
-    {
-      id: 'sem-cse-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'CSE',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-cse-6',
-      number: 6,
-      academicYear: '2025-2026',
-      departmentCode: 'CSE',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-ece-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'ECE',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-ise-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'ISE',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-mech-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'MECH',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-civil-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'CIVIL',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-  ];
+  function buildStandardSemesters(departmentsList: Department[], academicYear = '2025-2026'): Semester[] {
+    const sems: Semester[] = [];
+    departmentsList.forEach((dept) => {
+      for (let semNum = 1; semNum <= 8; semNum++) {
+        sems.push({
+          id: `sem-${dept.code.toLowerCase()}-${semNum}`,
+          number: semNum,
+          academicYear,
+          departmentCode: dept.code,
+          section: 'A',
+          status: 'active',
+          createdAt: '2026-01-10T08:00:00Z',
+        });
+      }
+    });
+    return sems;
+  }
+
+  const semesters: Semester[] = buildStandardSemesters(departments, '2025-2026');
 
   const users: User[] = [
     {
@@ -237,37 +200,24 @@ function initializeSampleDemoData(): DatabaseStore {
     { id: 'dept-ece', name: 'Electronics & Communication Engineering', code: 'ECE' },
     { id: 'dept-ise', name: 'Information Science & Engineering', code: 'ISE' },
     { id: 'dept-mech', name: 'Mechanical Engineering', code: 'MECH' },
+    { id: 'dept-civil', name: 'Civil Engineering', code: 'CIVIL' },
+    { id: 'dept-aiml', name: 'Artificial Intelligence & Machine Learning', code: 'AI-ML' },
   ];
 
-  const semesters: Semester[] = [
-    {
-      id: 'sem-cse-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'CSE',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-ece-4',
-      number: 4,
-      academicYear: '2025-2026',
-      departmentCode: 'ECE',
-      section: 'A',
-      status: 'active',
-      createdAt: '2026-01-10T08:00:00Z',
-    },
-    {
-      id: 'sem-cse-6',
-      number: 6,
-      academicYear: '2025-2026',
-      departmentCode: 'CSE',
-      section: 'A',
-      status: 'setup',
-      createdAt: '2026-02-01T08:00:00Z',
-    },
-  ];
+  const semesters: Semester[] = [];
+  departments.forEach((dept) => {
+    for (let semNum = 1; semNum <= 8; semNum++) {
+      semesters.push({
+        id: `sem-${dept.code.toLowerCase()}-${semNum}`,
+        number: semNum,
+        academicYear: '2025-2026',
+        departmentCode: dept.code,
+        section: 'A',
+        status: semNum === 4 || semNum === 6 ? 'active' : 'setup',
+        createdAt: '2026-01-10T08:00:00Z',
+      });
+    }
+  });
 
   const users: User[] = [
     {

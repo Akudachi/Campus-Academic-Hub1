@@ -24,6 +24,7 @@ import { Teacher, User, Subject, TeacherImportRowResult, Department } from '../.
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { parseTeacherFile, parseTeacherText, downloadTeacherSampleExcel } from '../../lib/excelParser';
 
@@ -35,7 +36,12 @@ const DEFAULT_DEPARTMENTS: Department[] = [
   { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
 ];
 
-export const TeacherMasterView: React.FC = () => {
+interface TeacherMasterViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, onNavigate }) => {
   const [teachers, setTeachers] = useState<(Teacher & { user: User; assignedSubjectsCount: number })[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
@@ -328,9 +334,16 @@ export const TeacherMasterView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation & Header */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Overview" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">Faculty & Teacher Master</h2>
           <p className="text-xs text-[#667085] mt-1">

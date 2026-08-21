@@ -29,6 +29,7 @@ import {
 import { api } from '../../lib/api';
 import { ExtractedTimetableRow, Teacher, User } from '../../types';
 import { StatusPill } from '../common/StatusPill';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 
 // Helper to generate realistic visual timetable images as Base64 for instant demo testing
@@ -258,7 +259,12 @@ function generateSampleTimetableImage(preset: 'kle_ece7' | 'cse4' | 'ece6' | 'ai
   return canvas.toDataURL('image/png');
 }
 
-export const TimetableAIView: React.FC = () => {
+interface TimetableAIViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'photo' | 'text'>('photo');
   const [rawText, setRawText] = useState('');
   const [fileName, setFileName] = useState('');
@@ -536,9 +542,16 @@ Verified by: Head of Dept. of E.C.E. | Academic Coordinator | Principal`);
   const isPdfFile = imageMimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Overview" />
+        </div>
+      )}
+
       {/* Top Banner */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 shadow-xs">

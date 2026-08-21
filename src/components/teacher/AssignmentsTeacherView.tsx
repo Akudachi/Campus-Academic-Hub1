@@ -19,10 +19,16 @@ import { api } from '../../lib/api';
 import { Assignment, Subject } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { downloadAssignmentPdf } from '../../lib/assignmentPdf';
 
-export const AssignmentsTeacherView: React.FC = () => {
+interface AssignmentsTeacherViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ onBack, onNavigate }) => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -234,9 +240,16 @@ export const AssignmentsTeacherView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Dashboard" />
+        </div>
+      )}
+
       {/* Header & Subject Selector */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-[#13284A] font-serif">

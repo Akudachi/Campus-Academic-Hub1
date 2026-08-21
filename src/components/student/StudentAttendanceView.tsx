@@ -11,8 +11,14 @@ import {
 import { api } from '../../lib/api';
 import { StatusPill } from '../common/StatusPill';
 import { MetricCard } from '../common/MetricCard';
+import { BackButton } from '../common/BackButton';
 
-export const StudentAttendanceView: React.FC = () => {
+interface StudentAttendanceViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({ onBack, onNavigate }) => {
   const [data, setData] = useState<{
     overallPercentage: number;
     totalAllClasses: number;
@@ -58,9 +64,16 @@ export const StudentAttendanceView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Dashboard" />
+        </div>
+      )}
+
       {/* Top Header */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">
             Verified Attendance Records

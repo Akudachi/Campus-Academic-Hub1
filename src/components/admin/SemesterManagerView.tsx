@@ -8,6 +8,7 @@ import {
   BookOpen,
   Users,
   ShieldCheck,
+  ShieldAlert,
   Play,
   RotateCcw,
   Plus,
@@ -26,6 +27,7 @@ import { api } from '../../lib/api';
 import { Semester, Department, CampusSettings } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 
 interface EnrichedSemester extends Semester {
@@ -59,12 +61,19 @@ const DEFAULT_DEPARTMENTS: Department[] = [
   { id: 'dept-aiml', code: 'AI-ML', name: 'Artificial Intelligence' },
 ];
 
-export const SemesterManagerView: React.FC = () => {
+interface SemesterManagerViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack, onNavigate }) => {
   const [semesters, setSemesters] = useState<EnrichedSemester[]>([]);
   const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [settings, setSettings] = useState<CampusSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
+  const [selectedSemNumberFilter, setSelectedSemNumberFilter] = useState<string>('ALL');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
   const [isProcessing, setIsProcessing] = useState(false);
   const [switchingTerm, setSwitchingTerm] = useState(false);
   const { showToast } = useAuth();
@@ -79,6 +88,7 @@ export const SemesterManagerView: React.FC = () => {
 
   // Promotion Modal State
   const [promoteSemester, setPromoteSemester] = useState<EnrichedSemester | null>(null);
+  const [graduatingSem8Direct, setGraduatingSem8Direct] = useState<EnrichedSemester | null>(null);
   const [semesterStudents, setSemesterStudents] = useState<SemesterStudentItem[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -235,9 +245,26 @@ export const SemesterManagerView: React.FC = () => {
     }
   };
 
+  const handleDirectGraduateSem8 = async () => {
+    if (!graduatingSem8Direct) return;
+    setIsProcessing(true);
+    try {
+      const res = await api.completeSemester(graduatingSem8Direct.id);
+      showToast(res.message, 'success');
+      setGraduatingSem8Direct(null);
+      await fetchSemesters();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to complete 8th semester and graduate batch', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const filteredSemesters = semesters.filter((s) => {
-    if (selectedDeptFilter === 'ALL') return true;
-    return s.departmentCode.toUpperCase() === selectedDeptFilter.toUpperCase();
+    const matchDept = selectedDeptFilter === 'ALL' || s.departmentCode.toUpperCase() === selectedDeptFilter.toUpperCase();
+    const matchSem = selectedSemNumberFilter === 'ALL' || s.number === Number(selectedSemNumberFilter);
+    const matchStatus = selectedStatusFilter === 'ALL' || s.status === selectedStatusFilter;
+    return matchDept && matchSem && matchStatus;
   });
 
   const activeSemestersCount = semesters.filter((s) => s.status === 'active').length;
@@ -248,24 +275,20 @@ export const SemesterManagerView: React.FC = () => {
   const progressionSteps = [1, 2, 3, 4, 5, 6, 7, 8];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-[#13284A] font-serif">Semester Lifecycle & Batch Promotion</h2>
-            <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#13284A]/10 text-[#13284A]">
-              Automated Progression
-            </span>
+    <div className="space-y-5">
+      {/* Top Action Bar with Back Button */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs">
+        <div className="flex items-center gap-3">
+          {onBack && <BackButton onClick={onBack} label="Back to Overview" />}
+          <div>
+            <h2 className="text-sm font-bold text-[#13284A]">Semester Lifecycle & Promotion Manager</h2>
+            <p className="text-[11px] text-[#667085]">Manage Semesters 1 through 8, term activation, and batch graduation.</p>
           </div>
-          <p className="text-xs text-[#667085] mt-1 max-w-2xl">
-            Create academic terms for any semester (1 through 8). When a semester is completed, students automatically transfer to the next semester cycle (e.g. Sem 6 ➔ Sem 7) while locking historic attendance and mark records.
-          </p>
         </div>
 
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer shrink-0"
+          className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer shrink-0 ml-auto"
         >
           <Plus className="w-4 h-4" />
           Create New Semester Cycle
@@ -286,7 +309,7 @@ export const SemesterManagerView: React.FC = () => {
                   ? 'Even Semester (2, 4, 6, 8)'
                   : settings?.semesterTermType === 'odd'
                   ? 'Odd Semester (1, 3, 5, 7)'
-                  : settings?.currentSemesterTerm || 'Even Semester (2, 4, 6, 8)'}
+                  : settings?.currentSemesterTerm || 'All Semesters (1 to 8)'}
               </span>
             </div>
             <p className="text-[11px] text-[#667085] mt-0.5">
@@ -294,7 +317,7 @@ export const SemesterManagerView: React.FC = () => {
                 ? 'Currently running even terms (Semesters 2, 4, 6, 8). Switch below to activate odd terms across all branches.'
                 : settings?.semesterTermType === 'odd'
                 ? 'Currently running odd terms (Semesters 1, 3, 5, 7). Switch below to activate even terms across all branches.'
-                : 'Custom active term configured in Campus Settings.'}
+                : 'All semesters (1 through 8) configured and accessible across all departments.'}
             </p>
           </div>
         </div>
@@ -304,7 +327,7 @@ export const SemesterManagerView: React.FC = () => {
             type="button"
             onClick={() => handleSwitchTerm('even')}
             disabled={switchingTerm || settings?.semesterTermType === 'even'}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
               settings?.semesterTermType === 'even'
                 ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-extrabold cursor-default'
                 : 'bg-white border-[#DCE3ED] text-[#667085] hover:bg-slate-50 hover:border-blue-300'
@@ -318,7 +341,7 @@ export const SemesterManagerView: React.FC = () => {
             type="button"
             onClick={() => handleSwitchTerm('odd')}
             disabled={switchingTerm || settings?.semesterTermType === 'odd'}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
               settings?.semesterTermType === 'odd'
                 ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-extrabold cursor-default'
                 : 'bg-white border-[#DCE3ED] text-[#667085] hover:bg-slate-50 hover:border-blue-300'
@@ -336,7 +359,7 @@ export const SemesterManagerView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-300" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-              Department Academic Progression Pipeline ({currentDeptForMap})
+              Department Academic Progression Pipeline ({currentDeptForMap}) — Semesters 1 through 8
             </h3>
           </div>
           <span className="text-[11px] text-slate-300">
@@ -353,22 +376,27 @@ export const SemesterManagerView: React.FC = () => {
             const isActive = matchSem?.status === 'active';
             const isArchived = matchSem?.status === 'archived';
             const studentCount = matchSem?.studentsCount || 0;
+            const isSelected = selectedSemNumberFilter === String(semNum);
 
             return (
-              <div
+              <button
+                type="button"
                 key={semNum}
-                className={`p-3 rounded-lg border flex flex-col justify-between transition-all ${
-                  isActive
-                    ? 'bg-[#2E6FB0]/40 border-amber-400/80 ring-2 ring-amber-400/40 shadow-sm'
+                onClick={() => setSelectedSemNumberFilter(selectedSemNumberFilter === String(semNum) ? 'ALL' : String(semNum))}
+                className={`p-3 rounded-lg border flex flex-col justify-between text-left transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-amber-500/30 border-amber-300 ring-2 ring-amber-300 shadow-md'
+                    : isActive
+                    ? 'bg-[#2E6FB0]/40 border-amber-400/80 ring-1 ring-amber-400/40 shadow-sm hover:bg-[#2E6FB0]/60'
                     : isArchived
-                    ? 'bg-white/5 border-white/10 opacity-75'
+                    ? 'bg-white/5 border-white/10 opacity-75 hover:bg-white/10'
                     : matchSem
-                    ? 'bg-white/10 border-white/20'
-                    : 'bg-black/20 border-dashed border-white/10 opacity-40'
+                    ? 'bg-white/10 border-white/20 hover:bg-white/20'
+                    : 'bg-black/20 border-dashed border-white/10 opacity-40 hover:opacity-70'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold">Sem {semNum}</span>
+                  <span className="text-xs font-mono font-bold text-white">Sem {semNum}</span>
                   {isActive && (
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Active Term" />
                   )}
@@ -383,40 +411,101 @@ export const SemesterManagerView: React.FC = () => {
                     {matchSem ? matchSem.status : 'Empty'}
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        <button
-          onClick={() => setSelectedDeptFilter('ALL')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            selectedDeptFilter === 'ALL'
-              ? 'bg-[#13284A] text-white shadow-xs'
-              : 'bg-white border border-[#DCE3ED] text-[#667085] hover:bg-slate-50'
-          }`}
-        >
-          All Departments ({semesters.length})
-        </button>
-        {departments.map((dept) => {
-          const count = semesters.filter((s) => s.departmentCode === dept.code).length;
-          return (
-            <button
-              key={dept.code}
-              onClick={() => setSelectedDeptFilter(dept.code)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                selectedDeptFilter === dept.code
-                  ? 'bg-[#13284A] text-white shadow-xs'
-                  : 'bg-white border border-[#DCE3ED] text-[#667085] hover:bg-slate-50'
-              }`}
-            >
-              {dept.code} ({count})
-            </button>
-          );
-        })}
+      {/* Multi-tier Filter Toolbar */}
+      <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-xs space-y-3">
+        {/* Row 1: Department Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold text-[#13284A] shrink-0 min-w-20 flex items-center gap-1">
+            <Filter className="w-3.5 h-3.5 text-[#2E6FB0]" />
+            Department:
+          </span>
+          <button
+            onClick={() => setSelectedDeptFilter('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              selectedDeptFilter === 'ALL'
+                ? 'bg-[#13284A] text-white shadow-xs'
+                : 'bg-slate-50 border border-[#DCE3ED] text-[#667085] hover:bg-slate-100'
+            }`}
+          >
+            All Departments ({semesters.length})
+          </button>
+          {departments.map((dept) => {
+            const count = semesters.filter((s) => s.departmentCode === dept.code).length;
+            return (
+              <button
+                key={dept.code}
+                onClick={() => setSelectedDeptFilter(dept.code)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  selectedDeptFilter === dept.code
+                    ? 'bg-[#13284A] text-white shadow-xs'
+                    : 'bg-slate-50 border border-[#DCE3ED] text-[#667085] hover:bg-slate-100'
+                }`}
+              >
+                {dept.code} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Semester Number Filters (1 to 8) */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+          <span className="text-xs font-bold text-[#13284A] shrink-0 min-w-20 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5 text-[#2E6FB0]" />
+            Semester:
+          </span>
+          <button
+            onClick={() => setSelectedSemNumberFilter('ALL')}
+            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              selectedSemNumberFilter === 'ALL'
+                ? 'bg-[#2E6FB0] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            All (1–8)
+          </button>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
+            const countInSem = semesters.filter(
+              (s) => s.number === num && (selectedDeptFilter === 'ALL' || s.departmentCode === selectedDeptFilter)
+            ).length;
+            return (
+              <button
+                key={num}
+                onClick={() => setSelectedSemNumberFilter(selectedSemNumberFilter === String(num) ? 'ALL' : String(num))}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  selectedSemNumberFilter === String(num)
+                    ? 'bg-[#2E6FB0] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>Sem {num}</span>
+                {countInSem > 0 && <span className="opacity-70 text-[10px]">({countInSem})</span>}
+              </button>
+            );
+          })}
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="text-xs font-medium text-[#667085]">Status:</span>
+            {(['ALL', 'active', 'setup', 'archived'] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setSelectedStatusFilter(st)}
+                className={`px-2 py-1 rounded text-xs font-semibold uppercase text-[10px] transition-colors ${
+                  selectedStatusFilter === st
+                    ? 'bg-slate-800 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Grid of Semesters */}
@@ -514,14 +603,30 @@ export const SemesterManagerView: React.FC = () => {
                   )}
 
                   {isActive && (
-                    <button
-                      disabled={isProcessing}
-                      onClick={() => openPromotionWizard(sem)}
-                      className="w-full py-2.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                    >
-                      <ArrowRight className="w-4 h-4 text-amber-400" />
-                      Complete & Transfer to Sem {sem.number < 8 ? sem.number + 1 : 'Graduation'} →
-                    </button>
+                    <div className="space-y-1.5">
+                      {sem.number === 8 ? (
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => setGraduatingSem8Direct(sem)}
+                          className="w-full py-2.5 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                        >
+                          <GraduationCap className="w-4 h-4 text-white" />
+                          Complete 8th Sem & Graduate (Delete Students)
+                        </button>
+                      ) : null}
+                      <button
+                        disabled={isProcessing}
+                        onClick={() => openPromotionWizard(sem)}
+                        className={`w-full py-2.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer ${
+                          sem.number === 8
+                            ? 'bg-slate-800 text-slate-100 hover:bg-slate-900 text-[11px]'
+                            : 'bg-[#13284A] text-white hover:bg-[#13284A]/90'
+                        }`}
+                      >
+                        <ArrowRight className="w-4 h-4 text-amber-400" />
+                        {sem.number === 8 ? 'Custom Batch Progression Wizard →' : `Complete & Transfer to Sem ${sem.number + 1} →`}
+                      </button>
+                    </div>
                   )}
 
                   {isArchived && (
@@ -847,9 +952,23 @@ export const SemesterManagerView: React.FC = () => {
             </div>
 
             {/* Confirmation & Buttons */}
+            {promoteSemester.number === 8 || targetSemesterNum > 8 ? (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 space-y-1">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Permanent Batch Graduation Action</span>
+                </div>
+                <p className="text-[11px] text-rose-700 leading-relaxed">
+                  Completing Semester 8 will archive this term and <strong>permanently delete the {selectedStudentIds.length} selected student accounts and revoke their login access</strong>.
+                </p>
+              </div>
+            ) : null}
+
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
               <p className="text-[11px] text-[#667085]">
-                Freezes Sem {promoteSemester.number} records and moves <strong>{selectedStudentIds.length}</strong> student{selectedStudentIds.length === 1 ? '' : 's'} to Sem {targetSemesterNum}.
+                {promoteSemester.number === 8 || targetSemesterNum > 8
+                  ? `Graduating ${selectedStudentIds.length} student${selectedStudentIds.length === 1 ? '' : 's'} upon completing Semester 8.`
+                  : `Freezes Sem ${promoteSemester.number} records and moves ${selectedStudentIds.length} student${selectedStudentIds.length === 1 ? '' : 's'} to Sem ${targetSemesterNum}.`}
               </p>
 
               <div className="flex gap-2">
@@ -864,14 +983,82 @@ export const SemesterManagerView: React.FC = () => {
                   type="button"
                   disabled={isProcessing}
                   onClick={handleExecutePromotion}
-                  className="px-5 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-2 shadow-xs cursor-pointer"
+                  className={`px-5 py-2 text-xs font-bold rounded-lg text-white flex items-center gap-2 shadow-xs cursor-pointer ${
+                    promoteSemester.number === 8 || targetSemesterNum > 8
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : 'bg-[#13284A] hover:bg-[#13284A]/90'
+                  }`}
                 >
-                  <ArrowRight className="w-4 h-4 text-amber-400" />
-                  {isProcessing
-                    ? 'Transferring...'
-                    : `Complete Sem ${promoteSemester.number} & Promote (${selectedStudentIds.length})`}
+                  {promoteSemester.number === 8 || targetSemesterNum > 8 ? (
+                    <>
+                      <GraduationCap className="w-4 h-4 text-white" />
+                      {isProcessing ? 'Graduating...' : `Complete 8th Sem & Delete Students (${selectedStudentIds.length})`}
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="w-4 h-4 text-amber-400" />
+                      {isProcessing
+                        ? 'Transferring...'
+                        : `Complete Sem ${promoteSemester.number} & Promote (${selectedStudentIds.length})`}
+                    </>
+                  )}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* DIRECT SEMESTER 8 GRADUATION & DELETION MODAL */}
+      <Modal
+        isOpen={!!graduatingSem8Direct}
+        onClose={() => setGraduatingSem8Direct(null)}
+        title="Complete Semester 8 & Graduate Batch"
+        subtitle="This action finalizes the 8th semester and permanently removes graduating students."
+        maxWidth="md"
+      >
+        {graduatingSem8Direct && (
+          <div className="space-y-4 text-xs">
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm text-rose-800">
+                <ShieldAlert className="w-5 h-5 text-rose-600" />
+                <span>Delete Graduating Students & Revoke Logins</span>
+              </div>
+              <p className="text-xs text-rose-700 leading-relaxed">
+                Completing <strong>Semester 8 ({graduatingSem8Direct.departmentCode} - Sec {graduatingSem8Direct.section})</strong> will:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-800 pl-1">
+                <li>Mark Semester 8 as completed and archived</li>
+                <li>Permanently <strong>delete all {graduatingSem8Direct.studentsCount} students</strong> in this batch</li>
+                <li>Instantly <strong>revoke student user credentials & login access</strong></li>
+                <li>Archive final marks and attendance records</li>
+              </ul>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 flex items-center justify-between">
+              <span className="font-medium">Department / Section:</span>
+              <span className="font-bold text-[#13284A]">
+                {graduatingSem8Direct.departmentCode} - Section {graduatingSem8Direct.section} (AY {graduatingSem8Direct.academicYear})
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setGraduatingSem8Direct(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={handleDirectGraduateSem8}
+                className="px-5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 shadow-xs cursor-pointer"
+              >
+                <GraduationCap className="w-4 h-4 text-white" />
+                {isProcessing ? 'Processing Graduation...' : 'Confirm: Complete 8th Sem & Delete Students'}
+              </button>
             </div>
           </div>
         )}

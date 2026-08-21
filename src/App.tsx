@@ -100,19 +100,19 @@ const MainLayout: React.FC = () => {
         case 'overview':
           return <AdminOverview onNavigate={handleNavigate} />;
         case 'teachers':
-          return <TeacherMasterView />;
+          return <TeacherMasterView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'students':
-          return <StudentImportView />;
+          return <StudentImportView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'timetable':
-          return <TimetableAIView />;
+          return <TimetableAIView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'semesters':
-          return <SemesterManagerView />;
+          return <SemesterManagerView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'notices-events':
-          return <NoticesEventsAdminView />;
+          return <NoticesEventsAdminView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'reports':
-          return <ReportsAdminView />;
+          return <ReportsAdminView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'settings':
-          return <CampusSettingsView />;
+          return <CampusSettingsView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         default:
           return <AdminOverview onNavigate={handleNavigate} />;
       }
@@ -124,11 +124,13 @@ const MainLayout: React.FC = () => {
         case 'dashboard':
           return <TeacherDashboard onNavigate={handleNavigate} />;
         case 'attendance':
-          return <AttendanceTakingView />;
+          return <AttendanceTakingView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'assignments':
-          return <AssignmentsTeacherView />;
+          return <AssignmentsTeacherView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'marks':
-          return <TestMarksTeacherView />;
+          return <TestMarksTeacherView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
+        case 'notices-events':
+          return <StudentNoticesEventsView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         default:
           return <TeacherDashboard onNavigate={handleNavigate} />;
       }
@@ -140,15 +142,15 @@ const MainLayout: React.FC = () => {
         case 'dashboard':
           return <StudentDashboard onNavigate={handleNavigate} />;
         case 'attendance':
-          return <StudentAttendanceView />;
+          return <StudentAttendanceView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'assignments':
-          return <StudentAssignmentsView />;
+          return <StudentAssignmentsView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'marks':
-          return <StudentMarksView />;
+          return <StudentMarksView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'notices-events':
-          return <StudentNoticesEventsView />;
+          return <StudentNoticesEventsView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'profile':
-          return <StudentProfileView />;
+          return <StudentProfileView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         default:
           return <StudentDashboard onNavigate={handleNavigate} />;
       }

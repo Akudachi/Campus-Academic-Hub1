@@ -23,6 +23,7 @@ import { Student, User, StudentImportRowResult, Department } from '../../types';
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { parseStudentFile, parseStudentText, downloadStudentSampleExcel } from '../../lib/excelParser';
 
@@ -34,7 +35,12 @@ const DEFAULT_DEPARTMENTS: Department[] = [
   { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
 ];
 
-export const StudentImportView: React.FC = () => {
+interface StudentImportViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, onNavigate }) => {
   const [students, setStudents] = useState<(Student & { user: User })[]>([]);
   const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(true);
@@ -308,9 +314,16 @@ export const StudentImportView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Overview" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">Student Master & Bulk Enrollment</h2>
           <p className="text-xs text-[#667085] mt-1">
@@ -397,13 +410,13 @@ export const StudentImportView: React.FC = () => {
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
             <span className="text-xs font-semibold text-[#667085]">Sem:</span>
-            {['ALL', '4', '6'].map((s) => (
+            {['ALL', '1', '2', '3', '4', '5', '6', '7', '8'].map((s) => (
               <button
                 key={s}
                 onClick={() => setSemFilter(s)}
-                className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors shrink-0 ${
                   semFilter === s
                     ? 'bg-[#2E6FB0] text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'

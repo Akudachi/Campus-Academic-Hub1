@@ -42,13 +42,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   // Tab configurations per role
   const adminTabs: NavTabItem[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'notices-events', label: 'Circulars', icon: Megaphone },
+    { id: 'timetable', label: 'Timetable', icon: Sparkles, isAi: true },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'teachers', label: 'Faculty', icon: UserCheck },
-    { id: 'timetable', label: 'Timetable', icon: Sparkles, isAi: true },
   ];
 
   const teacherTabs: NavTabItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'notices-events', label: 'Circulars', icon: Megaphone },
     { id: 'attendance', label: 'Attendance', icon: BookOpen },
     { id: 'marks', label: 'Marks', icon: Award },
     { id: 'assignments', label: 'Tasks', icon: FileCheck2 },
@@ -56,6 +58,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   const studentTabs: NavTabItem[] = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'notices-events', label: 'Circulars', icon: Megaphone },
     { id: 'attendance', label: 'Attendance', icon: BookOpen },
     { id: 'marks', label: 'Marks', icon: Award },
     { id: 'assignments', label: 'Tasks', icon: FileCheck2 },
@@ -75,7 +78,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#DCE3ED] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:hidden transition-all"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="grid grid-cols-5 items-center h-16 max-w-lg mx-auto px-1">
+        <div className="grid grid-cols-6 items-center h-16 max-w-xl mx-auto px-0.5 sm:px-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

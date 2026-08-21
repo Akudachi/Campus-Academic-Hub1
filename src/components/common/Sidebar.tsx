@@ -40,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
 
   const teacherNav = [
     { id: 'dashboard', label: 'Faculty Dashboard', icon: LayoutDashboard },
+    { id: 'notices-events', label: 'Notices & Events', icon: Megaphone },
     { id: 'attendance', label: 'Take Attendance', icon: BookOpen },
     { id: 'assignments', label: 'Assignments Tracker', icon: FileCheck2 },
     { id: 'marks', label: 'Test Marks Entry', icon: Award },

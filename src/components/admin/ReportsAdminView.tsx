@@ -14,6 +14,7 @@ import {
 import { api } from '../../lib/api';
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { Department } from '../../types';
 
@@ -24,7 +25,12 @@ const DEFAULT_DEPARTMENTS: Department[] = [
   { id: 'dept-mech', code: 'MECH', name: 'Mechanical' },
 ];
 
-export const ReportsAdminView: React.FC = () => {
+interface ReportsAdminViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const ReportsAdminView: React.FC<ReportsAdminViewProps> = ({ onBack, onNavigate }) => {
   const [reportType, setReportType] = useState<'attendance' | 'assignments' | 'marks' | 'audit'>('attendance');
   const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(true);
@@ -161,9 +167,16 @@ export const ReportsAdminView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Overview" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">Comprehensive Academic Reports</h2>
           <p className="text-xs text-[#667085] mt-1">
@@ -317,8 +330,11 @@ export const ReportsAdminView: React.FC = () => {
                 className="px-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white"
               >
                 <option value="">All Semesters</option>
-                <option value="4">Semester 4 (Active)</option>
-                <option value="6">Semester 6</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <option key={s} value={String(s)}>
+                    Semester {s}
+                  </option>
+                ))}
               </select>
 
               <select

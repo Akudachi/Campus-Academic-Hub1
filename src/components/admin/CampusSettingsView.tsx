@@ -34,10 +34,16 @@ import { CampusSettings, SystemStatusInfo } from '../../types';
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { DepartmentManagerView } from './DepartmentManagerView';
 
-export const CampusSettingsView: React.FC = () => {
+interface CampusSettingsViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, onNavigate }) => {
   const { showToast } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'departments' | 'backup' | 'deploy'>('profile');
   const [loading, setLoading] = useState(true);
@@ -212,9 +218,16 @@ export const CampusSettingsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Overview" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-[#13284A] font-serif">Campus Configuration & Deployment</h2>

@@ -12,10 +12,16 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { StatusPill } from '../common/StatusPill';
+import { BackButton } from '../common/BackButton';
 import { downloadAssignmentPdf } from '../../lib/assignmentPdf';
 import { useAuth } from '../../context/AuthContext';
 
-export const StudentAssignmentsView: React.FC = () => {
+interface StudentAssignmentsViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const StudentAssignmentsView: React.FC<StudentAssignmentsViewProps> = ({ onBack, onNavigate }) => {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useAuth();
@@ -61,9 +67,16 @@ export const StudentAssignmentsView: React.FC = () => {
   const pendingCount = assignments.filter((a) => a.status !== 'submitted').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Dashboard" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">
             Coursework & Assignments Status

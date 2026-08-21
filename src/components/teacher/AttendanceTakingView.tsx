@@ -19,8 +19,14 @@ import { useAuth } from '../../context/AuthContext';
 import { StatusPill } from '../common/StatusPill';
 import { MetricCard } from '../common/MetricCard';
 import { Modal } from '../common/Modal';
+import { BackButton } from '../common/BackButton';
 
-export const AttendanceTakingView: React.FC = () => {
+interface AttendanceTakingViewProps {
+  onBack?: () => void;
+  onNavigate?: (tabId: string) => void;
+}
+
+export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBack, onNavigate }) => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'take' | 'analytics' | 'history'>('take');
@@ -168,9 +174,16 @@ export const AttendanceTakingView: React.FC = () => {
   const absentCount = roster.filter((r) => r.status === 'absent').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Navigation Bar */}
+      {onBack && (
+        <div className="flex items-center justify-between">
+          <BackButton onClick={onBack} label="Back to Dashboard" />
+        </div>
+      )}
+
       {/* Top Header & Subject Dropdown */}
-      <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">
             Digital Attendance Management
