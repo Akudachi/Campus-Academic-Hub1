@@ -13,11 +13,11 @@ import {
   BarChart3,
   Calendar,
   ShieldCheck,
+  Search,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { StatusPill } from '../common/StatusPill';
-import { MetricCard } from '../common/MetricCard';
 import { Modal } from '../common/Modal';
 import { BackButton } from '../common/BackButton';
 
@@ -26,7 +26,7 @@ interface AttendanceTakingViewProps {
   onNavigate?: (tabId: string) => void;
 }
 
-export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBack, onNavigate }) => {
+export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBack }) => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'take' | 'analytics' | 'history'>('take');
@@ -36,10 +36,12 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
   // Active Session Form State
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [period, setPeriod] = useState('Period 1 (09:00 - 10:00)');
-  const [topic, setTopic] = useState('Module 3: Dynamic Programming & Matrix Chain Multiplication');
+  const [topic, setTopic] = useState('Regular Class Lecture');
   const [roster, setRoster] = useState<{ studentId: string; usn: string; name: string; currentPercentage: number; status: 'present' | 'absent' }[]>([]);
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterRosterStatus, setFilterRosterStatus] = useState<'all' | 'present' | 'absent'>('all');
 
   // Analytics & History state
   const [analyticsData, setAnalyticsData] = useState<{
@@ -57,8 +59,8 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
       setLoading(true);
       try {
         const res = await api.getTeacherSubjects();
-        setSubjects(res.subjects);
-        if (res.subjects.length > 0) {
+        setSubjects(res.subjects || []);
+        if (res.subjects && res.subjects.length > 0) {
           const firstId = res.subjects[0].id || res.subjects[0].subjectId;
           setSelectedSubjectId(firstId);
         }
@@ -77,9 +79,9 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
     try {
       const res = await api.getAttendanceRoster(selectedSubjectId);
       setRoster(
-        res.students.map((s) => ({
+        (res.students || []).map((s: any) => ({
           ...s,
-          status: 'present', // FAST MARKING MODE: All present by default
+          status: 'present', // All present by default for fast marking
         }))
       );
     } catch (err: any) {
@@ -101,7 +103,7 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
     if (!selectedSubjectId) return;
     try {
       const res = await api.getTeacherAttendanceSessions(selectedSubjectId);
-      setPastSessions(res.sessions);
+      setPastSessions(res.sessions || []);
     } catch (err: any) {
       console.error(err);
     }
@@ -155,177 +157,197 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
 
       showToast(
         submitImmediately
-          ? 'Attendance finalized and submitted! Records are now immutable.'
-          : 'Attendance draft saved successfully.',
+          ? 'Attendance recorded & submitted successfully.'
+          : 'Attendance draft saved.',
         'success'
       );
       setIsSubmitConfirmOpen(false);
       setActiveTab('history');
       fetchPastSessions();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showToast(err.message || 'Failed to record attendance', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
   const presentCount = roster.filter((r) => r.status === 'present').length;
   const absentCount = roster.filter((r) => r.status === 'absent').length;
 
+  const filteredRoster = roster.filter((student) => {
+    const matchesSearch =
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.usn.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter =
+      filterRosterStatus === 'all'
+        ? true
+        : filterRosterStatus === 'present'
+        ? student.status === 'present'
+        : student.status === 'absent';
+    return matchesSearch && matchesFilter;
+  });
+
   return (
-    <div className="space-y-5">
-      {/* Top Navigation Bar */}
+    <div className="space-y-3.5 max-w-full overflow-x-hidden animate-fade-in pb-4">
+      {/* Top Back Nav */}
       {onBack && (
         <div className="flex items-center justify-between">
-          <BackButton onClick={onBack} label="Back to Dashboard" />
+          <BackButton onClick={onBack} label="Dashboard" />
         </div>
       )}
 
-      {/* Top Header & Subject Dropdown */}
-      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-[#13284A] font-serif">
-            Digital Attendance Management
-          </h2>
-          <p className="text-xs text-[#667085] mt-1">
-            Fast-marking attendance terminal with immutable submission lock and shortage alerts.
-          </p>
+      {/* Header & Course Switcher */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-[#13284A]">
+              Attendance Terminal
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              1-Tap digital roster marking with live shortage indicators.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <select
+              id="teacher-subject-select"
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              className="w-full sm:w-auto px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#DCE3ED] bg-white text-[#13284A] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden truncate"
+            >
+              {subjects.map((sub, index) => {
+                const subVal = sub.id || sub.subjectId || `sub-opt-${index}`;
+                return (
+                  <option key={subVal} value={subVal}>
+                    {sub.code || sub.subjectCode} - {sub.name || sub.subjectName} (Sem {sub.semesterNumber || 4})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="text-xs font-semibold text-slate-700 shrink-0">Subject:</label>
-          <select
-            id="teacher-subject-select"
-            value={selectedSubjectId}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="px-3 py-2 text-xs font-bold rounded-lg border border-[#DCE3ED] bg-white text-[#13284A] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden max-w-xs truncate"
+        {/* Modern Segmented Tab Switcher (Mobile App Style) */}
+        <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+          <button
+            onClick={() => setActiveTab('take')}
+            className={`py-1.5 rounded-lg transition-all text-center ${
+              activeTab === 'take'
+                ? 'bg-white text-[#13284A] shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
           >
-            {subjects.map((sub, index) => {
-              const subVal = sub.id || sub.subjectId || `sub-opt-${index}`;
-              return (
-                <option key={subVal} value={subVal}>
-                  {sub.code || sub.subjectCode} - {sub.name || sub.subjectName} (Sem {sub.semesterNumber || 4})
-                </option>
-              );
-            })}
-          </select>
+            Mark
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`py-1.5 rounded-lg transition-all text-center ${
+              activeTab === 'analytics'
+                ? 'bg-white text-[#13284A] shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`py-1.5 rounded-lg transition-all text-center ${
+              activeTab === 'history'
+                ? 'bg-white text-[#13284A] shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            History
+          </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[#DCE3ED] gap-4 sm:gap-6 text-xs sm:text-sm font-semibold overflow-x-auto whitespace-nowrap touch-scroll pb-1">
-        <button
-          onClick={() => setActiveTab('take')}
-          className={`pb-2.5 sm:pb-3 flex items-center gap-2 transition-colors border-b-2 shrink-0 ${
-            activeTab === 'take'
-              ? 'border-[#13284A] text-[#13284A]'
-              : 'border-transparent text-[#667085] hover:text-slate-900'
-          }`}
-        >
-          <BookOpen className="w-4 h-4 text-[#2E6FB0]" />
-          <span>Take Today's Attendance</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`pb-2.5 sm:pb-3 flex items-center gap-2 transition-colors border-b-2 shrink-0 ${
-            activeTab === 'analytics'
-              ? 'border-[#13284A] text-[#13284A]'
-              : 'border-transparent text-[#667085] hover:text-slate-900'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 text-emerald-600" />
-          <span>Subject Attendance Analytics</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`pb-2.5 sm:pb-3 flex items-center gap-2 transition-colors border-b-2 shrink-0 ${
-            activeTab === 'history'
-              ? 'border-[#13284A] text-[#13284A]'
-              : 'border-transparent text-[#667085] hover:text-slate-900'
-          }`}
-        >
-          <Clock className="w-4 h-4 text-purple-600" />
-          <span>Session Logs History</span>
-        </button>
-      </div>
-
-      {/* Tab: Take Attendance */}
+      {/* TAB: TAKE ATTENDANCE */}
       {activeTab === 'take' && (
-        <div className="space-y-6">
-          {/* Session Parameters Card */}
-          <div className="bg-white p-5 rounded-xl border border-[#DCE3ED] shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="space-y-3">
+          {/* Session Parameters (Compact 3-col/responsive) */}
+          <div className="bg-white p-3.5 rounded-xl border border-[#DCE3ED] shadow-2xs grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Session Date</label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">Date</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Period / Slot</label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">Period</label>
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium truncate"
               >
-                <option value="Period 1 (09:00 - 10:00)">Period 1 (09:00 - 10:00)</option>
-                <option value="Period 2 (10:00 - 11:00)">Period 2 (10:00 - 11:00)</option>
-                <option value="Period 3 (11:15 - 12:15)">Period 3 (11:15 - 12:15)</option>
-                <option value="Period 4 (13:00 - 14:00)">Period 4 (13:00 - 14:00)</option>
-                <option value="Period 5 (14:00 - 15:00)">Period 5 (14:00 - 15:00)</option>
-                <option value="Period 6 (15:00 - 16:00)">Period 6 (15:00 - 16:00)</option>
+                <option value="Period 1 (09:00 - 10:00)">P1 (09:00 - 10:00)</option>
+                <option value="Period 2 (10:00 - 11:00)">P2 (10:00 - 11:00)</option>
+                <option value="Period 3 (11:15 - 12:15)">P3 (11:15 - 12:15)</option>
+                <option value="Period 4 (13:00 - 14:00)">P4 (13:00 - 14:00)</option>
+                <option value="Period 5 (14:00 - 15:00)">P5 (14:00 - 15:00)</option>
+                <option value="Period 6 (15:00 - 16:00)">P6 (15:00 - 16:00)</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Lecture Topic</label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">Topic</label>
               <input
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. Graph Algorithms / Indexing in SQL"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED]"
+                placeholder="Topic covered..."
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED]"
               />
             </div>
           </div>
 
-          {/* Fast Marking Roster Header */}
-          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#13284A] uppercase tracking-wider">Fast-Marking Roster:</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          {/* Fast Marking Roster Header & Search */}
+          <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   {presentCount} Present
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
                   {absentCount} Absent
                 </span>
               </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={markAllPresent}
+                  className="px-2 py-1 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-98"
+                >
+                  All Present
+                </button>
+                <button
+                  type="button"
+                  onClick={markAllAbsent}
+                  className="px-2 py-1 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-98"
+                >
+                  All Absent
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={markAllPresent}
-                className="px-2.5 py-1 text-xs font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700"
-              >
-                Mark All Present
-              </button>
-              <button
-                type="button"
-                onClick={markAllAbsent}
-                className="px-2.5 py-1 text-xs font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700"
-              >
-                Mark All Absent
-              </button>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Filter by name or USN..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED]"
+              />
             </div>
           </div>
 
-          {/* Student Roster Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {roster.map((student, index) => {
+          {/* Student Roster Cards (Compact Single/2-Col Mobile Tiles) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {filteredRoster.map((student, index) => {
               const isPresent = student.status === 'present';
               const sKey = student.studentId || student.usn || `stu-roster-${index}`;
               return (
@@ -333,272 +355,173 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
                   key={sKey}
                   id={`student-attendance-card-${student.usn || index}`}
                   onClick={() => toggleStudentStatus(student.studentId)}
-                  className={`p-4 rounded-xl border cursor-pointer select-none transition-all flex items-center justify-between ${
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 shadow-2xs select-none active:scale-98 ${
                     isPresent
-                      ? 'bg-emerald-50/40 border-emerald-300/80 hover:bg-emerald-50'
-                      : 'bg-rose-50/50 border-rose-300 hover:bg-rose-50'
+                      ? 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300'
+                      : 'bg-rose-50/50 border-rose-200 hover:border-rose-300'
                   }`}
                 >
-                  <div className="space-y-1">
-                    <div className="font-mono text-xs font-bold text-[#13284A]">{student.usn}</div>
-                    <div className="font-bold text-sm text-slate-800">{student.name}</div>
-                    <div className="text-[11px] text-[#667085]">
-                      Current: <span className="font-semibold text-slate-700">{student.currentPercentage}%</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-slate-900 block truncate">
+                      {student.name}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono">
+                      <span>{student.usn}</span>
+                      <span>•</span>
+                      <span
+                        className={
+                          (student.currentPercentage || 85) < 75
+                            ? 'text-rose-600 font-bold'
+                            : 'text-slate-600 font-semibold'
+                        }
+                      >
+                        {student.currentPercentage || 85}% Att.
+                      </span>
                     </div>
                   </div>
 
-                  <div className="shrink-0">
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 ${
+                      isPresent
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-rose-600 text-white shadow-2xs'
+                    }`}
+                  >
                     {isPresent ? (
-                      <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-xs">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>PRESENT</span>
-                      </div>
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>P</span>
+                      </>
                     ) : (
-                      <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 text-white font-bold text-xs shadow-xs">
-                        <XCircle className="w-4 h-4" />
-                        <span>ABSENT</span>
-                      </div>
+                      <>
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span>A</span>
+                      </>
                     )}
-                  </div>
+                  </span>
                 </div>
               );
             })}
           </div>
 
-          {/* Bottom Action Footer */}
-          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs text-[#667085]">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>
-                Final submission locks this session permanently into the institutional attendance ledger.
+          {/* Submit Action Bar */}
+          <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-500">
+              Total {roster.length} students enrolled
+            </span>
+
+            <button
+              type="button"
+              id="submit-attendance-btn"
+              onClick={() => setIsSubmitConfirmOpen(true)}
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#1E3A63] transition-all flex items-center gap-1.5 shadow-2xs active:scale-98"
+            >
+              <Send className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Finalize & Submit</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: ANALYTICS */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs">
+              <span className="text-[10px] text-slate-500 block">Classes</span>
+              <span className="text-base font-bold text-[#13284A]">
+                {analyticsData.totalClassesConducted || pastSessions.length || 0}
               </span>
             </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={() => handleSaveAttendance(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] bg-white text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5"
-              >
-                <Save className="w-4 h-4 text-slate-500" />
-                Save Draft
-              </button>
-
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={() => setIsSubmitConfirmOpen(true)}
-                className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs"
-              >
-                <Send className="w-4 h-4 text-[#5B93D1]" />
-                Finalize & Submit Session
-              </button>
+            <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs">
+              <span className="text-[10px] text-amber-700 font-semibold block">Shortage (&lt;80%)</span>
+              <span className="text-base font-bold text-amber-700">
+                {analyticsData.below80Count || 0}
+              </span>
+            </div>
+            <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs">
+              <span className="text-[10px] text-rose-700 font-semibold block">Critical (&lt;50%)</span>
+              <span className="text-base font-bold text-rose-700">
+                {analyticsData.below50Count || 0}
+              </span>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Tab: Subject Attendance Analytics */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-5">
-          {/* Analytics Top Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MetricCard
-              title="Total Classes Conducted"
-              value={analyticsData.totalClassesConducted}
-              subtitle="Logged in Spring 2026 term"
-              accentColor="navy"
-            />
-            <MetricCard
-              title="Students at Risk (<80%)"
-              value={analyticsData.below80Count}
-              subtitle="Requires institutional warning"
-              accentColor="amber"
-            />
-            <MetricCard
-              title="Critical Shortage (<50%)"
-              value={analyticsData.below50Count}
-              subtitle="Debarred candidate alert"
-              accentColor="red"
-            />
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-[#DCE3ED]">
-            <span className="text-xs font-semibold text-[#667085] px-2">Threshold Filter:</span>
-            <button
-              onClick={() => setAnalyticsFilter('all')}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                analyticsFilter === 'all'
-                  ? 'bg-[#13284A] text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              All Students ({analyticsData.students.length})
-            </button>
-            <button
-              onClick={() => setAnalyticsFilter('below80')}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                analyticsFilter === 'below80'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200'
-              }`}
-            >
-              Below 80% Warning ({analyticsData.below80Count})
-            </button>
-            <button
-              onClick={() => setAnalyticsFilter('below50')}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                analyticsFilter === 'below50'
-                  ? 'bg-rose-700 text-white'
-                  : 'bg-rose-50 text-rose-800 border border-rose-200'
-              }`}
-            >
-              Below 50% Critical ({analyticsData.below50Count})
-            </button>
-          </div>
-
-          {/* Analytics Table */}
-          <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-xs overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] uppercase tracking-wider font-semibold">
-                <tr>
-                  <th className="py-3 px-4">USN</th>
-                  <th className="py-3 px-4">Student Name</th>
-                  <th className="py-3 px-4">Classes Attended</th>
-                  <th className="py-3 px-4">Attendance Rate</th>
-                  <th className="py-3 px-4">Status Category</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {analyticsData.students.map((s, index) => (
-                  <tr key={s.studentId || s.usn || `ana-row-${index}`} className="hover:bg-slate-50/80">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#13284A]">{s.usn}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-800">{s.name}</td>
-                    <td className="py-3.5 px-4 font-medium text-slate-700">
-                      {s.attendedClasses} / {s.totalClasses} Classes
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 bg-slate-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              s.percentage < 50
-                                ? 'bg-rose-600'
-                                : s.percentage < 80
-                                ? 'bg-amber-500'
-                                : 'bg-emerald-600'
-                            }`}
-                            style={{ width: `${Math.min(s.percentage, 100)}%` }}
-                          />
-                        </div>
-                        <span className="font-mono font-bold text-xs">{s.percentage}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <StatusPill status={s.status} size="sm" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-2xs divide-y divide-slate-100">
+            {(analyticsData.students || []).length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500">
+                No shortage records found. All students above compliance threshold.
+              </div>
+            ) : (
+              (analyticsData.students || []).map((st: any, idx: number) => (
+                <div key={st.studentId || idx} className="p-3 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-slate-800 block">{st.name}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{st.usn}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className={`font-bold ${st.percentage < 75 ? 'text-rose-600' : 'text-slate-800'}`}>
+                      {st.percentage}%
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {st.attended}/{st.total} attended
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
 
-      {/* Tab: Past Sessions History */}
+      {/* TAB: HISTORY */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-xs overflow-hidden">
-          <div className="p-4 bg-[#F8FAFC] border-b border-[#DCE3ED]">
-            <h3 className="text-xs font-bold text-[#13284A] uppercase tracking-wider">
-              Submitted & Draft Attendance Logs
-            </h3>
-          </div>
-
+        <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-2xs divide-y divide-slate-100 text-xs">
           {pastSessions.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#667085]">
-              No past sessions found for this subject.
-            </div>
+            <div className="p-6 text-center text-slate-500">No past sessions logged for this subject yet.</div>
           ) : (
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] uppercase tracking-wider font-semibold">
-                <tr>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Period</th>
-                  <th className="py-3 px-4">Topic Covered</th>
-                  <th className="py-3 px-4">Present / Absent</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Immutable Locked</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {pastSessions.map((sess, index) => (
-                  <tr key={sess.id || `sess-hist-${sess.date}-${index}`} className="hover:bg-slate-50/80">
-                    <td className="py-3.5 px-4 font-semibold text-slate-800">{sess.date}</td>
-                    <td className="py-3.5 px-4 text-slate-600">{sess.period || 'Period 1'}</td>
-                    <td className="py-3.5 px-4 font-medium text-slate-700">{sess.topic || 'Regular Lecture'}</td>
-                    <td className="py-3.5 px-4 font-medium">
-                      <span className="text-emerald-700 font-bold">{sess.presentCount} P</span>
-                      <span className="text-slate-400 mx-1">/</span>
-                      <span className="text-rose-700 font-bold">{sess.absentCount} A</span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <StatusPill status={sess.status} size="sm" />
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-500">
-                      {sess.status === 'submitted' ? (
-                        <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Immutable
-                        </span>
-                      ) : (
-                        <span className="text-amber-700 font-medium">Draft (Editable)</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            pastSessions.map((sess: any, idx: number) => (
+              <div key={sess.id || idx} className="p-3 flex items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-slate-800">{sess.date}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">({sess.period || 'P1'})</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block truncate">{sess.topic || 'Regular Class'}</span>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-emerald-700 font-bold">{sess.presentCount || sess.recordsCount?.present || 0}P</span>
+                  <span className="text-slate-300 mx-1">/</span>
+                  <span className="text-rose-700 font-bold">{sess.absentCount || sess.recordsCount?.absent || 0}A</span>
+                </div>
+              </div>
+            ))
           )}
         </div>
       )}
 
-      {/* Submit Confirmation Modal */}
+      {/* Confirm Finalize Modal */}
       <Modal
         isOpen={isSubmitConfirmOpen}
         onClose={() => setIsSubmitConfirmOpen(false)}
-        title="Submit Immutable Attendance"
-        subtitle="Confirm class records for Spring 2026"
-        maxWidth="md"
+        title="Finalize Attendance"
+        subtitle="Confirm attendance roster submission."
+        maxWidth="sm"
       >
-        <div className="space-y-4 text-xs">
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 space-y-1">
-            <p className="font-bold">Permanent Submission Notice:</p>
-            <p>
-              Once submitted, attendance sessions cannot be modified or deleted. Students with attendance dropping below 80% will receive automated warning alerts.
-            </p>
+        <div className="space-y-3 text-xs">
+          <p className="text-slate-600">
+            Submit attendance for <strong className="text-slate-900">{date} ({period})</strong>?
+          </p>
+          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex justify-between font-bold">
+            <span className="text-emerald-700">{presentCount} Present</span>
+            <span className="text-rose-700">{absentCount} Absent</span>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-lg space-y-1">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Date:</span>
-              <span className="font-bold">{date}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Period:</span>
-              <span className="font-bold">{period}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Attendance Breakdown:</span>
-              <span className="font-bold text-emerald-700">{presentCount} Present / {absentCount} Absent</span>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setIsSubmitConfirmOpen(false)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600"
             >
               Cancel
             </button>
@@ -606,9 +529,8 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
               type="button"
               disabled={isProcessing}
               onClick={() => handleSaveAttendance(true)}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-lg bg-[#13284A] text-white font-bold disabled:opacity-50"
             >
-              <Send className="w-3.5 h-3.5" />
               {isProcessing ? 'Submitting...' : 'Confirm Submission'}
             </button>
           </div>

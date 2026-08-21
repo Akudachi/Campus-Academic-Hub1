@@ -345,10 +345,8 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
         <div>
-          <h2 className="text-xl font-bold text-[#13284A] font-serif">Faculty & Teacher Master</h2>
-          <p className="text-xs text-[#667085] mt-1">
-            Maintain institutional teaching directory, assign semester courses, and bulk-import staff records via XLSX/CSV.
-          </p>
+          <h2 className="text-xl font-bold text-[#13284A] font-serif">Faculty & Teachers</h2>
+          <p className="text-xs text-[#667085] mt-0.5">Faculty directory and course assignments.</p>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
           <button

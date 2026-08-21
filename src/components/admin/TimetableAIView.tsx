@@ -559,15 +559,13 @@ Verified by: Head of Dept. of E.C.E. | Academic Coordinator | Principal`);
             </span>
             <div>
               <h2 className="text-xl font-bold text-[#13284A] font-serif flex items-center gap-2">
-                <span>AI Timetable Photo & PDF Schedule Extractor</span>
+                <span>Timetable Schedule Extractor</span>
                 <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-[#2E6FB0] border border-blue-200">
-                  Multimodal Gemini 3.7 Flash
+                  AI Scanner
                 </span>
               </h2>
-              <p className="text-xs text-[#667085] mt-1 max-w-2xl">
-                Upload or snap a photo of your departmental timetable matrix (e.g. KLE College Chikodi, VTU, autonomous institutions). Gemini Vision automatically extracts{' '}
-                <strong className="text-slate-800 font-semibold">Subject Titles, Course Codes (e.g. BEC701, BECL701), Semesters, and Professors</strong>, 
-                provisioning subjects and faculty allocations directly to your active database.
+              <p className="text-xs text-[#667085] mt-0.5">
+                Scan or paste timetable schedules to automatically map courses and faculty.
               </p>
             </div>
           </div>

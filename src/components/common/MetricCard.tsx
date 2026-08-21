@@ -11,7 +11,8 @@ interface MetricCardProps {
     value: string;
     isPositive?: boolean;
   };
-  accentColor?: 'navy' | 'blue' | 'amber' | 'green' | 'red' | 'slate';
+  accentColor?: 'navy' | 'blue' | 'amber' | 'green' | 'red' | 'purple' | 'slate';
+  onClick?: () => void;
   className?: string;
 }
 
@@ -23,31 +24,36 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   icon: Icon,
   trend,
   accentColor = 'navy',
+  onClick,
   className = '',
 }) => {
   const colorMap = {
-    navy: 'bg-[#13284A]/5 text-[#13284A] border-[#13284A]/20',
-    blue: 'bg-[#2E6FB0]/10 text-[#2E6FB0] border-[#2E6FB0]/20',
-    amber: 'bg-[#E0982A]/10 text-[#E0982A] border-[#E0982A]/20',
-    green: 'bg-[#1E8E5A]/10 text-[#1E8E5A] border-[#1E8E5A]/20',
-    red: 'bg-[#C0392B]/10 text-[#C0392B] border-[#C0392B]/20',
-    slate: 'bg-slate-100 text-slate-700 border-slate-200',
+    navy: 'bg-[#13284A] text-white shadow-2xs',
+    blue: 'bg-[#2E6FB0] text-white shadow-2xs',
+    amber: 'bg-[#E0982A] text-slate-950 shadow-2xs',
+    green: 'bg-[#1E8E5A] text-white shadow-2xs',
+    red: 'bg-[#C0392B] text-white shadow-2xs',
+    purple: 'bg-purple-600 text-white shadow-2xs',
+    slate: 'bg-slate-700 text-white shadow-2xs',
   };
 
   return (
     <div
       id={id}
-      className={`bg-white rounded-xl p-5 border border-[#DCE3ED] shadow-xs flex flex-col justify-between transition-all duration-150 hover:border-slate-300 ${className}`}
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-4 sm:p-5 border border-[#DCE3ED] shadow-2xs flex flex-col justify-between transition-all duration-200 ${
+        onClick ? 'cursor-pointer active:scale-[0.98] hover:border-slate-300 hover:shadow-xs' : ''
+      } ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#667085]">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl sm:text-3xl font-bold text-[#13284A] tracking-tight">{value}</h3>
+        <div className="space-y-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#667085] truncate">{title}</p>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-[#13284A] tracking-tight font-display">{value}</h3>
             {trend && (
               <span
-                className={`text-xs font-medium ${
-                  trend.isPositive ? 'text-emerald-700' : 'text-rose-700'
+                className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                  trend.isPositive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                 }`}
               >
                 {trend.value}
@@ -56,12 +62,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           </div>
         </div>
         {Icon && (
-          <div className={`p-2.5 rounded-lg shrink-0 ${colorMap[accentColor]}`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${colorMap[accentColor]}`}>
             <Icon className="w-5 h-5" />
           </div>
         )}
       </div>
-      {subtitle && <p className="text-xs text-[#667085] mt-3 pt-2 border-t border-slate-100">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-[#667085] mt-2.5 pt-2 border-t border-slate-100 font-medium">{subtitle}</p>}
     </div>
   );
 };

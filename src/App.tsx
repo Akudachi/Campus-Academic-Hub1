@@ -204,7 +204,7 @@ const MainLayout: React.FC = () => {
         )}
 
         {/* Content Container - Responsive padding for mobile bottom bar */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-8 min-w-0 overflow-y-auto pb-24 lg:pb-8">
+        <main className="flex-1 px-3 py-4 sm:p-5 lg:p-8 min-w-0 overflow-y-auto pb-28 lg:pb-8">
           {renderContent()}
         </main>
       </div>

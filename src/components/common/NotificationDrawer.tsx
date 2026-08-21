@@ -93,33 +93,33 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-slate-900/50 transition-opacity" onClick={onClose} />
 
-      <div className="relative z-10 fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white border-l border-[#DCE3ED] shadow-2xl flex flex-col">
+      <div className="relative z-10 fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10 w-full sm:w-auto">
+        <div className="w-full sm:w-screen sm:max-w-md bg-white sm:border-l border-[#DCE3ED] shadow-2xl flex flex-col h-full animate-slide-up sm:animate-fade-in">
           {/* Header */}
-          <div className="p-4 border-b border-[#DCE3ED] bg-[#F8FAFC] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-[#13284A]/10 text-[#13284A] rounded-lg">
-                <Bell className="w-5 h-5" />
+          <div className="p-4 border-b border-[#DCE3ED] bg-[#F8FAFC] flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-[#13284A]/10 text-[#13284A] rounded-xl">
+                <Bell className="w-5 h-5 text-[#2E6FB0]" />
               </div>
               <div>
-                <h3 className="font-bold text-base text-[#13284A]">Notification Feed</h3>
+                <h3 className="font-bold text-sm sm:text-base text-[#13284A]">Notification Feed</h3>
                 <p className="text-xs text-[#667085]">
                   {notifications.filter((n) => !n.read).length} unread alerts
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleMarkAllAsRead}
                 title="Mark all as read"
-                className="text-xs font-medium text-[#2E6FB0] hover:text-[#13284A] px-2 py-1 rounded hover:bg-slate-200/60 transition-colors flex items-center gap-1"
+                className="text-xs font-semibold text-[#2E6FB0] hover:text-[#13284A] px-2.5 py-1.5 rounded-lg hover:bg-slate-200/60 transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                <span>Mark All Read</span>
+                <span className="hidden xs:inline">Mark All Read</span>
               </button>
               <button
                 onClick={onClose}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -127,7 +127,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
           </div>
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2.5 pb-24 sm:pb-4 overscroll-contain">
             {loading ? (
               <div className="py-12 text-center text-sm text-[#667085]">Loading feed...</div>
             ) : notifications.length === 0 ? (

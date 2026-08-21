@@ -17,7 +17,6 @@ import { api } from '../../lib/api';
 import { TestMarkSheet } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
-import { MetricCard } from '../common/MetricCard';
 import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 
@@ -26,7 +25,7 @@ interface TestMarksTeacherViewProps {
   onNavigate?: (tabId: string) => void;
 }
 
-export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBack, onNavigate }) => {
+export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBack }) => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [markSheets, setMarkSheets] = useState<any[]>([]);
@@ -56,8 +55,8 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
       setLoading(true);
       try {
         const res = await api.getTeacherSubjects();
-        setSubjects(res.subjects);
-        if (res.subjects.length > 0) {
+        setSubjects(res.subjects || []);
+        if (res.subjects && res.subjects.length > 0) {
           const firstId = res.subjects[0].id || res.subjects[0].subjectId;
           setSelectedSubjectId(firstId);
         }
@@ -75,7 +74,7 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
     setLoading(true);
     try {
       const res = await api.getTeacherMarkSheets(selectedSubjectId);
-      setMarkSheets(res.sheets);
+      setMarkSheets(res.sheets || []);
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -95,15 +94,15 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
     try {
       await api.createMarkSheet({
         subjectId: selectedSubjectId,
-        testName: createForm.testName,
+        testName: createForm.testName.trim(),
         maxMarks: Number(createForm.maxMarks),
       });
-      showToast(`Test mark sheet '${createForm.testName}' created!`, 'success');
+      showToast(`Test '${createForm.testName}' created!`, 'success');
       setIsCreateModalOpen(false);
       setCreateForm({ testName: '', maxMarks: 25 });
       fetchSheets();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showToast(err.message || 'Failed to create sheet', 'error');
     }
   };
 
@@ -114,8 +113,8 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
       const res = await api.getMarkSheetDetails(sheetId);
       setActiveSheetDetails(res);
       const initialMarks: { [id: string]: number } = {};
-      res.students.forEach((s) => {
-        initialMarks[s.studentId] = s.marks || 0;
+      (res.students || []).forEach((s: any) => {
+        initialMarks[s.studentId] = s.marks ?? 0;
       });
       setStudentMarksState(initialMarks);
     } catch (err: any) {
@@ -137,11 +136,10 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
       await api.updateMarks(activeSheetId, payload);
       showToast('Student scores updated successfully.', 'success');
       fetchSheets();
-      // Re-fetch details
       const res = await api.getMarkSheetDetails(activeSheetId);
       setActiveSheetDetails(res);
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showToast(err.message || 'Failed to save scores', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -153,8 +151,8 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
       await api.publishMarkSheet(sheetId, newStatus);
       showToast(
         newStatus
-          ? 'Marks published! Students can now view their scores.'
-          : 'Marks unpublished (draft mode). Hidden from students.',
+          ? 'Marks published to student portal.'
+          : 'Marks set to draft mode (hidden from students).',
         'info'
       );
       fetchSheets();
@@ -170,42 +168,50 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
     }
   };
 
-  // Compute live grading metrics in modal
   const enteredMarksList = Object.values(studentMarksState).map(Number);
   const liveAvg =
     enteredMarksList.length > 0
       ? (enteredMarksList.reduce((a, b) => a + b, 0) / enteredMarksList.length).toFixed(1)
       : '0.0';
   const liveHigh = enteredMarksList.length > 0 ? Math.max(...enteredMarksList) : 0;
-  const liveLow = enteredMarksList.length > 0 ? Math.min(...enteredMarksList) : 0;
 
   return (
-    <div className="space-y-5">
-      {/* Top Navigation Bar */}
+    <div className="space-y-3.5 max-w-full overflow-x-hidden animate-fade-in pb-4">
+      {/* Top Navigation */}
       {onBack && (
         <div className="flex items-center justify-between">
-          <BackButton onClick={onBack} label="Back to Dashboard" />
+          <BackButton onClick={onBack} label="Dashboard" />
         </div>
       )}
 
-      {/* Header & Subject Selector */}
-      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-[#13284A] font-serif">
-              Test Marks & Internal Assessment Evaluator
+      {/* Header & Course Selector */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-[#13284A]">
+              Test & Exam Scores
             </h2>
+            <p className="text-[11px] text-slate-500">
+              Grade internal tests and toggle student publication status.
+            </p>
           </div>
-          <p className="text-xs text-[#667085] mt-1">
-            Grade internal assessments, quizzes, and laboratory exams. Students only see marks when published.
-          </p>
+
+          <button
+            id="create-marksheet-btn"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#1E3A63] transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 active:scale-98"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#5B93D1]" />
+            <span>+ New Test Sheet</span>
+          </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+          <label className="text-xs font-semibold text-slate-600 shrink-0">Course:</label>
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 text-xs font-bold rounded-lg border border-[#DCE3ED] bg-white text-[#13284A] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+            className="flex-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#DCE3ED] bg-white text-[#13284A] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden truncate"
           >
             {subjects.map((sub, index) => {
               const val = sub.id || sub.subjectId || `sub-opt-${index}`;
@@ -216,75 +222,86 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
               );
             })}
           </select>
-
-          <button
-            id="create-marksheet-btn"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-full sm:w-auto justify-center px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Test Sheet</span>
-          </button>
         </div>
       </div>
 
-      {/* Sheets List */}
-      <div className="space-y-4">
+      {/* Mark Sheets List */}
+      <div className="space-y-2.5">
         {loading ? (
-          <div className="py-12 text-center text-sm text-[#667085]">Loading test mark sheets...</div>
+          <div className="py-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-[#DCE3ED]">
+            Loading test sheets...
+          </div>
         ) : markSheets.length === 0 ? (
-          <div className="bg-white p-8 rounded-xl border border-[#DCE3ED] text-center text-sm text-[#667085]">
-            No test mark sheets created for this subject yet. Click "New Test Sheet" to begin.
+          <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] text-center text-xs text-slate-500 space-y-2 shadow-2xs">
+            <Award className="w-7 h-7 text-slate-300 mx-auto" />
+            <p className="font-semibold text-slate-700">No test sheets created for this course yet.</p>
+            <p className="text-[11px] text-slate-400">Click "+ New Test Sheet" to initialize assessment grading.</p>
           </div>
         ) : (
           markSheets.map((sheet, index) => (
             <div
               key={sheet.id || `sheet-${index}`}
-              className="bg-white p-5 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition-all"
+              className="bg-white p-3.5 rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0]/60 transition-all space-y-2.5"
             >
-              <div className="space-y-2 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
-                    {sheet.subjectCode}
-                  </span>
-                  <span className="text-xs font-bold text-slate-700">
-                    Max Marks: {sheet.maxMarks}
-                  </span>
-                  {sheet.published ? (
-                    <StatusPill status="published" label="Published to Students" size="sm" />
-                  ) : (
-                    <StatusPill status="pending" label="Draft (Hidden from Students)" size="sm" />
-                  )}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-[#13284A] border border-slate-200">
+                      {sheet.subjectCode || 'TEST'}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                      Max: {sheet.maxMarks}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                        sheet.published
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}
+                    >
+                      {sheet.published ? 'Published to Students' : 'Draft (Hidden)'}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-[#13284A] mt-1 break-words">
+                    {sheet.testName}
+                  </h3>
                 </div>
-                <h3 className="text-base font-bold text-[#13284A]">{sheet.testName}</h3>
-                <div className="flex items-center gap-4 text-xs text-[#667085] pt-1">
-                  <span>Class Average: <strong className="text-emerald-800 font-mono">{sheet.averageMarks}</strong></span>
-                  <span>Highest: <strong className="text-slate-800 font-mono">{sheet.highestMarks}</strong></span>
-                  <span>Evaluated: <strong className="text-slate-800 font-mono">{sheet.evaluatedCount}</strong></span>
+
+                <div className="text-right shrink-0 text-xs">
+                  <span className="text-[10px] text-slate-500 block">Class Avg</span>
+                  <span className="font-mono font-bold text-emerald-700">{sheet.averageMarks}</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => handleTogglePublish(sheet.id, sheet.published)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
-                    sheet.published
-                      ? 'bg-sky-50 text-[#2E6FB0] border-sky-200 hover:bg-sky-100'
-                      : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                  }`}
-                >
-                  {sheet.published ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  {sheet.published ? 'Published' : 'Publish to Students'}
-                </button>
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="text-[11px] text-slate-500">
+                  <span>High: <strong className="text-slate-800 font-mono">{sheet.highestMarks}</strong></span>
+                  <span className="mx-1">•</span>
+                  <span>{sheet.evaluatedCount || 0} evaluated</span>
+                </div>
 
-                <button
-                  id={`enter-marks-btn-${sheet.id}`}
-                  onClick={() => openSheetForGrading(sheet.id)}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs"
-                >
-                  <Award className="w-3.5 h-3.5 text-[#E0982A]" />
-                  Enter / Edit Scores
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleTogglePublish(sheet.id, sheet.published)}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors flex items-center gap-1 ${
+                      sheet.published
+                        ? 'bg-sky-50 text-[#2E6FB0] border-sky-200 hover:bg-sky-100'
+                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                    }`}
+                  >
+                    {sheet.published ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    {sheet.published ? 'Published' : 'Publish'}
+                  </button>
+
+                  <button
+                    id={`enter-marks-btn-${sheet.id}`}
+                    onClick={() => openSheetForGrading(sheet.id)}
+                    className="px-3 py-1 text-[11px] font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#1E3A63] transition-colors flex items-center gap-1 shadow-2xs active:scale-98"
+                  >
+                    <Award className="w-3 h-3 text-[#E0982A]" />
+                    <span>Grade</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))
@@ -295,25 +312,25 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Test Mark Sheet"
-        subtitle="Initialize an evaluation sheet for Internal Assessment or Quiz."
-        maxWidth="md"
+        title="New Test Sheet"
+        subtitle="Initialize assessment grading."
+        maxWidth="sm"
       >
-        <form onSubmit={handleCreateSheet} className="space-y-4">
+        <form onSubmit={handleCreateSheet} className="space-y-3 text-xs">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Test / Assessment Title</label>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Test Title</label>
             <input
               type="text"
               required
-              placeholder="e.g. Internal Assessment Test 2 (IA-2)"
+              placeholder="e.g. IA-1 / Quiz 1"
               value={createForm.testName}
               onChange={(e) => setCreateForm({ ...createForm, testName: e.target.value })}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Maximum Marks Scale</label>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Max Marks</label>
             <input
               type="number"
               min={10}
@@ -321,29 +338,29 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
               required
               value={createForm.maxMarks}
               onChange={(e) => setCreateForm({ ...createForm, maxMarks: Number(e.target.value) })}
-              className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-[#DCE3ED] bg-white font-bold"
+              className="w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border border-[#DCE3ED]"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90"
+              className="px-4 py-1.5 rounded-lg bg-[#13284A] text-white font-bold"
             >
-              Initialize Sheet
+              Create Sheet
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Enter Scores Grid Modal */}
+      {/* Grade Entry Modal (Mobile Compact Roster) */}
       <Modal
         isOpen={!!activeSheetId && !!activeSheetDetails}
         onClose={() => {
@@ -351,159 +368,113 @@ export const TestMarksTeacherView: React.FC<TestMarksTeacherViewProps> = ({ onBa
           setActiveSheetDetails(null);
           setMarksSearch('');
         }}
-        title={`Grade Entry: ${activeSheetDetails?.sheet?.testName}`}
-        subtitle={`Max Marks: ${activeSheetDetails?.sheet?.maxMarks} • ${activeSheetDetails?.subject?.name || 'Class'}`}
-        maxWidth="2xl"
+        title={activeSheetDetails?.sheet?.testName || 'Grade Entry'}
+        subtitle={`Max Marks: ${activeSheetDetails?.sheet?.maxMarks || 25}`}
+        maxWidth="md"
       >
-        <div className="space-y-4">
-          {/* Live Stats Header */}
-          <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs">
+        <div className="space-y-3 text-xs">
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-center">
             <div>
-              <span className="text-slate-500 font-medium">Class Average</span>
-              <p className="text-base font-bold text-emerald-800 font-mono">
-                {liveAvg} / {activeSheetDetails?.sheet?.maxMarks}
-              </p>
+              <span className="text-[10px] text-slate-500 block">Class Avg</span>
+              <span className="font-mono font-bold text-emerald-800">{liveAvg}</span>
             </div>
             <div>
-              <span className="text-slate-500 font-medium">Highest Score</span>
-              <p className="text-base font-bold text-slate-800 font-mono">
-                {liveHigh} / {activeSheetDetails?.sheet?.maxMarks}
-              </p>
+              <span className="text-[10px] text-slate-500 block">Top Score</span>
+              <span className="font-mono font-bold text-slate-800">{liveHigh}</span>
             </div>
             <div>
-              <span className="text-slate-500 font-medium">Evaluated</span>
-              <p className="text-base font-bold text-slate-800 font-mono">
-                {activeSheetDetails?.students.length || 0} Students
-              </p>
+              <span className="text-[10px] text-slate-500 block">Students</span>
+              <span className="font-mono font-bold text-slate-800">{activeSheetDetails?.students?.length || 0}</span>
             </div>
           </div>
 
-          {/* Search filter for students */}
+          {/* Search bar */}
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder="Search by student name or USN..."
+              placeholder="Search student or USN..."
               value={marksSearch}
               onChange={(e) => setMarksSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white placeholder-slate-400 focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED]"
             />
           </div>
 
-          {/* Student Grading Roster Table */}
-          <div className="border border-[#DCE3ED] rounded-lg overflow-hidden max-h-80 overflow-y-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] uppercase tracking-wider sticky top-0 z-10">
-                <tr>
-                  <th className="py-2.5 px-4">USN</th>
-                  <th className="py-2.5 px-4">Student Name</th>
-                  <th className="py-2.5 px-4 text-right">
-                    Score (out of {activeSheetDetails?.sheet?.maxMarks})
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {activeSheetDetails?.students
-                  .filter((s) => {
-                    if (!marksSearch.trim()) return true;
-                    const q = marksSearch.toLowerCase();
-                    const nameMatch = (s.name || '').toLowerCase().includes(q);
-                    const usnMatch = (s.usn || '').toLowerCase().includes(q);
-                    return nameMatch || usnMatch;
-                  })
-                  .map((student, idx) => {
-                    const currentMark = studentMarksState[student.studentId] ?? student.marks ?? 0;
-                    const maxM = activeSheetDetails.sheet.maxMarks;
-                    const isInvalid = currentMark < 0 || currentMark > maxM;
-                    const displayName = student.name || `Student (${student.usn})`;
+          {/* Student Grading List */}
+          <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
+            {(activeSheetDetails?.students || [])
+              .filter((s: any) => {
+                if (!marksSearch.trim()) return true;
+                const q = marksSearch.toLowerCase();
+                return (s.name || '').toLowerCase().includes(q) || (s.usn || '').toLowerCase().includes(q);
+              })
+              .map((student: any) => {
+                const currentMark = studentMarksState[student.studentId] ?? student.marks ?? 0;
+                const maxM = activeSheetDetails?.sheet?.maxMarks || 25;
+                const isInvalid = currentMark < 0 || currentMark > maxM;
 
-                    return (
-                      <tr key={student.studentId || student.usn || `sheet-stu-${idx}`} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-4 font-mono font-bold text-[#13284A] whitespace-nowrap">{student.usn || 'N/A'}</td>
-                        <td className="py-2.5 px-4">
-                          <div className="font-bold text-slate-800 text-sm">{displayName}</div>
-                        </td>
-                        <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <input
-                              type="number"
-                              min={0}
-                              max={maxM}
-                              step={0.5}
-                              value={currentMark}
-                              onChange={(e) =>
-                                setStudentMarksState({
-                                  ...studentMarksState,
-                                  [student.studentId]: Number(e.target.value),
-                                })
-                              }
-                              className={`w-20 px-2.5 py-1 text-right font-mono font-bold text-xs rounded-lg border ${
-                                isInvalid
-                                  ? 'border-rose-500 bg-rose-50 text-rose-800'
-                                  : 'border-[#DCE3ED] bg-white text-[#13284A]'
-                              } focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden`}
-                            />
-                            <span className="font-mono text-slate-400 font-semibold">/ {maxM}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                {activeSheetDetails?.students.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-8 text-center text-xs text-[#667085]">
-                      No students found for this subject's semester.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                return (
+                  <div key={student.studentId} className="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-800 block truncate">{student.name}</span>
+                      <span className="font-mono text-[10px] text-slate-500">{student.usn}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxM}
+                        step={0.5}
+                        value={currentMark}
+                        onChange={(e) =>
+                          setStudentMarksState({
+                            ...studentMarksState,
+                            [student.studentId]: Number(e.target.value),
+                          })
+                        }
+                        className={`w-16 px-2 py-1 text-right font-mono font-bold text-xs rounded-lg border ${
+                          isInvalid
+                            ? 'border-rose-500 bg-rose-50 text-rose-800'
+                            : 'border-[#DCE3ED] bg-white text-[#13284A]'
+                        } focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden`}
+                      />
+                      <span className="text-[11px] font-mono text-slate-400 font-bold">/ {maxM}</span>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  handleTogglePublish(
-                    activeSheetDetails!.sheet.id,
-                    activeSheetDetails!.sheet.published
-                  )
-                }
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center gap-1.5 ${
-                  activeSheetDetails?.sheet?.published
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-              >
-                {activeSheetDetails?.sheet?.published ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                {activeSheetDetails?.sheet?.published ? 'Visible to Students' : 'Draft (Unpublished)'}
-              </button>
-            </div>
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() =>
+                handleTogglePublish(
+                  activeSheetDetails!.sheet.id,
+                  activeSheetDetails!.sheet.published
+                )
+              }
+              className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg border flex items-center gap-1 ${
+                activeSheetDetails?.sheet?.published
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+            >
+              {activeSheetDetails?.sheet?.published ? 'Visible to Students' : 'Draft Mode'}
+            </button>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSheetId(null);
-                  setActiveSheetDetails(null);
-                  setMarksSearch('');
-                }}
-                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600 shadow-xs"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={handleSaveMarks}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-1.5 shadow-xs"
-              >
-                <Save className="w-3.5 h-3.5 text-[#E0982A]" />
-                {isProcessing ? 'Saving Scores...' : 'Save Student Marks'}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={handleSaveMarks}
+              className="px-4 py-1.5 rounded-lg bg-[#13284A] text-white font-bold flex items-center gap-1 shadow-2xs active:scale-98 disabled:opacity-50"
+            >
+              <Save className="w-3 h-3 text-[#E0982A]" />
+              <span>{isProcessing ? 'Saving...' : 'Save Scores'}</span>
+            </button>
           </div>
         </div>
       </Modal>

@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { Assignment, Subject } from '../../types';
+import { Assignment } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
 import { BackButton } from '../common/BackButton';
@@ -28,25 +28,27 @@ interface AssignmentsTeacherViewProps {
   onNavigate?: (tabId: string) => void;
 }
 
-export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ onBack, onNavigate }) => {
+export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ onBack }) => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast, refreshNotifications } = useAuth();
 
-  // Create Assignment Modal
+  // Create Assignment Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
+    subjectId: '',
     title: '',
     instructions: '',
-    dueDate: '',
+    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
     pdfData: '',
     pdfFileName: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Track Submissions Modal
+  // Track Submissions Modal State
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [assignmentRoster, setAssignmentRoster] = useState<{
     submissionId: string;
@@ -64,10 +66,11 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
       setLoading(true);
       try {
         const res = await api.getTeacherSubjects();
-        setSubjects(res.subjects);
-        if (res.subjects.length > 0) {
+        setSubjects(res.subjects || []);
+        if (res.subjects && res.subjects.length > 0) {
           const firstId = res.subjects[0].id || res.subjects[0].subjectId;
           setSelectedSubjectId(firstId);
+          setCreateForm((prev) => ({ ...prev, subjectId: firstId }));
         }
       } catch (err: any) {
         showToast(err.message, 'error');
@@ -83,7 +86,7 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
     setLoading(true);
     try {
       const res = await api.getTeacherAssignments(selectedSubjectId);
-      setAssignments(res.assignments);
+      setAssignments(res.assignments || []);
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -94,6 +97,7 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
   useEffect(() => {
     if (selectedSubjectId) {
       fetchAssignments();
+      setCreateForm((prev) => ({ ...prev, subjectId: selectedSubjectId }));
     }
   }, [selectedSubjectId]);
 
@@ -102,7 +106,7 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
     if (!file) return;
 
     if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-      showToast('Please select a valid PDF file.', 'error');
+      showToast('Please select a valid PDF document.', 'error');
       return;
     }
 
@@ -125,31 +129,58 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSubjectId) return;
+    const effectiveSubjectId = createForm.subjectId || selectedSubjectId;
+
+    if (!effectiveSubjectId) {
+      showToast('Please select a course for this task.', 'warning');
+      return;
+    }
+
+    if (!createForm.title.trim()) {
+      showToast('Please enter an assignment title.', 'warning');
+      return;
+    }
+
+    if (!createForm.instructions.trim()) {
+      showToast('Please enter task instructions or problem description.', 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const currentSubject = subjects.find(
-        (s) => (s.id || s.subjectId) === selectedSubjectId
+      const targetSub = subjects.find(
+        (s) => (s.id || s.subjectId) === effectiveSubjectId
       );
 
       const res = await api.createAssignment({
-        subjectId: selectedSubjectId,
-        title: createForm.title,
-        instructions: createForm.instructions,
-        dueDate: createForm.dueDate,
+        subjectId: effectiveSubjectId,
+        semesterId: targetSub?.semesterId || (targetSub ? `sem-${targetSub.semesterNumber}` : undefined),
+        title: createForm.title.trim(),
+        instructions: createForm.instructions.trim(),
+        dueDate: createForm.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
         pdfData: createForm.pdfData || undefined,
         pdfFileName: createForm.pdfFileName || undefined,
       });
 
       showToast(
-        `Assignment published successfully! Broadcast alert dispatched to ${res.enrolledCount} enrolled students.`,
+        `Task "${createForm.title}" published! Dispatched to ${res.enrolledCount || 'all'} students.`,
         'success'
       );
       setIsCreateModalOpen(false);
-      setCreateForm({ title: '', instructions: '', dueDate: '', pdfData: '', pdfFileName: '' });
+      setCreateForm({
+        subjectId: selectedSubjectId,
+        title: '',
+        instructions: '',
+        dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        pdfData: '',
+        pdfFileName: '',
+      });
       fetchAssignments();
       refreshNotifications();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showToast(err.message || 'Failed to create task.', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -165,8 +196,8 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
         instructions: assignment.instructions,
         dueDate: assignment.dueDate,
         createdAt: assignment.createdAt,
-        subjectCode: assignment.subjectCode || currentSubject?.code || currentSubject?.subjectCode,
-        subjectName: assignment.subjectName || currentSubject?.name || currentSubject?.subjectName,
+        subjectCode: assignment.subjectCode || currentSubject?.code || currentSubject?.subjectCode || 'CSE-301',
+        subjectName: assignment.subjectName || currentSubject?.name || currentSubject?.subjectName || 'Coursework',
         teacherName: currentSubject?.teacherName || 'Course Faculty',
         semester: assignment.semesterNumber || currentSubject?.semesterNumber || 4,
         department: assignment.department || currentSubject?.departmentCode || 'CSE',
@@ -179,29 +210,12 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
     }
   };
 
-  const handlePreviewPdfDraft = () => {
-    if (!createForm.title || !createForm.instructions) {
-      showToast('Please enter title and instructions first to preview the PDF.', 'info');
-      return;
-    }
-    const currentSub = subjects.find((s) => (s.id || s.subjectId) === selectedSubjectId);
-    downloadAssignmentPdf({
-      title: createForm.title,
-      instructions: createForm.instructions,
-      dueDate: createForm.dueDate || new Date().toISOString(),
-      subjectCode: currentSub?.code || currentSub?.subjectCode || 'CSE-301',
-      subjectName: currentSub?.name || currentSub?.subjectName || 'Coursework',
-      pdfData: createForm.pdfData,
-      pdfFileName: createForm.pdfFileName,
-    });
-  };
-
   const openRoster = async (assignment: Assignment) => {
     setSelectedAssignment(assignment);
     setRosterLoading(true);
     try {
       const res = await api.getAssignmentRoster(assignment.id);
-      setAssignmentRoster(res.students);
+      setAssignmentRoster(res.students || []);
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
@@ -232,43 +246,62 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
         }
       }
       setAssignmentRoster((prev) => prev.map((s) => ({ ...s, status: 'submitted' })));
-      showToast('All enrolled students marked as submitted.', 'info');
+      showToast('All students marked as submitted.', 'info');
       fetchAssignments();
     } catch (err: any) {
       showToast(err.message, 'error');
     }
   };
 
+  const filteredRoster = assignmentRoster.filter(
+    (s) =>
+      s.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
+      s.usn.toLowerCase().includes(rosterSearch.toLowerCase())
+  );
+
   return (
-    <div className="space-y-5">
-      {/* Top Navigation Bar */}
+    <div className="space-y-4 max-w-full overflow-x-hidden animate-fade-in pb-4">
+      {/* Top Back Navigation Bar */}
       {onBack && (
         <div className="flex items-center justify-between">
-          <BackButton onClick={onBack} label="Back to Dashboard" />
+          <BackButton onClick={onBack} label="Dashboard" />
         </div>
       )}
 
-      {/* Header & Subject Selector */}
-      <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-[#13284A] font-serif">
-              Assignment Submission Tracker
+      {/* Header & Course Switcher */}
+      <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-[#13284A]">
+              Course Tasks & Assignments
             </h2>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase">
-              Pure Status Tracker (No Marks)
-            </span>
+            <p className="text-[11px] text-slate-500">
+              Publish task briefs, worksheets, and track student submission status.
+            </p>
           </div>
-          <p className="text-xs text-[#667085] mt-1">
-            Publish assignment worksheets and PDF briefs to students, and manage coursework submission status.
-          </p>
+
+          <button
+            id="create-assignment-btn"
+            onClick={() => {
+              setCreateForm((p) => ({
+                ...p,
+                subjectId: selectedSubjectId || (subjects[0]?.id || ''),
+              }));
+              setIsCreateModalOpen(true);
+            }}
+            className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#1E3A63] transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 active:scale-98"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#5B93D1]" />
+            <span>+ New Task</span>
+          </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+          <label className="text-xs font-semibold text-slate-600 shrink-0">Course:</label>
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 text-xs font-bold rounded-lg border border-[#DCE3ED] bg-white text-[#13284A] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+            className="flex-1 px-3 py-1.5 text-xs font-bold rounded-lg border border-[#DCE3ED] bg-white text-[#13284A] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden truncate"
           >
             {subjects.map((sub, index) => {
               const val = sub.id || sub.subjectId || `asg-opt-${index}`;
@@ -279,92 +312,91 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
               );
             })}
           </select>
-
-          <button
-            id="create-assignment-btn"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-full sm:w-auto justify-center px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create & Publish Assignment</span>
-          </button>
         </div>
       </div>
 
-      {/* Assignments List */}
-      <div className="space-y-4">
+      {/* Task Cards List */}
+      <div className="space-y-2.5">
         {loading ? (
-          <div className="py-12 text-center text-sm text-[#667085]">Loading assignments...</div>
+          <div className="py-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-[#DCE3ED]">
+            Loading coursework...
+          </div>
         ) : assignments.length === 0 ? (
-          <div className="bg-white p-8 rounded-xl border border-[#DCE3ED] text-center text-sm text-[#667085]">
-            No assignments created for this subject yet. Click "Create & Publish Assignment" to post one.
+          <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] text-center text-xs text-slate-500 space-y-2 shadow-2xs">
+            <FileCheck2 className="w-7 h-7 text-slate-300 mx-auto" />
+            <p className="font-semibold text-slate-700">No assignments posted yet for this course.</p>
+            <p className="text-[11px] text-slate-400">Click "+ New Task" to publish your first assignment brief.</p>
           </div>
         ) : (
           assignments.map((assignment, idx) => {
-            const completionRate =
-              assignment.stats?.totalStudents > 0
-                ? Math.round((assignment.stats.submittedCount / assignment.stats.totalStudents) * 100)
-                : 0;
+            const totalCount = assignment.stats?.totalStudents || 0;
+            const submittedCount = assignment.stats?.submittedCount || 0;
+            const pendingCount = assignment.stats?.notSubmittedCount || 0;
+            const completionRate = totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
 
             return (
               <div
                 key={assignment.id || `asg-item-${idx}`}
-                className="bg-white p-5 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition-all"
+                className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0]/60 transition-all space-y-3"
               >
-                <div className="space-y-2 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
-                      {assignment.subjectCode}
-                    </span>
-                    <span className="text-xs text-[#667085] flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                    </span>
-                    {assignment.pdfData && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-[#2E6FB0] border border-sky-200">
-                        <FileText className="w-3 h-3" />
-                        PDF Document Attached
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-[#13284A] border border-slate-200">
+                        {assignment.subjectCode || 'COURSE'}
                       </span>
-                    )}
+                      <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                      </span>
+                      {assignment.pdfData && (
+                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          PDF Attached
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-bold text-[#13284A] mt-1 break-words">
+                      {assignment.title}
+                    </h3>
                   </div>
-                  <h3 className="text-base font-bold text-[#13284A]">{assignment.title}</h3>
-                  <p className="text-xs text-slate-600 leading-relaxed max-w-2xl whitespace-pre-line">
-                    {assignment.instructions}
-                  </p>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-bold text-emerald-700">{submittedCount} Sub</span>
+                    <span className="text-slate-300 mx-1">/</span>
+                    <span className="text-xs font-bold text-rose-700">{pendingCount} Pend</span>
+                  </div>
                 </div>
 
-                <div className="flex flex-col sm:items-end gap-3 shrink-0">
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-slate-800">
-                      <span className="text-emerald-700">{assignment.stats?.submittedCount || 0} Submitted</span>
-                      <span className="text-slate-400 mx-1">/</span>
-                      <span className="text-rose-700">{assignment.stats?.notSubmittedCount || 0} Pending</span>
-                    </div>
-                    <div className="w-36 bg-slate-100 rounded-full h-2 mt-1 overflow-hidden">
-                      <div
-                        className="bg-emerald-600 h-full rounded-full"
-                        style={{ width: `${completionRate}%` }}
-                      />
-                    </div>
+                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  {assignment.instructions}
+                </p>
+
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                  <div className="w-24 sm:w-32 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-full rounded-full"
+                      style={{ width: `${completionRate}%` }}
+                    />
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleDownloadPdf(assignment)}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#DCE3ED] hover:bg-slate-50 text-[#13284A] transition-colors flex items-center gap-1.5 shadow-xs"
-                      title="Download Assignment Sheet PDF"
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 transition-colors"
+                      title="Download PDF"
                     >
-                      <Download className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                      Download PDF
+                      <Download className="w-3 h-3 text-[#2E6FB0]" />
+                      PDF
                     </button>
 
                     <button
                       id={`track-submissions-btn-${assignment.id}`}
                       onClick={() => openRoster(assignment)}
-                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#2E6FB0] text-white hover:bg-[#2E6FB0]/90 transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1 text-[11px] font-bold rounded-lg bg-[#2E6FB0] text-white hover:bg-[#1E3A63] transition-colors flex items-center gap-1 active:scale-98"
                     >
-                      <Users className="w-3.5 h-3.5" />
-                      Manage Submissions
+                      <Users className="w-3 h-3" />
+                      Submissions
                     </button>
                   </div>
                 </div>
@@ -374,21 +406,39 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
         )}
       </div>
 
-      {/* Create Assignment Modal */}
+      {/* Create Task Modal */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create & Publish Assignment"
-        subtitle="Publishes assignment instructions & PDF problem sheets to all enrolled students."
-        maxWidth="lg"
+        title="Create & Publish Task"
+        subtitle="Publish coursework brief, instructions, and PDF worksheets to enrolled students."
+        maxWidth="md"
       >
-        <form onSubmit={handleCreateAssignment} className="space-y-4">
+        <form onSubmit={handleCreateAssignment} className="space-y-3 text-xs">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Assignment Title</label>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Select Course</label>
+            <select
+              value={createForm.subjectId}
+              onChange={(e) => setCreateForm({ ...createForm, subjectId: e.target.value })}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white font-bold text-[#13284A]"
+            >
+              {subjects.map((sub, index) => {
+                const val = sub.id || sub.subjectId || `m-opt-${index}`;
+                return (
+                  <option key={val} value={val}>
+                    {sub.code || sub.subjectCode} - {sub.name || sub.subjectName}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Task Title</label>
             <input
               type="text"
               required
-              placeholder="e.g. Lab Exercise 4: Dijkstra Shortest Path Implementation"
+              placeholder="e.g. Lab Exercise 4: Dijkstra Shortest Path"
               value={createForm.title}
               onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
               className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden font-medium"
@@ -396,7 +446,7 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Submission Deadline</label>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Submission Deadline</label>
             <input
               type="date"
               required
@@ -407,41 +457,24 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Instructions & Problem Statement
-            </label>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Instructions & Problem Statement</label>
             <textarea
-              rows={4}
+              rows={3}
               required
-              placeholder="Specify requirements, report format, question list, submission format, or lab worksheet instructions..."
+              placeholder="Specify requirements, report format, test cases, or submission guidelines..."
               value={createForm.instructions}
               onChange={(e) => setCreateForm({ ...createForm, instructions: e.target.value })}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden font-mono text-[11px]"
+              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden font-mono"
             />
           </div>
 
-          {/* PDF Attachment / Auto-PDF Generator option */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-[#2E6FB0]" />
-                Assignment PDF Document
-              </label>
-              <button
-                type="button"
-                onClick={handlePreviewPdfDraft}
-                className="text-[11px] font-semibold text-[#2E6FB0] hover:underline flex items-center gap-1"
-              >
-                <Sparkles className="w-3 h-3" />
-                Preview Generated PDF
-              </button>
-            </div>
-
-            <p className="text-[11px] text-[#667085]">
-              Students will be able to download the officially formatted PDF worksheet. You can also upload a custom PDF file below if you have one prepared.
-            </p>
-
-            <div className="flex items-center gap-2 pt-1">
+          {/* PDF Upload / Custom File */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+              <FileText className="w-3.5 h-3.5 text-[#2E6FB0]" />
+              Optional PDF Attachment
+            </label>
+            <div className="flex items-center gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -452,24 +485,16 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 text-xs font-semibold rounded bg-white border border-[#DCE3ED] hover:bg-slate-100 text-slate-700 flex items-center gap-1.5 shadow-xs"
+                className="px-3 py-1.5 text-xs font-semibold rounded bg-white border border-[#DCE3ED] hover:bg-slate-100 text-slate-700 flex items-center gap-1 shadow-2xs"
               >
-                <Upload className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                {createForm.pdfFileName ? 'Change Uploaded PDF' : 'Upload Custom PDF File'}
+                <Upload className="w-3 h-3 text-[#2E6FB0]" />
+                {createForm.pdfFileName ? 'Change PDF' : 'Upload PDF'}
               </button>
 
               {createForm.pdfFileName && (
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span className="truncate max-w-[180px]">{createForm.pdfFileName}</span>
-                  <button
-                    type="button"
-                    onClick={() => setCreateForm((p) => ({ ...p, pdfData: '', pdfFileName: '' }))}
-                    className="ml-1 text-slate-400 hover:text-slate-600 font-bold"
-                  >
-                    ×
-                  </button>
-                </div>
+                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 truncate max-w-[150px]">
+                  {createForm.pdfFileName}
+                </span>
               )}
             </div>
           </div>
@@ -478,19 +503,18 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#DCE3ED] text-slate-600"
             >
               Cancel
             </button>
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-1.5 shadow-xs"
-              >
-                <FileCheck2 className="w-4 h-4" />
-                Publish Assignment & PDF
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#1E3A63] flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+            >
+              <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isSubmitting ? 'Publishing...' : 'Publish Task'}</span>
+            </button>
           </div>
         </form>
       </Modal>
@@ -498,116 +522,77 @@ export const AssignmentsTeacherView: React.FC<AssignmentsTeacherViewProps> = ({ 
       {/* Manage Submissions Roster Modal */}
       <Modal
         isOpen={!!selectedAssignment}
-        onClose={() => {
-          setSelectedAssignment(null);
-          setRosterSearch('');
-        }}
-        title={`Submission Roster: ${selectedAssignment?.title}`}
-        subtitle="Track and mark individual student submissions."
-        maxWidth="2xl"
+        onClose={() => setSelectedAssignment(null)}
+        title={selectedAssignment ? `Submissions: ${selectedAssignment.title}` : 'Submissions'}
+        subtitle="Toggle student submission status for this assignment."
+        maxWidth="md"
       >
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800">Class Progress:</span>
-              <span className="text-emerald-700 font-bold px-2 py-0.5 bg-emerald-50 rounded border border-emerald-200">
-                {assignmentRoster.filter((s) => s.status === 'submitted').length} / {assignmentRoster.length} Submitted
-              </span>
+        <div className="space-y-3 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search USN or student name..."
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED]"
+              />
             </div>
             <button
               type="button"
               onClick={markAllSubmitted}
-              className="px-3 py-1.5 text-xs font-semibold rounded-md bg-white border border-[#DCE3ED] hover:bg-slate-100 text-slate-700 flex items-center gap-1.5 shadow-xs shrink-0"
+              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 shrink-0"
             >
-              <Check className="w-3.5 h-3.5 text-emerald-600" />
-              Mark All as Submitted
+              Mark All Sub
             </button>
           </div>
 
-          {/* Student Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by student name or USN..."
-              value={rosterSearch}
-              onChange={(e) => setRosterSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-            />
-          </div>
-
-          {/* Submissions Roster List */}
-          <div className="border border-[#DCE3ED] rounded-lg overflow-hidden max-h-[380px] overflow-y-auto">
+          <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
             {rosterLoading ? (
-              <div className="p-8 text-center text-xs text-[#667085]">Loading student roster...</div>
-            ) : assignmentRoster.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#667085]">No students enrolled in this cohort.</div>
+              <div className="p-4 text-center text-slate-500">Loading roster...</div>
+            ) : filteredRoster.length === 0 ? (
+              <div className="p-4 text-center text-slate-500">No students matched.</div>
             ) : (
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#13284A] font-bold sticky top-0">
-                  <tr>
-                    <th className="py-2.5 px-3">USN</th>
-                    <th className="py-2.5 px-3">Student Name</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#DCE3ED]">
-                  {assignmentRoster
-                    .filter((s) => {
-                      if (!rosterSearch) return true;
-                      const q = rosterSearch.toLowerCase();
-                      return (
-                        s.name.toLowerCase().includes(q) ||
-                        s.usn.toLowerCase().includes(q)
-                      );
-                    })
-                    .map((student) => {
-                      const isSub = student.status === 'submitted';
-                      return (
-                        <tr key={student.studentId} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-700">
-                            {student.usn}
-                          </td>
-                          <td className="py-2.5 px-3 font-medium text-[#13284A]">
-                            {student.name}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <StatusPill
-                              status={student.status}
-                              label={isSub ? 'Submitted' : 'Pending'}
-                              size="sm"
-                            />
-                          </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => toggleStudentSubmission(student.studentId, student.status)}
-                              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                                isSub
-                                  ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                              }`}
-                            >
-                              {isSub ? 'Mark Pending' : 'Mark Submitted'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
+              filteredRoster.map((s) => {
+                const isSub = s.status === 'submitted';
+                return (
+                  <div key={s.studentId} className="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-800 block truncate">{s.name}</span>
+                      <span className="font-mono text-[10px] text-slate-500">{s.usn}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleStudentSubmission(s.studentId, s.status)}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all flex items-center gap-1 ${
+                        isSub
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                    >
+                      {isSub ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          Submitted
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-3 h-3" />
+                          Pending
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
           <div className="flex justify-end pt-2">
             <button
-              type="button"
-              onClick={() => {
-                setSelectedAssignment(null);
-                setRosterSearch('');
-              }}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90"
+              onClick={() => setSelectedAssignment(null)}
+              className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white"
             >
               Done
             </button>

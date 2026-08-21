@@ -54,20 +54,20 @@ export const MobileAppDrawer: React.FC<MobileAppDrawerProps> = ({
 
   // Secondary or extra pages by role
   const adminExtras = [
-    { id: 'semesters', label: 'Semester Lifecycle', desc: 'Promotions & Cohort Management', icon: Layers },
-    { id: 'notices-events', label: 'Notices & Events', desc: 'Broadcast circulars & campus calendar', icon: Megaphone },
-    { id: 'reports', label: 'Comprehensive Reports', desc: 'Accreditation, attendance & grades PDF', icon: BarChart3 },
-    { id: 'settings', label: 'Campus Settings & Deploy', desc: 'College branding & system rules', icon: Settings },
+    { id: 'notices-events', label: 'Notices & Circulars', desc: 'Broadcast updates & events', icon: Megaphone },
+    { id: 'semesters', label: 'Semester Manager', desc: 'Cohorts & active terms', icon: Layers },
+    { id: 'reports', label: 'Reports & Export', desc: 'Accreditation & audit exports', icon: BarChart3 },
+    { id: 'settings', label: 'Campus Settings', desc: 'Branding & system configuration', icon: Settings },
   ];
 
   const studentExtras = [
-    { id: 'notices-events', label: 'Notices & Events', desc: 'Official circulars, schedules & fests', icon: Megaphone },
-    { id: 'profile', label: 'Academic Profile', desc: 'USN details, semester & enrolled courses', icon: GraduationCap },
+    { id: 'notices-events', label: 'Circulars & Events', desc: 'Official notices & fest calendar', icon: Megaphone },
+    { id: 'profile', label: 'Academic Profile', desc: 'USN, courses & cohort details', icon: GraduationCap },
   ];
 
   const teacherExtras = [
-    { id: 'dashboard', label: 'Curriculum & Workload', desc: 'Course overview by semester', icon: BookOpen },
-    { id: 'attendance', label: 'Class Attendance Log', desc: 'Conducted sessions & rosters', icon: FileSpreadsheet },
+    { id: 'notices-events', label: 'Circulars & Events', desc: 'Campus announcements & dates', icon: Megaphone },
+    { id: 'dashboard', label: 'Curriculum & Courses', desc: 'Assigned subjects breakdown', icon: BookOpen },
   ];
 
   const extraPages = role === 'admin' ? adminExtras : role === 'student' ? studentExtras : teacherExtras;

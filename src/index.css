@@ -20,6 +20,15 @@
     font-family: var(--font-outfit);
     letter-spacing: -0.02em;
   }
+
+  /* Prevent iOS zoom on input focus while keeping UI compact */
+  @media screen and (max-width: 640px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 /* Mobile App Animations & Keyframes */
@@ -42,17 +51,27 @@
 }
 
 .animate-slide-up {
-  animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.18s ease-out forwards;
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
 /* Native-feel touch scroll container for mobile tables & lists */
 .touch-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+/* Safe area padding helper classes */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 12px);
 }
 
 /* Custom design system utilities */
@@ -98,15 +117,15 @@
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;

@@ -39,18 +39,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const { role, unreadCount } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
-  // Tab configurations per role
+  // Tab configurations per role (4 primary + 1 More drawer)
   const adminTabs: NavTabItem[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'notices-events', label: 'Circulars', icon: Megaphone },
-    { id: 'timetable', label: 'Timetable', icon: Sparkles, isAi: true },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'teachers', label: 'Faculty', icon: UserCheck },
+    { id: 'timetable', label: 'Timetable', icon: Sparkles, isAi: true },
   ];
 
   const teacherTabs: NavTabItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'notices-events', label: 'Circulars', icon: Megaphone },
+    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'attendance', label: 'Attendance', icon: BookOpen },
     { id: 'marks', label: 'Marks', icon: Award },
     { id: 'assignments', label: 'Tasks', icon: FileCheck2 },
@@ -58,7 +56,6 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   const studentTabs: NavTabItem[] = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'notices-events', label: 'Circulars', icon: Megaphone },
     { id: 'attendance', label: 'Attendance', icon: BookOpen },
     { id: 'marks', label: 'Marks', icon: Award },
     { id: 'assignments', label: 'Tasks', icon: FileCheck2 },
@@ -76,9 +73,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         id="saas-bottom-nav-bar"
         aria-label="Mobile Web App Navigation"
         className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#DCE3ED] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:hidden transition-all"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
       >
-        <div className="grid grid-cols-6 items-center h-16 max-w-xl mx-auto px-0.5 sm:px-1">
+        <div className="grid grid-cols-5 items-center h-16 max-w-lg mx-auto px-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -91,13 +88,13 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
                   onSelectTab(tab.id);
                   setIsMoreOpen(false);
                 }}
-                className={`relative flex flex-col items-center justify-center h-full py-1.5 transition-all select-none touch-manipulation group ${
+                className={`relative flex flex-col items-center justify-center h-full py-1 transition-all select-none touch-manipulation cursor-pointer group active:scale-95 ${
                   isActive ? 'text-[#13284A]' : 'text-[#667085] hover:text-[#13284A]'
                 }`}
               >
                 {/* Active Indicator Highlight Pill */}
                 <div
-                  className={`relative flex items-center justify-center w-10 h-7 rounded-full transition-all duration-200 ${
+                  className={`relative flex items-center justify-center w-11 h-7 rounded-full transition-all duration-200 ${
                     isActive
                       ? 'bg-[#13284A] text-white shadow-xs scale-105'
                       : 'bg-transparent text-slate-500 group-hover:bg-slate-100'
@@ -121,8 +118,8 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
                 {/* Label */}
                 <span
-                  className={`text-[10px] mt-0.5 tracking-tight transition-all duration-200 truncate max-w-[62px] ${
-                    isActive ? 'font-bold text-[#13284A]' : 'font-medium text-[#667085]'
+                  className={`text-[10px] mt-0.5 tracking-tight transition-all duration-200 truncate max-w-[64px] ${
+                    isActive ? 'font-extrabold text-[#13284A]' : 'font-medium text-[#667085]'
                   }`}
                 >
                   {tab.label}
@@ -135,14 +132,14 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <button
             id="bottom-nav-more"
             onClick={() => setIsMoreOpen(true)}
-            className={`relative flex flex-col items-center justify-center h-full py-1.5 transition-all select-none touch-manipulation group ${
+            className={`relative flex flex-col items-center justify-center h-full py-1 transition-all select-none touch-manipulation cursor-pointer group active:scale-95 ${
               isSecondaryActive || isMoreOpen
                 ? 'text-[#13284A]'
                 : 'text-[#667085] hover:text-[#13284A]'
             }`}
           >
             <div
-              className={`relative flex items-center justify-center w-10 h-7 rounded-full transition-all duration-200 ${
+              className={`relative flex items-center justify-center w-11 h-7 rounded-full transition-all duration-200 ${
                 isSecondaryActive || isMoreOpen
                   ? 'bg-[#13284A] text-white shadow-xs scale-105'
                   : 'bg-transparent text-slate-500 group-hover:bg-slate-100'
@@ -154,7 +151,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
                 }`}
               />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#C0392B] text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#C0392B] text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-white">
                   {unreadCount}
                 </span>
               )}
@@ -162,7 +159,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
             <span
               className={`text-[10px] mt-0.5 tracking-tight transition-all duration-200 ${
-                isSecondaryActive || isMoreOpen ? 'font-bold text-[#13284A]' : 'font-medium text-[#667085]'
+                isSecondaryActive || isMoreOpen ? 'font-extrabold text-[#13284A]' : 'font-medium text-[#667085]'
               }`}
             >
               More

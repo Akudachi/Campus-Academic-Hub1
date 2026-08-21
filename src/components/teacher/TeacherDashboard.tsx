@@ -9,19 +9,14 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
-  AlertTriangle,
   Layers,
   GraduationCap,
-  Sparkles,
-  ClipboardList,
-  BarChart2,
-  ChevronRight,
   Zap,
-  PlusCircle,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 
 interface TeacherDashboardProps {
@@ -97,95 +92,113 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
       .slice(0, 5);
   }, [recentSessions, subjects, selectedSemester]);
 
-  // Active semester detail object if a specific sem is selected
-  const activeSemesterInfo = useMemo(() => {
-    if (selectedSemester === 'all') return null;
-    return assignedSemesters.find((s) => s.semesterNumber === Number(selectedSemester)) || null;
-  }, [assignedSemesters, selectedSemester]);
-
   const totalEnrolledInSelection = useMemo(() => {
     return filteredSubjects.reduce((acc, s) => acc + (s.enrolledStudentsCount || s.studentsCount || 0), 0);
   }, [filteredSubjects]);
 
-  const totalCreditsInSelection = useMemo(() => {
-    return filteredSubjects.reduce((acc, s) => acc + (Number(s.credits) || 0), 0);
-  }, [filteredSubjects]);
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Modern Teacher Welcome Header (SaaS Hero) */}
-      <div className="bg-linear-to-r from-[#13284A] via-[#1E3A63] to-[#2E6FB0] p-6 sm:p-7 rounded-2xl text-white shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-blue-400/10 to-transparent pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#E0982A] text-slate-900 shadow-xs">
+    <div className="space-y-4 max-w-full overflow-x-hidden animate-fade-in pb-4">
+      {/* Mobile App Style Hero Header */}
+      <div className="bg-linear-to-br from-[#13284A] via-[#1E3A63] to-[#2E6FB0] p-4 sm:p-5 rounded-2xl text-white shadow-sm relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#E0982A] text-slate-950">
                 {teacher?.teacherCode || 'FACULTY'}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-white/90 border border-white/10">
-                {teacher?.department || 'CSE'} Department
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white/15 text-white">
+                {teacher?.department || 'CSE'}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                {teacher?.designation || 'Faculty Member'}
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                {teacher?.designation || 'Faculty'}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-white">
-              Welcome back, {user?.name || 'Professor'}
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white truncate">
+              {user?.name || 'Faculty Portal'}
             </h1>
-
-            <p className="text-xs sm:text-sm text-slate-300 font-medium">
-              Academic Session 2025–2026 • {assignedSemesters.length} Active Teaching Cohort{assignedSemesters.length !== 1 ? 's' : ''} assigned.
+            <p className="text-[11px] text-slate-200">
+              {assignedSemesters.length} Teaching Cohorts • {subjects.length} Courses Assigned
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 pt-1 sm:pt-0 shrink-0">
             <button
               id="quick-take-attendance-btn"
               onClick={() => onNavigate('attendance')}
-              className="px-5 py-3 text-xs font-extrabold rounded-xl bg-white text-[#13284A] hover:bg-slate-100 transition-all flex items-center gap-2 shadow-md active:scale-98"
+              className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold rounded-xl bg-white text-[#13284A] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
             >
-              <Zap className="w-4 h-4 text-[#2E6FB0]" />
-              <span>1-Tap Attendance</span>
+              <Zap className="w-3.5 h-3.5 text-[#2E6FB0]" />
+              <span>Mark Attendance</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Assigned Semester Selector Chips (Swiggy style pill filters) */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#DCE3ED] shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#2E6FB0]" />
-            <h2 className="text-xs font-bold text-[#13284A] uppercase tracking-wider font-heading">
-              Assigned Semester Workloads
-            </h2>
+      {/* Quick Action Navigation Tiles (App Style) */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => onNavigate('attendance')}
+          className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+        >
+          <div className="p-2 rounded-lg bg-blue-50 text-[#2E6FB0] w-fit mb-2 group-hover:bg-[#2E6FB0] group-hover:text-white transition-colors">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
-          <span className="text-[11px] text-[#667085]">
-            Filter by semester to inspect courses, enrolled rosters, and attendance records
+          <div>
+            <span className="text-xs font-bold text-[#13284A] block truncate">Attendance</span>
+            <span className="text-[10px] text-slate-500 block truncate">Digital Register</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('assignments')}
+          className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+        >
+          <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 w-fit mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <FileCheck2 className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-[#13284A] block truncate">Tasks</span>
+            <span className="text-[10px] text-slate-500 block truncate">Assignments</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('marks')}
+          className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+        >
+          <div className="p-2 rounded-lg bg-amber-50 text-amber-700 w-fit mb-2 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+            <Award className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-[#13284A] block truncate">Marks</span>
+            <span className="text-[10px] text-slate-500 block truncate">Internal Tests</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Workload Semester Filters (Clean Single Row / Wrap on Mobile) */}
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#13284A] flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-[#2E6FB0]" />
+            Cohort Filters
           </span>
+          <span className="text-[10px] text-slate-500 font-semibold">{filteredSubjects.length} Active Courses</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             id="sem-filter-all-btn"
             onClick={() => setSelectedSemester('all')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs active:scale-98 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               selectedSemester === 'all'
-                ? 'bg-[#13284A] text-white ring-2 ring-[#13284A]/20'
-                : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-[#DCE3ED]'
+                ? 'bg-[#13284A] text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>All Workloads</span>
-            <span
-              className={`px-1.5 py-0.2 text-[10px] rounded-full font-mono ${
-                selectedSemester === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-800'
-              }`}
-            >
-              {subjects.length} Courses
-            </span>
+            <span>All</span>
+            <span className="text-[10px] opacity-80">({subjects.length})</span>
           </button>
 
           {assignedSemesters.map((sem) => {
@@ -195,192 +208,95 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                 key={`sem-btn-${sem.semesterNumber}`}
                 id={`sem-filter-btn-${sem.semesterNumber}`}
                 onClick={() => setSelectedSemester(String(sem.semesterNumber))}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs active:scale-98 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-[#2E6FB0] text-white ring-2 ring-[#2E6FB0]/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-[#DCE3ED]'
+                    ? 'bg-[#2E6FB0] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                <span>Semester {sem.semesterNumber}</span>
-                <span className="text-[10px] opacity-80 font-normal">({sem.department})</span>
-                <span
-                  className={`px-1.5 py-0.2 text-[10px] rounded-full font-mono ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-[#2E6FB0] border border-blue-200'
-                  }`}
-                >
-                  {sem.count} Course{sem.count !== 1 ? 's' : ''}
-                </span>
+                <span>Sem {sem.semesterNumber}</span>
+                <span className="text-[10px] opacity-80">({sem.count})</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Selected Semester Highlight Banner */}
-      {activeSemesterInfo && (
-        <div className="bg-linear-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 border border-blue-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-200/60 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2.5 bg-[#2E6FB0] text-white rounded-xl shadow-xs">
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-[#13284A] font-heading">
-                  Semester {activeSemesterInfo.semesterNumber} ({activeSemesterInfo.department}) Dossier
-                </h3>
-                <p className="text-xs text-[#667085]">
-                  Department of {activeSemesterInfo.department} • Section A
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => onNavigate('attendance')}
-                className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white border border-[#DCE3ED] hover:bg-slate-50 text-[#13284A] shadow-xs flex items-center gap-1.5"
-              >
-                <Clock className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                Attendance
-              </button>
-              <button
-                onClick={() => onNavigate('marks')}
-                className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white border border-[#DCE3ED] hover:bg-slate-50 text-[#13284A] shadow-xs flex items-center gap-1.5"
-              >
-                <Award className="w-3.5 h-3.5 text-[#E0982A]" />
-                Test Marks
-              </button>
-              <button
-                onClick={() => onNavigate('assignments')}
-                className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-[#2E6FB0] text-white hover:bg-[#2E6FB0]/90 shadow-xs flex items-center gap-1.5"
-              >
-                <FileCheck2 className="w-3.5 h-3.5" />
-                Assignments
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs">
-              <span className="text-[11px] font-semibold text-slate-500 block">Assigned Subjects</span>
-              <span className="text-lg font-extrabold text-[#13284A]">{activeSemesterInfo.count} Courses</span>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs">
-              <span className="text-[11px] font-semibold text-slate-500 block">Total Cohort Size</span>
-              <span className="text-lg font-extrabold text-[#2E6FB0]">{totalEnrolledInSelection} Students</span>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs">
-              <span className="text-[11px] font-semibold text-slate-500 block">Weekly Credits</span>
-              <span className="text-lg font-extrabold text-slate-800">{totalCreditsInSelection} Credits</span>
-            </div>
-            <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs">
-              <span className="text-[11px] font-semibold text-slate-500 block">Conducted Sessions</span>
-              <span className="text-lg font-extrabold text-emerald-700">{filteredSessions.length} Classes</span>
-            </div>
-          </div>
+      {/* KPI Stats (Compact 3-column Grid that fits on mobile) */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
+          <span className="text-[10px] font-semibold text-slate-500 block truncate">Courses</span>
+          <span className="text-base sm:text-lg font-bold text-[#13284A]">{filteredSubjects.length}</span>
         </div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MetricCard
-          title={selectedSemester === 'all' ? 'Total Assigned Courses' : `Sem ${selectedSemester} Courses`}
-          value={filteredSubjects.length}
-          subtitle={`${selectedSemester === 'all' ? 'All active' : `Semester ${selectedSemester}`} workload`}
-          icon={BookOpen}
-          accentColor="blue"
-        />
-        <MetricCard
-          title={selectedSemester === 'all' ? 'Attendance Sessions' : `Sem ${selectedSemester} Sessions`}
-          value={filteredSessions.length}
-          subtitle="Immutable rosters logged"
-          icon={CheckCircle2}
-          accentColor="green"
-        />
-        <MetricCard
-          title={selectedSemester === 'all' ? 'Active Students Enrolled' : `Sem ${selectedSemester} Students`}
-          value={totalEnrolledInSelection}
-          subtitle="Under active instruction"
-          icon={Users}
-          accentColor="navy"
-        />
+        <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
+          <span className="text-[10px] font-semibold text-slate-500 block truncate">Sessions</span>
+          <span className="text-base sm:text-lg font-bold text-emerald-700">{filteredSessions.length}</span>
+        </div>
+        <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
+          <span className="text-[10px] font-semibold text-slate-500 block truncate">Students</span>
+          <span className="text-base sm:text-lg font-bold text-[#2E6FB0]">{totalEnrolledInSelection}</span>
+        </div>
       </div>
 
-      {/* High-Craft Subject Cards Grid (Instagram / Swiggy modern card design) */}
-      <div className="space-y-3">
+      {/* Assigned Subjects List (Mobile-Optimized Cards) */}
+      <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-bold text-[#13284A] uppercase tracking-wider font-heading flex items-center gap-2">
+          <span className="text-xs font-bold text-[#13284A] uppercase tracking-wider flex items-center gap-1.5">
             <BookOpen className="w-3.5 h-3.5 text-[#2E6FB0]" />
-            <span>
-              {selectedSemester === 'all'
-                ? 'Your Assigned Teaching Portfolio'
-                : `Semester ${selectedSemester} Assigned Courses`}
-            </span>
-          </h2>
-          <span className="text-xs text-[#667085] font-semibold">
-            {filteredSubjects.length} Course{filteredSubjects.length !== 1 ? 's' : ''} Displayed
+            Assigned Courses
           </span>
         </div>
 
         {filteredSubjects.length === 0 ? (
-          <div className="p-8 text-center bg-white rounded-2xl border border-[#DCE3ED] text-xs text-[#667085] space-y-2 shadow-xs">
-            <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
-            <p className="font-semibold text-slate-700">No subjects found for the selected semester.</p>
-            <p className="text-[11px] text-[#667085]">
-              Select another semester or click "All Workloads" to view all assigned subjects.
-            </p>
+          <div className="p-6 text-center bg-white rounded-xl border border-[#DCE3ED] text-xs text-slate-500">
+            No subjects found for this selection.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
             {filteredSubjects.map((sub, index) => (
               <div
                 key={sub.id || sub.subjectId || sub.code || `sub-item-${index}`}
-                className="bg-white p-5 rounded-2xl border border-[#DCE3ED] shadow-xs flex flex-col justify-between space-y-4 hover:border-[#2E6FB0]/60 hover:shadow-md transition-all group"
+                className="bg-white p-3.5 rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0]/60 transition-all space-y-2.5"
               >
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <span className="px-2.5 py-1 rounded-lg font-mono text-xs font-bold bg-slate-100 text-[#13284A] border border-slate-200">
-                      {sub.code}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
-                      {sub.credits} Credits • {sub.type || 'Core Theory'}
-                    </span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-slate-100 text-[#13284A] border border-slate-200">
+                        {sub.code}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        Sem {sub.semesterNumber} • {sub.credits} Credits
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-[#13284A] mt-1 leading-snug break-words">
+                      {sub.name}
+                    </h3>
                   </div>
-                  
-                  <h3 className="text-base font-bold text-[#13284A] font-heading group-hover:text-[#2E6FB0] transition-colors">
-                    {sub.name}
-                  </h3>
-                  
-                  <p className="text-xs text-[#667085]">
-                    Department of {sub.department || sub.departmentCode || 'CSE'} • Semester {sub.semesterNumber} (Section A)
-                  </p>
+
+                  <span className="text-[11px] font-bold text-slate-600 shrink-0 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                    {sub.enrolledStudentsCount || sub.studentsCount || 0} Students
+                  </span>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    {sub.enrolledStudentsCount || sub.studentsCount || 0} Students Enrolled
-                  </span>
-
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      onClick={() => onNavigate('attendance')}
-                      className="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 text-[#2E6FB0] hover:bg-blue-100 transition-colors flex items-center gap-1"
-                    >
-                      Attendance →
-                    </button>
-                    <button
-                      onClick={() => onNavigate('marks')}
-                      className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-900 hover:bg-amber-100 transition-colors flex items-center gap-1"
-                    >
-                      Marks →
-                    </button>
-                    <button
-                      onClick={() => onNavigate('assignments')}
-                      className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors flex items-center gap-1"
-                    >
-                      Assignments →
-                    </button>
-                  </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
+                  <button
+                    onClick={() => onNavigate('attendance')}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-50 text-[#2E6FB0] hover:bg-blue-100 transition-colors"
+                  >
+                    Attendance
+                  </button>
+                  <button
+                    onClick={() => onNavigate('assignments')}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                  >
+                    Tasks
+                  </button>
+                  <button
+                    onClick={() => onNavigate('marks')}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
+                  >
+                    Marks
+                  </button>
                 </div>
               </div>
             ))}
@@ -388,46 +304,43 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         )}
       </div>
 
-      {/* Recent Attendance Logs */}
-      <div className="bg-white rounded-2xl border border-[#DCE3ED] shadow-xs overflow-hidden">
-        <div className="p-4 bg-[#F8FAFC] border-b border-[#DCE3ED] flex items-center justify-between">
-          <h3 className="text-xs font-bold text-[#13284A] uppercase tracking-wider font-heading">
-            {selectedSemester === 'all'
-              ? 'Recent Attendance Submissions'
-              : `Semester ${selectedSemester} Attendance Submissions`}
-          </h3>
+      {/* Recent Attendance Logs (Clean compact table/list) */}
+      <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-2xs overflow-hidden">
+        <div className="p-3 bg-slate-50 border-b border-[#DCE3ED] flex items-center justify-between">
+          <span className="text-xs font-bold text-[#13284A] uppercase tracking-wider">
+            Recent Attendance
+          </span>
           <button
             onClick={() => onNavigate('attendance')}
-            className="text-xs font-semibold text-[#2E6FB0] hover:underline"
+            className="text-[11px] font-semibold text-[#2E6FB0] hover:underline"
           >
-            View Full Log →
+            View All →
           </button>
         </div>
 
         {filteredSessions.length === 0 ? (
-          <div className="p-6 text-center text-xs text-[#667085]">
-            {selectedSemester === 'all'
-              ? 'No attendance sessions logged yet.'
-              : `No attendance sessions logged yet for Semester ${selectedSemester}.`}
+          <div className="p-4 text-center text-xs text-slate-500">
+            No attendance sessions recorded yet.
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 text-xs">
             {filteredSessions.map((sess, index) => (
-              <div key={sess.id || `sess-${sess.date}-${index}`} className="p-4 flex items-center justify-between hover:bg-slate-50 text-xs transition-colors">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800">{sess.subjectName}</span>
-                    <span className="font-mono text-[11px] text-slate-500">({sess.subjectCode})</span>
-                    <StatusPill status={sess.status} size="sm" />
+              <div key={sess.id || `sess-${sess.date}-${index}`} className="p-3 flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-bold text-slate-800 truncate">{sess.subjectName || sess.subjectCode}</span>
+                    <span className="text-[10px] text-slate-500 shrink-0 font-mono">({sess.date})</span>
                   </div>
-                  <p className="text-[#667085]">
-                    Date: {sess.date} • Period: {sess.period || 'Period 1'} • Topic: {sess.topic || 'Regular Lecture'}
-                  </p>
+                  <span className="text-[10px] text-slate-500 block truncate">{sess.topic || sess.period || 'Lecture'}</span>
                 </div>
-                <div className="text-right font-medium">
-                  <span className="text-emerald-700 font-bold">{sess.presentCount || sess.recordsCount?.present || 0} Present</span>
-                  <span className="text-slate-400 mx-1.5">/</span>
-                  <span className="text-rose-700 font-bold">{sess.absentCount || sess.recordsCount?.absent || 0} Absent</span>
+                <div className="text-right shrink-0">
+                  <span className="text-[11px] font-bold text-emerald-700">
+                    {sess.presentCount || sess.recordsCount?.present || 0}P
+                  </span>
+                  <span className="text-slate-300 mx-1">/</span>
+                  <span className="text-[11px] font-bold text-rose-700">
+                    {sess.absentCount || sess.recordsCount?.absent || 0}A
+                  </span>
                 </div>
               </div>
             ))}

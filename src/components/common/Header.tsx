@@ -26,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
   const { user, teacher, student, role, personas, switchPersona, logout, unreadCount } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
-  const [institutionName, setInstitutionName] = useState('Apex Institute of Technology');
+  const [institutionName, setInstitutionName] = useState('Campus Institute of Technology');
   const [academicYear, setAcademicYear] = useState('2025–26');
   const [currentTerm, setCurrentTerm] = useState('Even Sem (2, 4, 6, 8)');
   const [isOnline, setIsOnline] = useState<boolean>(storageService.isOnline());
@@ -56,27 +56,33 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
       .catch(() => {});
   }, []);
 
-  const getRoleBadge = () => {
+  const getRoleBadge = (isCompact = false) => {
     switch (role) {
       case 'admin':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#13284A] text-white tracking-wide">
-            <ShieldCheck className="w-3 h-3" />
+          <span className={`inline-flex items-center gap-1 font-bold bg-[#13284A] text-white tracking-wide rounded-full shadow-2xs ${
+            isCompact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-xs'
+          }`}>
+            <ShieldCheck className="w-3 h-3 text-[#5B93D1]" />
             ADMIN
           </span>
         );
       case 'teacher':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2E6FB0] text-white tracking-wide">
+          <span className={`inline-flex items-center gap-1 font-bold bg-[#2E6FB0] text-white tracking-wide rounded-full shadow-2xs ${
+            isCompact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-xs'
+          }`}>
             <BookOpen className="w-3 h-3" />
-            FACULTY ({teacher?.teacherCode || 'T001'})
+            {teacher?.teacherCode || 'FACULTY'}
           </span>
         );
       case 'student':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#1E8E5A] text-white tracking-wide">
+          <span className={`inline-flex items-center gap-1 font-bold bg-[#1E8E5A] text-white tracking-wide rounded-full shadow-2xs ${
+            isCompact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-xs'
+          }`}>
             <GraduationCap className="w-3 h-3" />
-            STUDENT ({student?.usn || 'STUDENT'})
+            {student?.usn ? student.usn.slice(-6) : 'STUDENT'}
           </span>
         );
     }
@@ -84,41 +90,43 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white border-b border-[#DCE3ED] shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DCE3ED] shadow-2xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
             {/* Logo & College Info */}
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#13284A] flex items-center justify-center text-white shadow-xs shrink-0">
-                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-[#5B93D1]" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#13284A] flex items-center justify-center text-white shadow-xs shrink-0 ring-2 ring-[#13284A]/10">
+                <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-[#5B93D1]" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <h1 className="font-serif text-sm sm:text-lg font-bold text-[#13284A] tracking-tight truncate">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-serif text-sm sm:text-base lg:text-lg font-bold text-[#13284A] tracking-tight truncate">
                     Campus Hub
                   </h1>
-                  <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
-                    SaaS App
+                  <span className="text-[8px] sm:text-[9px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200/80 shrink-0">
+                    SaaS
                   </span>
                 </div>
                 <p className="text-[11px] text-[#667085] truncate hidden sm:flex items-center gap-1.5">
-                  <span>{institutionName}</span>
+                  <span className="font-medium">{institutionName}</span>
                   <span>•</span>
                   <span>AY {academicYear}</span>
                   <span>•</span>
                   <span className="font-semibold text-[#2E6FB0] bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200/60">{currentTerm}</span>
                 </p>
-                <div className="sm:hidden mt-0.5">
-                  {getRoleBadge()}
+                <div className="sm:hidden flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] text-slate-500 font-medium truncate max-w-[120px]">
+                    {institutionName}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Middle Quick Persona Switcher Bar (For Seamless Testing & Demonstration) */}
+            {/* Middle Quick Persona Switcher Bar (Desktop) */}
             <div className="hidden lg:flex items-center bg-[#F3F6FB] border border-[#DCE3ED] rounded-xl p-1 gap-1">
               <span className="text-[11px] font-semibold text-[#667085] px-2 flex items-center gap-1">
                 <UserCheck className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                Role Switcher:
+                Role:
               </span>
               {personas.slice(0, 4).map((p) => {
                 const isActive = user?.id === p.user.id;
@@ -126,9 +134,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
                   <button
                     key={p.user.id}
                     onClick={() => switchPersona(p.user.id)}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-all ${
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-white text-[#13284A] shadow-xs font-semibold border border-[#DCE3ED]'
+                        ? 'bg-white text-[#13284A] shadow-xs font-bold border border-[#DCE3ED]'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
                     }`}
                   >
@@ -138,121 +146,153 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
               })}
             </div>
 
-            {/* Right Action Tools: Notifications, User Profile, Switcher Dropdown */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            {/* Right Action Tools: Network, Notifications, Persona Switcher */}
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* Network Status Badge */}
-              {!isOnline ? (
+              {!isOnline && (
                 <div
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 text-xs font-bold shadow-2xs"
-                  title="Offline Mode Active: Serving local storage cache"
+                  className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 text-[10px] sm:text-xs font-bold shadow-2xs"
+                  title="Offline Mode Active"
                 >
-                  <WifiOff className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
-                  <span className="hidden sm:inline">Offline</span>
+                  <WifiOff className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-700 animate-pulse" />
+                  <span className="hidden xs:inline">Offline</span>
                 </div>
-              ) : (
-                <button
-                  onClick={() => storageService.setSimulatedOffline(true)}
-                  title="Simulate Offline Mode to test Local Storage caching"
-                  className="hidden md:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors"
-                >
-                  <Wifi className="w-3 h-3 text-emerald-600" />
-                  <span>Online</span>
-                </button>
               )}
 
               {/* Notifications Button */}
               <button
                 id="header-notification-btn"
                 onClick={() => setIsNotifOpen(true)}
-                className="relative p-2 rounded-xl text-slate-600 hover:text-[#13284A] hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200"
+                className="relative p-2 rounded-xl text-slate-600 hover:text-[#13284A] hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 active:scale-95"
                 title="Notifications"
+                aria-label="View notifications"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#C0392B] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#C0392B] text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-white">
                     {unreadCount}
                   </span>
                 )}
               </button>
 
-              {/* User Dropdown / Switcher */}
+              {/* Mobile Role Switcher Pill & Desktop Profile Dropdown */}
               <div className="relative">
                 <button
                   id="user-profile-menu-btn"
                   onClick={() => setIsPersonaMenuOpen(!isPersonaMenuOpen)}
-                  className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-[#DCE3ED] hover:bg-slate-50 transition-all bg-white"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl border border-[#DCE3ED] hover:bg-slate-50 transition-all bg-white shadow-2xs active:scale-95 cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-xs text-[#13284A] border border-slate-200">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-2xs ${
+                    role === 'admin' ? 'bg-[#13284A]' : role === 'teacher' ? 'bg-[#2E6FB0]' : 'bg-[#1E8E5A]'
+                  }`}>
                     {user?.name?.charAt(0) || 'U'}
                   </div>
+                  
+                  {/* Mobile Role Label */}
+                  <div className="sm:hidden flex items-center gap-1 pr-1">
+                    <span className="text-xs font-bold text-slate-800 capitalize">
+                      {role}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  {/* Desktop Role Details */}
                   <div className="text-left hidden sm:block">
                     <div className="text-xs font-bold text-[#13284A] truncate max-w-[130px]">
                       {user?.name || 'Academic User'}
                     </div>
                     <div className="text-[11px] text-[#667085] leading-none mt-0.5">
-                      {getRoleBadge()}
+                      {getRoleBadge(true)}
                     </div>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
                 </button>
 
-                {/* Dropdown Menu */}
+                {/* Dropdown Menu / Switcher Sheet */}
                 {isPersonaMenuOpen && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-40 bg-slate-900/30 sm:bg-transparent"
                       onClick={() => setIsPersonaMenuOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-[#DCE3ED] py-2 z-50">
-                      <div className="px-4 py-2 border-b border-slate-100">
-                        <p className="text-xs font-semibold text-[#667085] uppercase">Signed In As</p>
+                    <div className="fixed sm:absolute right-0 bottom-0 sm:bottom-auto sm:top-full sm:mt-2 w-full sm:w-80 bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#DCE3ED] py-2 z-50 animate-slide-up sm:animate-fade-in max-h-[85vh] flex flex-col">
+                      {/* Mobile Sheet Handle */}
+                      <div className="sm:hidden pt-2 pb-1 flex justify-center items-center">
+                        <div className="w-10 h-1 rounded-full bg-slate-300" />
+                      </div>
+
+                      <div className="px-4 py-2.5 border-b border-slate-100">
+                        <p className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">Current Account</p>
                         <p className="text-sm font-bold text-[#13284A] mt-0.5">{user?.name}</p>
                         <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                         <div className="mt-2">{getRoleBadge()}</div>
                       </div>
 
                       {/* Switch Persona section */}
-                      <div className="p-2">
-                        <p className="px-2 py-1 text-[11px] font-bold text-[#667085] uppercase tracking-wider">
-                          Switch User Persona
-                        </p>
-                        <div className="max-h-56 overflow-y-auto space-y-1 mt-1">
-                          {personas.map((p) => (
-                            <button
-                              key={p.user.id}
-                              onClick={() => {
-                                switchPersona(p.user.id);
-                                setIsPersonaMenuOpen(false);
-                              }}
-                              className={`w-full text-left p-2 rounded-lg text-xs transition-colors flex items-start gap-2 ${
-                                user?.id === p.user.id
-                                  ? 'bg-blue-50/80 text-[#13284A] font-semibold border border-[#2E6FB0]/30'
-                                  : 'hover:bg-slate-100 text-slate-700'
-                              }`}
-                            >
-                              <div className="w-6 h-6 rounded-md bg-slate-200/80 shrink-0 flex items-center justify-center font-bold text-[10px]">
-                                {p.user.name.charAt(0)}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="truncate font-semibold">{p.user.name}</div>
-                                <div className="text-[10px] text-slate-500 truncate">{p.displaySub}</div>
-                              </div>
-                            </button>
-                          ))}
+                      <div className="p-3 overflow-y-auto flex-1 overscroll-contain">
+                        <div className="flex items-center justify-between px-1 mb-2">
+                          <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider flex items-center gap-1">
+                            <UserCheck className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                            Switch Demo Persona
+                          </p>
+                          <span className="text-[10px] text-slate-400 font-medium">1-Tap Switch</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {personas.map((p) => {
+                            const isCurrent = user?.id === p.user.id;
+                            let roleColor = 'border-slate-200 text-slate-700 bg-slate-50';
+                            if (p.user.role === 'admin') roleColor = 'border-[#13284A]/30 text-[#13284A] bg-blue-50/50';
+                            if (p.user.role === 'teacher') roleColor = 'border-[#2E6FB0]/30 text-[#2E6FB0] bg-sky-50/50';
+                            if (p.user.role === 'student') roleColor = 'border-emerald-600/30 text-emerald-800 bg-emerald-50/50';
+
+                            return (
+                              <button
+                                key={p.user.id}
+                                onClick={() => {
+                                  switchPersona(p.user.id);
+                                  setIsPersonaMenuOpen(false);
+                                }}
+                                className={`w-full text-left p-2.5 rounded-xl text-xs transition-all flex items-center justify-between gap-3 border ${
+                                  isCurrent
+                                    ? 'bg-[#13284A] text-white font-bold border-[#13284A] shadow-xs'
+                                    : 'hover:bg-slate-100 text-slate-700 bg-white border-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs shadow-2xs ${
+                                    isCurrent ? 'bg-white text-[#13284A]' : 'bg-slate-100 text-slate-700'
+                                  }`}>
+                                    {p.user.name.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="truncate font-bold text-xs">{p.user.name}</div>
+                                    <div className={`text-[10px] truncate ${isCurrent ? 'text-slate-200' : 'text-slate-500'}`}>
+                                      {p.displaySub}
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className={`text-[9px] uppercase font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                                  isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {p.user.role}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
-                      <div className="border-t border-slate-100 p-2">
+                      <div className="border-t border-slate-100 p-2.5 bg-slate-50/80 rounded-b-2xl space-y-1">
                         {onOpenLoginModal && (
                           <button
                             onClick={() => {
                               setIsPersonaMenuOpen(false);
                               onOpenLoginModal();
                             }}
-                            className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-2"
+                            className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 rounded-xl flex items-center gap-2 transition-colors"
                           >
                             <User className="w-4 h-4 text-slate-500" />
-                            Login with Another Account
+                            Sign In with Another Account
                           </button>
                         )}
                         <button
@@ -260,7 +300,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
                             setIsPersonaMenuOpen(false);
                             logout();
                           }}
-                          className="w-full text-left px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-2"
+                          className="w-full text-left px-3 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100/70 rounded-xl flex items-center gap-2 transition-colors"
                         >
                           <LogOut className="w-4 h-4 text-rose-600" />
                           Sign Out

@@ -131,10 +131,8 @@ export const NoticesEventsAdminView: React.FC<NoticesEventsAdminViewProps> = ({ 
       {/* Header */}
       <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#13284A] font-serif">Campus Notices & Event Announcements</h2>
-          <p className="text-xs text-[#667085] mt-1">
-            Publish official departmental circulars and campus events with targeted audience delivery and instant notifications.
-          </p>
+          <h2 className="text-xl font-bold text-[#13284A] font-serif">Notices & Events</h2>
+          <p className="text-xs text-[#667085] mt-0.5">Official campus circulars and announcements.</p>
         </div>
         <div className="flex items-center gap-2">
           {activeTab === 'notices' ? (

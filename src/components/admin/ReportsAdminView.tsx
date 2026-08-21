@@ -178,10 +178,8 @@ export const ReportsAdminView: React.FC<ReportsAdminViewProps> = ({ onBack, onNa
       {/* Header */}
       <div className="bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#13284A] font-serif">Comprehensive Academic Reports</h2>
-          <p className="text-xs text-[#667085] mt-1">
-            Department-wide analytics, attendance shortages (&lt;80%), submission tracking, and audit trails with 1-click CSV exports.
-          </p>
+          <h2 className="text-xl font-bold text-[#13284A] font-serif">Academic Reports</h2>
+          <p className="text-xs text-[#667085] mt-0.5">Attendance, assignments, and test mark exports.</p>
         </div>
         <div className="flex items-center gap-2">
           {reportType === 'attendance' && (
