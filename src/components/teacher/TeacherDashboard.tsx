@@ -14,6 +14,7 @@ import {
   Zap,
   ChevronRight,
   Sparkles,
+  Megaphone,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -96,10 +97,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
     return filteredSubjects.reduce((acc, s) => acc + (s.enrolledStudentsCount || s.studentsCount || 0), 0);
   }, [filteredSubjects]);
 
+  const todayDateStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+
   return (
-    <div className="space-y-4 max-w-full overflow-x-hidden animate-fade-in pb-4">
-      {/* Mobile App Style Hero Header */}
-      <div className="bg-linear-to-br from-[#13284A] via-[#1E3A63] to-[#2E6FB0] p-4 sm:p-5 rounded-2xl text-white shadow-sm relative overflow-hidden">
+    <div className="space-y-3.5 max-w-full overflow-x-hidden animate-fade-in pb-4">
+      {/* Header Banner */}
+      <div className="bg-[#13284A] p-4 sm:p-5 rounded-2xl text-white shadow-sm relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -107,7 +114,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                 {teacher?.teacherCode || 'FACULTY'}
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white/15 text-white">
-                {teacher?.department || 'CSE'}
+                {teacher?.department || 'CSE'} Department
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 {teacher?.designation || 'Faculty'}
@@ -117,8 +124,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white truncate">
               {user?.name || 'Faculty Portal'}
             </h1>
-            <p className="text-[11px] text-slate-200">
-              {assignedSemesters.length} Teaching Cohorts • {subjects.length} Courses Assigned
+            <p className="text-[11px] text-slate-300">
+              {todayDateStr} • {assignedSemesters.length} Teaching Cohorts • {subjects.length} Assigned Courses
             </p>
           </div>
 
@@ -126,7 +133,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
             <button
               id="quick-take-attendance-btn"
               onClick={() => onNavigate('attendance')}
-              className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold rounded-xl bg-white text-[#13284A] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+              className="w-full sm:w-auto px-4 py-2 text-xs font-bold rounded-xl bg-white text-[#13284A] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
             >
               <Zap className="w-3.5 h-3.5 text-[#2E6FB0]" />
               <span>Mark Attendance</span>
@@ -135,54 +142,67 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* Quick Action Navigation Tiles (App Style) */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* 4 Quick Action Cards (High Contrast & Clear) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <button
           onClick={() => onNavigate('attendance')}
-          className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+          className="p-3.5 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
         >
-          <div className="p-2 rounded-lg bg-blue-50 text-[#2E6FB0] w-fit mb-2 group-hover:bg-[#2E6FB0] group-hover:text-white transition-colors">
+          <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700 w-fit mb-2 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
             <span className="text-xs font-bold text-[#13284A] block truncate">Attendance</span>
-            <span className="text-[10px] text-slate-500 block truncate">Digital Register</span>
-          </div>
-        </button>
-
-        <button
-          onClick={() => onNavigate('assignments')}
-          className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
-        >
-          <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 w-fit mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-            <FileCheck2 className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-xs font-bold text-[#13284A] block truncate">Tasks</span>
-            <span className="text-[10px] text-slate-500 block truncate">Assignments</span>
+            <span className="text-[10px] text-slate-500 block truncate">Digital Roll Call</span>
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('marks')}
-          className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+          className="p-3.5 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
         >
           <div className="p-2 rounded-lg bg-amber-50 text-amber-700 w-fit mb-2 group-hover:bg-amber-600 group-hover:text-white transition-colors">
             <Award className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xs font-bold text-[#13284A] block truncate">Marks</span>
-            <span className="text-[10px] text-slate-500 block truncate">Internal Tests</span>
+            <span className="text-xs font-bold text-[#13284A] block truncate">Internal Marks</span>
+            <span className="text-[10px] text-slate-500 block truncate">IA1, IA2 & Lab</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('assignments')}
+          className="p-3.5 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+        >
+          <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 w-fit mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <FileCheck2 className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-[#13284A] block truncate">Tasks & Work</span>
+            <span className="text-[10px] text-slate-500 block truncate">Post Assignments</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('notices-events')}
+          className="p-3.5 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs hover:border-[#2E6FB0] transition-all text-left flex flex-col justify-between group active:scale-98"
+        >
+          <div className="p-2 rounded-lg bg-blue-50 text-[#2E6FB0] w-fit mb-2 group-hover:bg-[#2E6FB0] group-hover:text-white transition-colors">
+            <Megaphone className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-[#13284A] block truncate">Notices & Circulars</span>
+            <span className="text-[10px] text-slate-500 block truncate">Campus Updates</span>
           </div>
         </button>
       </div>
 
-      {/* Workload Semester Filters (Clean Single Row / Wrap on Mobile) */}
-      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2">
+      {/* Cohort Filter Tabs */}
+      <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#13284A] flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-[#2E6FB0]" />
-            Cohort Filters
+            Semester Filter
           </span>
           <span className="text-[10px] text-slate-500 font-semibold">{filteredSubjects.length} Active Courses</span>
         </div>
@@ -197,7 +217,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <span>All</span>
+            <span>All Semesters</span>
             <span className="text-[10px] opacity-80">({subjects.length})</span>
           </button>
 
@@ -222,34 +242,34 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* KPI Stats (Compact 3-column Grid that fits on mobile) */}
+      {/* KPI Stats Grid */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
           <span className="text-[10px] font-semibold text-slate-500 block truncate">Courses</span>
           <span className="text-base sm:text-lg font-bold text-[#13284A]">{filteredSubjects.length}</span>
         </div>
         <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
-          <span className="text-[10px] font-semibold text-slate-500 block truncate">Sessions</span>
+          <span className="text-[10px] font-semibold text-slate-500 block truncate">Recent Sessions</span>
           <span className="text-base sm:text-lg font-bold text-emerald-700">{filteredSessions.length}</span>
         </div>
         <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
-          <span className="text-[10px] font-semibold text-slate-500 block truncate">Students</span>
+          <span className="text-[10px] font-semibold text-slate-500 block truncate">Total Students</span>
           <span className="text-base sm:text-lg font-bold text-[#2E6FB0]">{totalEnrolledInSelection}</span>
         </div>
       </div>
 
-      {/* Assigned Subjects List (Mobile-Optimized Cards) */}
+      {/* Assigned Subjects List */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-bold text-[#13284A] uppercase tracking-wider flex items-center gap-1.5">
             <BookOpen className="w-3.5 h-3.5 text-[#2E6FB0]" />
-            Assigned Courses
+            My Assigned Courses
           </span>
         </div>
 
         {filteredSubjects.length === 0 ? (
           <div className="p-6 text-center bg-white rounded-xl border border-[#DCE3ED] text-xs text-slate-500">
-            No subjects found for this selection.
+            No subjects assigned for this semester.
           </div>
         ) : (
           <div className="space-y-2">
@@ -265,7 +285,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                         {sub.code}
                       </span>
                       <span className="text-[10px] text-slate-500 font-medium">
-                        Sem {sub.semesterNumber} • {sub.credits} Credits
+                        Sem {sub.semesterNumber} • {sub.credits || 4} Credits
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-[#13284A] mt-1 leading-snug break-words">
@@ -281,21 +301,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
                   <button
                     onClick={() => onNavigate('attendance')}
-                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-50 text-[#2E6FB0] hover:bg-blue-100 transition-colors"
+                    className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
                   >
-                    Attendance
-                  </button>
-                  <button
-                    onClick={() => onNavigate('assignments')}
-                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
-                  >
-                    Tasks
+                    Take Attendance
                   </button>
                   <button
                     onClick={() => onNavigate('marks')}
-                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
+                    className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
                   >
-                    Marks
+                    Enter Marks
+                  </button>
+                  <button
+                    onClick={() => onNavigate('assignments')}
+                    className="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                  >
+                    Post Task
                   </button>
                 </div>
               </div>
@@ -304,17 +324,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         )}
       </div>
 
-      {/* Recent Attendance Logs (Clean compact table/list) */}
+      {/* Recent Attendance Logs */}
       <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-2xs overflow-hidden">
         <div className="p-3 bg-slate-50 border-b border-[#DCE3ED] flex items-center justify-between">
           <span className="text-xs font-bold text-[#13284A] uppercase tracking-wider">
-            Recent Attendance
+            Recent Attendance Sessions
           </span>
           <button
             onClick={() => onNavigate('attendance')}
             className="text-[11px] font-semibold text-[#2E6FB0] hover:underline"
           >
-            View All →
+            View All Register →
           </button>
         </div>
 
@@ -331,15 +351,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                     <span className="font-bold text-slate-800 truncate">{sess.subjectName || sess.subjectCode}</span>
                     <span className="text-[10px] text-slate-500 shrink-0 font-mono">({sess.date})</span>
                   </div>
-                  <span className="text-[10px] text-slate-500 block truncate">{sess.topic || sess.period || 'Lecture'}</span>
+                  <span className="text-[10px] text-slate-500 block truncate">{sess.topic || sess.period || 'Lecture Session'}</span>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-[11px] font-bold text-emerald-700">
-                    {sess.presentCount || sess.recordsCount?.present || 0}P
+                    {sess.presentCount || sess.recordsCount?.present || 0} Present
                   </span>
                   <span className="text-slate-300 mx-1">/</span>
                   <span className="text-[11px] font-bold text-rose-700">
-                    {sess.absentCount || sess.recordsCount?.absent || 0}A
+                    {sess.absentCount || sess.recordsCount?.absent || 0} Absent
                   </span>
                 </div>
               </div>

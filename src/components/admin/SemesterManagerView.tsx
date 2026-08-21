@@ -7,8 +7,6 @@ import {
   AlertCircle,
   BookOpen,
   Users,
-  ShieldCheck,
-  ShieldAlert,
   Play,
   RotateCcw,
   Plus,
@@ -17,11 +15,10 @@ import {
   CheckSquare,
   Square,
   Trash2,
-  Clock,
-  Sparkles,
   Filter,
-  Check,
   UserCheck,
+  Search,
+  AlertTriangle,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Semester, Department, CampusSettings } from '../../types';
@@ -86,11 +83,15 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
   const [newSemAY, setNewSemAY] = useState<string>('2025-2026');
   const [newSemStatus, setNewSemStatus] = useState<'setup' | 'active'>('active');
 
+  // Delete Confirmation Modal State
+  const [semesterToDelete, setSemesterToDelete] = useState<EnrichedSemester | null>(null);
+
   // Promotion Modal State
   const [promoteSemester, setPromoteSemester] = useState<EnrichedSemester | null>(null);
   const [graduatingSem8Direct, setGraduatingSem8Direct] = useState<EnrichedSemester | null>(null);
   const [semesterStudents, setSemesterStudents] = useState<SemesterStudentItem[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [targetSemesterNum, setTargetSemesterNum] = useState<number>(7);
   const [targetAY, setTargetAY] = useState<string>('2025-2026');
@@ -131,7 +132,7 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
       });
       setSettings(res.settings);
       showToast(
-        `Switched operational term to ${termType === 'even' ? 'Even Semesters (2, 4, 6, 8)' : 'Odd Semesters (1, 3, 5, 7)'}! Updated semester cycles.`,
+        `Switched to ${termType === 'even' ? 'Even Semesters (2, 4, 6, 8)' : 'Odd Semesters (1, 3, 5, 7)'}`,
         'success'
       );
       await fetchSemesters();
@@ -146,7 +147,7 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
     setIsProcessing(true);
     try {
       await api.activateSemester(semesterId);
-      showToast('Semester activated! It is now the primary active term.', 'success');
+      showToast('Semester activated successfully', 'success');
       await fetchSemesters();
     } catch (err: any) {
       showToast(err.message || 'Failed to activate semester', 'error');
@@ -166,7 +167,7 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
         academicYear: newSemAY,
         status: newSemStatus,
       });
-      showToast(`Semester ${newSemNumber} (${newSemDept} Sec ${newSemSection}) created successfully!`, 'success');
+      showToast(`Semester ${newSemNumber} (${newSemDept}) created!`, 'success');
       setIsCreateModalOpen(false);
       await fetchSemesters();
     } catch (err: any) {
@@ -176,12 +177,13 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
     }
   };
 
-  const handleDeleteSemester = async (sem: EnrichedSemester) => {
-    if (!window.confirm(`Are you sure you want to delete Semester ${sem.number} (${sem.departmentCode})?`)) return;
+  const handleConfirmDeleteSemester = async () => {
+    if (!semesterToDelete) return;
     setIsProcessing(true);
     try {
-      await api.deleteSemester(sem.id);
-      showToast(`Semester ${sem.number} deleted successfully.`, 'info');
+      await api.deleteSemester(semesterToDelete.id);
+      showToast(`Semester ${semesterToDelete.number} (${semesterToDelete.departmentCode}) deleted`, 'info');
+      setSemesterToDelete(null);
       await fetchSemesters();
     } catch (err: any) {
       showToast(err.message || 'Failed to delete semester', 'error');
@@ -192,19 +194,19 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
 
   const openPromotionWizard = async (sem: EnrichedSemester) => {
     setPromoteSemester(sem);
-    const nextNum = sem.number < 8 ? sem.number + 1 : 9;
+    const nextNum = sem.number < 8 ? sem.number + 1 : 8;
     setTargetSemesterNum(nextNum);
     setTargetAY(sem.academicYear || '2025-2026');
     setAutoActivateNext(true);
     setLoadingStudents(true);
+    setStudentSearch('');
 
     try {
       const res = await api.getSemesterStudents(sem.id);
       setSemesterStudents(res.students);
-      // Pre-select all students
       setSelectedStudentIds(res.students.map((s) => s.id));
     } catch (err: any) {
-      showToast(err.message || 'Failed to fetch semester students', 'error');
+      showToast(err.message || 'Failed to fetch students', 'error');
     } finally {
       setLoadingStudents(false);
     }
@@ -235,11 +237,11 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
         activateNextSemester: autoActivateNext,
       });
 
-      showToast(res.message, 'success');
+      showToast(res.message || 'Batch promoted successfully', 'success');
       setPromoteSemester(null);
       await fetchSemesters();
     } catch (err: any) {
-      showToast(err.message || 'Failed to complete semester and promote students', 'error');
+      showToast(err.message || 'Failed to promote students', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -250,11 +252,11 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
     setIsProcessing(true);
     try {
       const res = await api.completeSemester(graduatingSem8Direct.id);
-      showToast(res.message, 'success');
+      showToast(res.message || '8th Semester graduated', 'success');
       setGraduatingSem8Direct(null);
       await fetchSemesters();
     } catch (err: any) {
-      showToast(err.message || 'Failed to complete 8th semester and graduate batch', 'error');
+      showToast(err.message || 'Failed to graduate batch', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -267,392 +269,262 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
     return matchDept && matchSem && matchStatus;
   });
 
-  const activeSemestersCount = semesters.filter((s) => s.status === 'active').length;
-  const totalStudentsEnrolled = semesters.reduce((acc, s) => acc + (s.studentsCount || 0), 0);
-
-  // Group student distribution across semesters for current department filter
-  const currentDeptForMap = selectedDeptFilter === 'ALL' ? 'CSE' : selectedDeptFilter;
-  const progressionSteps = [1, 2, 3, 4, 5, 6, 7, 8];
+  const searchedStudents = semesterStudents.filter(
+    (s) =>
+      s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.usn.toLowerCase().includes(studentSearch.toLowerCase())
+  );
 
   return (
-    <div className="space-y-5">
-      {/* Top Action Bar with Back Button */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs">
-        <div className="flex items-center gap-3">
-          {onBack && <BackButton onClick={onBack} label="Back to Overview" />}
+    <div className="space-y-3.5 animate-fade-in pb-4">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          {onBack && <BackButton onClick={onBack} label="Back" />}
           <div>
-            <h2 className="text-sm font-bold text-[#13284A]">Semester Lifecycle & Promotion Manager</h2>
-            <p className="text-[11px] text-[#667085]">Manage Semesters 1 through 8, term activation, and batch graduation.</p>
+            <h1 className="text-base font-bold text-[#13284A]">Semester Manager</h1>
+            <p className="text-[11px] text-slate-500">Manage semesters 1–8 and student progression.</p>
           </div>
         </div>
 
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer shrink-0 ml-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Create New Semester Cycle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#2E6FB0] transition-colors flex items-center gap-1.5 shadow-2xs active:scale-98"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Semester</span>
+          </button>
+        </div>
       </div>
 
-      {/* Campus Term Parity Quick-Switch Banner */}
-      <div className="p-4 rounded-xl bg-white border border-[#DCE3ED] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-100 text-[#2E6FB0]">
-            <Calendar className="w-5 h-5" />
+      {/* Quick Term Switcher */}
+      <div className="p-3 bg-white rounded-xl border border-[#DCE3ED] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-blue-50 text-[#2E6FB0]">
+            <Calendar className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#13284A]">Active Institutional Term:</span>
-              <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-blue-100 text-[#13284A] border border-blue-200">
-                {settings?.semesterTermType === 'even'
-                  ? 'Even Semester (2, 4, 6, 8)'
-                  : settings?.semesterTermType === 'odd'
-                  ? 'Odd Semester (1, 3, 5, 7)'
-                  : settings?.currentSemesterTerm || 'All Semesters (1 to 8)'}
-              </span>
-            </div>
-            <p className="text-[11px] text-[#667085] mt-0.5">
-              {settings?.semesterTermType === 'even'
-                ? 'Currently running even terms (Semesters 2, 4, 6, 8). Switch below to activate odd terms across all branches.'
-                : settings?.semesterTermType === 'odd'
-                ? 'Currently running odd terms (Semesters 1, 3, 5, 7). Switch below to activate even terms across all branches.'
-                : 'All semesters (1 through 8) configured and accessible across all departments.'}
-            </p>
+            <span className="text-xs font-bold text-[#13284A] block">Active Term</span>
+            <span className="text-[11px] text-slate-500">
+              {settings?.semesterTermType === 'even' ? 'Even Semesters (2, 4, 6, 8)' : 'Odd Semesters (1, 3, 5, 7)'}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
           <button
             type="button"
             onClick={() => handleSwitchTerm('even')}
-            disabled={switchingTerm || settings?.semesterTermType === 'even'}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+            disabled={switchingTerm}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
               settings?.semesterTermType === 'even'
-                ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-extrabold cursor-default'
-                : 'bg-white border-[#DCE3ED] text-[#667085] hover:bg-slate-50 hover:border-blue-300'
+                ? 'bg-white text-[#13284A] shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <CheckCircle2 className={`w-3.5 h-3.5 ${settings?.semesterTermType === 'even' ? 'text-[#2E6FB0]' : 'text-slate-300'}`} />
-            Even Term (2, 4, 6, 8)
+            Even (2, 4, 6, 8)
           </button>
-
           <button
             type="button"
             onClick={() => handleSwitchTerm('odd')}
-            disabled={switchingTerm || settings?.semesterTermType === 'odd'}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+            disabled={switchingTerm}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
               settings?.semesterTermType === 'odd'
-                ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-extrabold cursor-default'
-                : 'bg-white border-[#DCE3ED] text-[#667085] hover:bg-slate-50 hover:border-blue-300'
+                ? 'bg-white text-[#13284A] shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <CheckCircle2 className={`w-3.5 h-3.5 ${settings?.semesterTermType === 'odd' ? 'text-[#2E6FB0]' : 'text-slate-300'}`} />
-            Odd Term (1, 3, 5, 7)
+            Odd (1, 3, 5, 7)
           </button>
         </div>
       </div>
 
-      {/* Visual Progression Map */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#13284A] to-[#1E3A63] p-5 rounded-xl text-white shadow-md space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-              Department Academic Progression Pipeline ({currentDeptForMap}) — Semesters 1 through 8
-            </h3>
-          </div>
-          <span className="text-[11px] text-slate-300">
-            {activeSemestersCount} Active Cycle{activeSemestersCount === 1 ? '' : 's'} • {totalStudentsEnrolled} Total Students Managed
-          </span>
-        </div>
-
-        {/* Step Flow */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5 pt-1">
-          {progressionSteps.map((semNum) => {
-            const matchSem = semesters.find(
-              (s) => s.number === semNum && (selectedDeptFilter === 'ALL' ? s.departmentCode === 'CSE' : s.departmentCode === selectedDeptFilter)
-            );
-            const isActive = matchSem?.status === 'active';
-            const isArchived = matchSem?.status === 'archived';
-            const studentCount = matchSem?.studentsCount || 0;
-            const isSelected = selectedSemNumberFilter === String(semNum);
-
-            return (
-              <button
-                type="button"
-                key={semNum}
-                onClick={() => setSelectedSemNumberFilter(selectedSemNumberFilter === String(semNum) ? 'ALL' : String(semNum))}
-                className={`p-3 rounded-lg border flex flex-col justify-between text-left transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-amber-500/30 border-amber-300 ring-2 ring-amber-300 shadow-md'
-                    : isActive
-                    ? 'bg-[#2E6FB0]/40 border-amber-400/80 ring-1 ring-amber-400/40 shadow-sm hover:bg-[#2E6FB0]/60'
-                    : isArchived
-                    ? 'bg-white/5 border-white/10 opacity-75 hover:bg-white/10'
-                    : matchSem
-                    ? 'bg-white/10 border-white/20 hover:bg-white/20'
-                    : 'bg-black/20 border-dashed border-white/10 opacity-40 hover:opacity-70'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-white">Sem {semNum}</span>
-                  {isActive && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Active Term" />
-                  )}
-                </div>
-
-                <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-300 flex items-center gap-1">
-                    <Users className="w-3 h-3 text-slate-400" />
-                    {studentCount}
-                  </span>
-                  <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-amber-300' : isArchived ? 'text-slate-400' : 'text-slate-300'}`}>
-                    {matchSem ? matchSem.status : 'Empty'}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Multi-tier Filter Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-xs space-y-3">
-        {/* Row 1: Department Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-[#13284A] shrink-0 min-w-20 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5 text-[#2E6FB0]" />
-            Department:
-          </span>
+      {/* Quick Filter Strip */}
+      <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2">
+        {/* Branch Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <span className="font-bold text-slate-500 shrink-0 text-[11px]">Branch:</span>
           <button
             onClick={() => setSelectedDeptFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-bold text-xs transition-colors shrink-0 ${
               selectedDeptFilter === 'ALL'
-                ? 'bg-[#13284A] text-white shadow-xs'
-                : 'bg-slate-50 border border-[#DCE3ED] text-[#667085] hover:bg-slate-100'
+                ? 'bg-[#13284A] text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            All Departments ({semesters.length})
+            All
           </button>
-          {departments.map((dept) => {
-            const count = semesters.filter((s) => s.departmentCode === dept.code).length;
-            return (
-              <button
-                key={dept.code}
-                onClick={() => setSelectedDeptFilter(dept.code)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  selectedDeptFilter === dept.code
-                    ? 'bg-[#13284A] text-white shadow-xs'
-                    : 'bg-slate-50 border border-[#DCE3ED] text-[#667085] hover:bg-slate-100'
-                }`}
-              >
-                {dept.code} ({count})
-              </button>
-            );
-          })}
+          {departments.map((dept) => (
+            <button
+              key={dept.code}
+              onClick={() => setSelectedDeptFilter(dept.code)}
+              className={`px-2.5 py-1 rounded-md font-bold text-xs transition-colors shrink-0 ${
+                selectedDeptFilter === dept.code
+                  ? 'bg-[#13284A] text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {dept.code}
+            </button>
+          ))}
         </div>
 
-        {/* Row 2: Semester Number Filters (1 to 8) */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-          <span className="text-xs font-bold text-[#13284A] shrink-0 min-w-20 flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5 text-[#2E6FB0]" />
-            Semester:
-          </span>
+        {/* Semester Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-1 border-t border-slate-100 text-xs">
+          <span className="font-bold text-slate-500 shrink-0 text-[11px]">Sem:</span>
           <button
             onClick={() => setSelectedSemNumberFilter('ALL')}
-            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors shrink-0 ${
               selectedSemNumberFilter === 'ALL'
-                ? 'bg-[#2E6FB0] text-white shadow-xs'
+                ? 'bg-[#2E6FB0] text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             All (1–8)
           </button>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
-            const countInSem = semesters.filter(
-              (s) => s.number === num && (selectedDeptFilter === 'ALL' || s.departmentCode === selectedDeptFilter)
-            ).length;
-            return (
-              <button
-                key={num}
-                onClick={() => setSelectedSemNumberFilter(selectedSemNumberFilter === String(num) ? 'ALL' : String(num))}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                  selectedSemNumberFilter === String(num)
-                    ? 'bg-[#2E6FB0] text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <span>Sem {num}</span>
-                {countInSem > 0 && <span className="opacity-70 text-[10px]">({countInSem})</span>}
-              </button>
-            );
-          })}
-
-          <div className="ml-auto flex items-center gap-1.5">
-            <span className="text-xs font-medium text-[#667085]">Status:</span>
-            {(['ALL', 'active', 'setup', 'archived'] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setSelectedStatusFilter(st)}
-                className={`px-2 py-1 rounded text-xs font-semibold uppercase text-[10px] transition-colors ${
-                  selectedStatusFilter === st
-                    ? 'bg-slate-800 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+            <button
+              key={num}
+              onClick={() => setSelectedSemNumberFilter(selectedSemNumberFilter === String(num) ? 'ALL' : String(num))}
+              className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-colors shrink-0 ${
+                selectedSemNumberFilter === String(num)
+                  ? 'bg-[#2E6FB0] text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              S{num}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Grid of Semesters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* Semesters Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {loading ? (
-          <div className="col-span-3 py-16 text-center text-sm text-[#667085] bg-white rounded-xl border border-[#DCE3ED]">
-            Loading semester lifecycles...
+          <div className="col-span-full py-12 text-center text-xs text-slate-500 bg-white rounded-xl border border-[#DCE3ED]">
+            Loading semesters...
           </div>
         ) : filteredSemesters.length === 0 ? (
-          <div className="col-span-3 py-16 text-center text-xs text-[#667085] bg-white rounded-xl border border-[#DCE3ED] space-y-3">
-            <Layers className="w-8 h-8 text-slate-300 mx-auto" />
-            <p className="font-semibold text-slate-700">No semester cycles found for {selectedDeptFilter}.</p>
+          <div className="col-span-full py-12 text-center text-xs text-slate-500 bg-white rounded-xl border border-[#DCE3ED] space-y-2">
+            <p className="font-semibold text-slate-700">No semesters found</p>
             <button
-              onClick={() => {
-                if (selectedDeptFilter !== 'ALL') setNewSemDept(selectedDeptFilter);
-                setIsCreateModalOpen(true);
-              }}
-              className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 inline-flex items-center gap-1.5 cursor-pointer"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#2E6FB0] transition-colors inline-flex items-center gap-1"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Create Semester Cycle
+              <Plus className="w-3.5 h-3.5" /> Add Semester
             </button>
           </div>
         ) : (
-          filteredSemesters.map((sem, idx) => {
+          filteredSemesters.map((sem) => {
             const isActive = sem.status === 'active';
             const isSetup = sem.status === 'setup';
             const isArchived = sem.status === 'archived';
 
             return (
               <div
-                key={sem.id || `sem-${idx}`}
-                className={`bg-white rounded-xl border p-5 flex flex-col justify-between shadow-xs transition-all ${
-                  isActive
-                    ? 'border-[#13284A] ring-2 ring-[#13284A]/10 bg-gradient-to-b from-blue-50/20 to-white'
-                    : 'border-[#DCE3ED]'
+                key={sem.id}
+                className={`bg-white rounded-xl border p-3.5 flex flex-col justify-between shadow-2xs transition-all ${
+                  isActive ? 'border-[#2E6FB0] ring-1 ring-[#2E6FB0]/20' : 'border-[#DCE3ED]'
                 }`}
               >
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 text-[11px] font-mono font-bold rounded bg-slate-100 text-[#13284A] border border-slate-200">
-                          Sem {sem.number} • {sem.departmentCode}
-                        </span>
-                        <span className="text-[11px] font-bold text-[#667085]">
-                          Sec {sem.section}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-bold text-[#13284A] mt-1.5 font-serif">
-                        Semester {sem.number} ({sem.departmentCode})
-                      </h3>
-                      <p className="text-[11px] text-[#667085]">
-                        Academic Year: <strong>AY {sem.academicYear}</strong>
-                      </p>
+                <div className="space-y-2.5">
+                  {/* Top line: Badges and Delete Icon */}
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-[#13284A] text-white">
+                        {sem.departmentCode}
+                      </span>
+                      <span className="font-bold text-xs text-[#13284A]">
+                        Sem {sem.number} <span className="text-slate-400">({sem.section})</span>
+                      </span>
                     </div>
-                    <StatusPill status={sem.status} size="sm" />
+                    <div className="flex items-center gap-1.5">
+                      <StatusPill status={sem.status} size="sm" />
+                      <button
+                        title="Delete Semester Cycle"
+                        onClick={() => setSemesterToDelete(sem)}
+                        className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="p-3 bg-slate-50/80 rounded-lg space-y-2 text-xs border border-slate-100">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="flex items-center gap-1.5 text-slate-500">
-                        <Users className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                        Enrolled Students:
-                      </span>
-                      <span className="font-bold text-[#13284A]">{sem.studentsCount} Students</span>
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-3 gap-1 bg-slate-50 p-2 rounded-lg text-center text-xs border border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Students</span>
+                      <span className="font-bold text-[#13284A]">{sem.studentsCount}</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="flex items-center gap-1.5 text-slate-500">
-                        <BookOpen className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                        Subjects Offered:
-                      </span>
-                      <span className="font-bold text-slate-800">{sem.subjectsCount} Subjects</span>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Subjects</span>
+                      <span className="font-bold text-[#13284A]">{sem.subjectsCount}</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span className="flex items-center gap-1.5 text-slate-500">
-                        <UserCheck className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                        Faculty Allocated:
-                      </span>
-                      <span className="font-bold text-slate-800">{sem.teacherAssignmentsCount} Faculty</span>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Faculty</span>
+                      <span className="font-bold text-[#13284A]">{sem.teacherAssignmentsCount}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 space-y-2 mt-4">
+                {/* Actions */}
+                <div className="pt-3 border-t border-slate-100 mt-3 space-y-1.5">
                   {isSetup && (
                     <button
                       disabled={isProcessing}
                       onClick={() => handleActivate(sem.id)}
-                      className="w-full py-2.5 text-xs font-bold rounded-lg bg-[#2E6FB0] text-white hover:bg-[#2E6FB0]/90 transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                      className="w-full py-1.5 text-xs font-bold rounded-lg bg-[#2E6FB0] text-white hover:bg-[#2E6FB0]/90 transition-colors flex items-center justify-center gap-1 shadow-2xs"
                     >
-                      <Play className="w-3.5 h-3.5" />
-                      Start / Set as Active Term
+                      <Play className="w-3 h-3" />
+                      <span>Set as Active</span>
                     </button>
                   )}
 
                   {isActive && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       {sem.number === 8 ? (
                         <button
                           disabled={isProcessing}
                           onClick={() => setGraduatingSem8Direct(sem)}
-                          className="w-full py-2.5 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                          className="w-full py-1.5 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
                         >
-                          <GraduationCap className="w-4 h-4 text-white" />
-                          Complete 8th Sem & Graduate (Delete Students)
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          <span>Graduate Sem 8</span>
                         </button>
-                      ) : null}
-                      <button
-                        disabled={isProcessing}
-                        onClick={() => openPromotionWizard(sem)}
-                        className={`w-full py-2.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer ${
-                          sem.number === 8
-                            ? 'bg-slate-800 text-slate-100 hover:bg-slate-900 text-[11px]'
-                            : 'bg-[#13284A] text-white hover:bg-[#13284A]/90'
-                        }`}
-                      >
-                        <ArrowRight className="w-4 h-4 text-amber-400" />
-                        {sem.number === 8 ? 'Custom Batch Progression Wizard →' : `Complete & Transfer to Sem ${sem.number + 1} →`}
-                      </button>
+                      ) : (
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => openPromotionWizard(sem)}
+                          className="w-full py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#2E6FB0] transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                        >
+                          <span>Promote to Sem {sem.number + 1}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   )}
 
                   {isArchived && (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 py-2 text-center text-xs font-semibold text-slate-400 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center gap-1.5">
-                        <Archive className="w-3.5 h-3.5" />
-                        Archived & Read-Only
-                      </div>
+                    <div className="flex items-center justify-between gap-1 text-xs">
+                      <span className="text-slate-400 text-[11px] font-semibold">Archived</span>
                       <button
-                        title="Reactivate Semester"
                         onClick={() => handleActivate(sem.id)}
-                        className="p-2 text-xs text-slate-500 hover:text-[#2E6FB0] hover:bg-slate-100 rounded-lg transition-colors border border-[#DCE3ED] cursor-pointer"
+                        className="px-2 py-1 text-xs text-[#2E6FB0] hover:underline font-bold"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
+                        Reactivate
                       </button>
                     </div>
                   )}
 
-                  {sem.studentsCount === 0 && (
-                    <button
-                      onClick={() => handleDeleteSemester(sem)}
-                      className="w-full text-center text-[11px] text-slate-400 hover:text-rose-600 transition-colors pt-1 cursor-pointer"
-                    >
-                      Remove Empty Cycle
-                    </button>
-                  )}
+                  {/* Secondary Quick Delete button */}
+                  <button
+                    onClick={() => setSemesterToDelete(sem)}
+                    className="w-full text-center text-[10px] text-slate-400 hover:text-rose-600 transition-colors pt-0.5 flex items-center justify-center gap-1"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                    <span>Delete Cycle</span>
+                  </button>
                 </div>
               </div>
             );
@@ -664,404 +536,282 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create New Semester Cycle"
-        subtitle="Provision an academic cycle for any semester (1 through 8)."
-        maxWidth="lg"
+        title="Add Semester"
+        maxWidth="md"
       >
-        <form onSubmit={handleCreateSemester} className="space-y-4 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block font-bold text-slate-700">Semester Number *</label>
+        <form onSubmit={handleCreateSemester} className="space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Semester Number</label>
               <select
                 value={newSemNumber}
                 onChange={(e) => setNewSemNumber(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] bg-white"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <option key={n} value={n}>
-                    Semester {n}
-                  </option>
+                  <option key={n} value={n}>Semester {n}</option>
                 ))}
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label className="block font-bold text-slate-700">Department / Branch *</label>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Department</label>
               <select
                 value={newSemDept}
                 onChange={(e) => setNewSemDept(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] bg-white"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
               >
                 {departments.map((d) => (
-                  <option key={d.code} value={d.code}>
-                    {d.code} - {d.name}
-                  </option>
+                  <option key={d.code} value={d.code}>{d.code}</option>
                 ))}
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label className="block font-bold text-slate-700">Section *</label>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Section</label>
               <input
                 type="text"
                 value={newSemSection}
                 onChange={(e) => setNewSemSection(e.target.value.toUpperCase())}
-                placeholder="e.g. A, B, C"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0]"
+                placeholder="A"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
                 required
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="block font-bold text-slate-700">Academic Year *</label>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Academic Year</label>
               <input
                 type="text"
                 value={newSemAY}
                 onChange={(e) => setNewSemAY(e.target.value)}
-                placeholder="e.g. 2025-2026"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0]"
+                placeholder="2025-2026"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-100">
-            <label className="block font-bold text-slate-700">Initial Status</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setNewSemStatus('active')}
-                className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                  newSemStatus === 'active'
-                    ? 'border-[#13284A] bg-blue-50/50 text-[#13284A] font-bold'
-                    : 'border-[#DCE3ED] text-[#667085]'
-                }`}
-              >
-                <p className="text-xs font-bold flex items-center gap-1.5">
-                  <Play className="w-3.5 h-3.5 text-emerald-600" />
-                  Start Live (Active)
-                </p>
-                <p className="text-[11px] text-[#667085] mt-0.5">
-                  Immediately ready for attendance taking & test marks.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setNewSemStatus('setup')}
-                className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                  newSemStatus === 'setup'
-                    ? 'border-[#13284A] bg-blue-50/50 text-[#13284A] font-bold'
-                    : 'border-[#DCE3ED] text-[#667085]'
-                }`}
-              >
-                <p className="text-xs font-bold flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  Draft / Setup
-                </p>
-                <p className="text-[11px] text-[#667085] mt-0.5">
-                  Configure student lists & timetables before opening term.
-                </p>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600 cursor-pointer"
+              className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isProcessing}
-              className="px-5 py-2 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors shadow-xs cursor-pointer"
+              className="px-4 py-1.5 text-xs font-bold text-white bg-[#13284A] hover:bg-[#2E6FB0] rounded-lg shadow-2xs"
             >
-              {isProcessing ? 'Creating...' : 'Create Semester Cycle'}
+              Save Semester
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* BATCH PROMOTION & PROGRESSION MODAL */}
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal
+        isOpen={!!semesterToDelete}
+        onClose={() => setSemesterToDelete(null)}
+        title="Delete Semester Cycle"
+        maxWidth="sm"
+      >
+        <div className="space-y-3.5 text-xs">
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-rose-900">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-sm text-[#13284A]">
+                Delete Semester {semesterToDelete?.number} ({semesterToDelete?.departmentCode})?
+              </p>
+              <p className="text-xs text-rose-700 font-medium mt-0.5">
+                Section: {semesterToDelete?.section} &bull; AY: {semesterToDelete?.academicYear || '2025-2026'}
+              </p>
+              <p className="text-[11px] text-slate-600 mt-1">
+                This permanently removes this semester cycle and its faculty-course allocations.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">Students</span>
+              <span className="font-bold text-slate-800 text-sm">{semesterToDelete?.studentsCount ?? 0}</span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">Subjects</span>
+              <span className="font-bold text-slate-800 text-sm">{semesterToDelete?.subjectsCount ?? 0}</span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">Status</span>
+              <span className="font-bold text-slate-800 text-sm capitalize">{semesterToDelete?.status}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons: Always prominent and visible */}
+          <div className="pt-3 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSemesterToDelete(null)}
+              className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-center"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={handleConfirmDeleteSemester}
+              className="w-full sm:w-auto px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isProcessing ? 'Deleting...' : 'Delete Semester'}</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* PROMOTION MODAL */}
       <Modal
         isOpen={!!promoteSemester}
         onClose={() => setPromoteSemester(null)}
-        title={
-          promoteSemester
-            ? `Promote & Transfer Semester ${promoteSemester.number} (${promoteSemester.departmentCode})`
-            : 'Promote Students'
-        }
-        subtitle="Archive current term and automatically progress students to the next semester cycle."
-        maxWidth="2xl"
+        title={`Promote Students: Sem ${promoteSemester?.number} → Sem ${targetSemesterNum}`}
+        maxWidth="lg"
       >
-        {promoteSemester && (
-          <div className="space-y-4 text-xs">
-            {/* Progression Banner */}
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50/80 rounded-xl border border-blue-200 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-bold uppercase text-slate-500">Current Semester</span>
-                <h4 className="text-sm font-bold text-[#13284A]">
-                  Semester {promoteSemester.number} ({promoteSemester.departmentCode})
-                </h4>
-                <p className="text-[11px] text-[#667085]">Section {promoteSemester.section} • AY {promoteSemester.academicYear}</p>
-              </div>
-
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
-                <ArrowRight className="w-5 h-5 text-[#2E6FB0] animate-pulse" />
-              </div>
-
-              <div className="space-y-0.5 text-right">
-                <span className="text-[10px] font-bold uppercase text-slate-500">Target Progression</span>
-                <h4 className="text-sm font-bold text-emerald-800">
-                  {targetSemesterNum <= 8 ? `Semester ${targetSemesterNum} (${promoteSemester.departmentCode})` : 'Graduation / Alumni'}
-                </h4>
-                <p className="text-[11px] text-emerald-700">Section {promoteSemester.section} • AY {targetAY}</p>
-              </div>
+        <div className="space-y-3 text-xs">
+          <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+            <div>
+              <span className="font-bold text-[#13284A] block">Target: Sem {targetSemesterNum}</span>
+              <span className="text-[11px] text-slate-500">{promoteSemester?.departmentCode}</span>
             </div>
-
-            {/* Target Settings */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Target Semester Number</label>
-                <select
-                  value={targetSemesterNum}
-                  onChange={(e) => setTargetSemesterNum(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white focus:ring-1 focus:ring-[#2E6FB0]"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n}>
-                      Semester {n} {n === promoteSemester.number + 1 ? '(Next Sequential)' : ''}
-                    </option>
-                  ))}
-                  <option value={9}>🎓 Semester 8 Complete (Graduate Batch)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Next Academic Year</label>
-                <input
-                  type="text"
-                  value={targetAY}
-                  onChange={(e) => setTargetAY(e.target.value)}
-                  placeholder="e.g. 2025-2026 or 2026-2027"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white focus:ring-1 focus:ring-[#2E6FB0]"
-                />
-              </div>
-
-              <div className="col-span-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoActivateNext}
-                    onChange={(e) => setAutoActivateNext(e.target.checked)}
-                    className="w-4 h-4 rounded text-[#13284A] focus:ring-[#2E6FB0]"
-                  />
-                  <span className="font-semibold text-slate-800">
-                    Automatically create & activate Semester {targetSemesterNum <= 8 ? targetSemesterNum : '8+'} as the active live term
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Student Selection Table */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-slate-800">
-                    Select Students to Transfer & Promote ({selectedStudentIds.length} / {semesterStudents.length})
-                  </h4>
-                  <span className="text-[11px] text-[#667085]">
-                    (Uncheck to detain / retain specific students)
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSelectAllStudents}
-                  className="text-xs font-bold text-[#2E6FB0] hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  {selectedStudentIds.length === semesterStudents.length ? 'Deselect All' : 'Select All'}
-                </button>
-              </div>
-
-              <div className="border border-[#DCE3ED] rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-                {loadingStudents ? (
-                  <div className="p-8 text-center text-xs text-[#667085]">Loading students...</div>
-                ) : semesterStudents.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-[#667085]">
-                    No enrolled students found in Semester {promoteSemester.number} ({promoteSemester.departmentCode}).
-                  </div>
-                ) : (
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
-                      <tr>
-                        <th className="p-2.5 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedStudentIds.length === semesterStudents.length && semesterStudents.length > 0}
-                            onChange={handleSelectAllStudents}
-                            className="w-3.5 h-3.5 rounded text-[#13284A]"
-                          />
-                        </th>
-                        <th className="p-2.5 font-bold text-slate-700">USN</th>
-                        <th className="p-2.5 font-bold text-slate-700">Student Name</th>
-                        <th className="p-2.5 font-bold text-slate-700 text-right">Attendance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {semesterStudents.map((st) => {
-                        const isSelected = selectedStudentIds.includes(st.id);
-                        return (
-                          <tr
-                            key={st.id}
-                            onClick={() => toggleStudentSelection(st.id)}
-                            className={`hover:bg-slate-50 cursor-pointer transition-colors ${
-                              isSelected ? 'bg-blue-50/30' : 'opacity-60 bg-rose-50/20'
-                            }`}
-                          >
-                            <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleStudentSelection(st.id)}
-                                className="w-3.5 h-3.5 rounded text-[#13284A]"
-                              />
-                            </td>
-                            <td className="p-2.5 font-mono font-bold text-[#13284A]">{st.usn}</td>
-                            <td className="p-2.5 font-medium text-slate-800">{st.name}</td>
-                            <td className="p-2.5 text-right font-bold">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[11px] ${
-                                  st.attendancePercentage >= 75
-                                    ? 'bg-emerald-50 text-emerald-700'
-                                    : 'bg-rose-50 text-rose-700'
-                                }`}
-                              >
-                                {st.attendancePercentage}%
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-
-            {/* Confirmation & Buttons */}
-            {promoteSemester.number === 8 || targetSemesterNum > 8 ? (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 space-y-1">
-                <div className="flex items-center gap-2 font-bold text-xs">
-                  <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>Permanent Batch Graduation Action</span>
-                </div>
-                <p className="text-[11px] text-rose-700 leading-relaxed">
-                  Completing Semester 8 will archive this term and <strong>permanently delete the {selectedStudentIds.length} selected student accounts and revoke their login access</strong>.
-                </p>
-              </div>
-            ) : null}
-
-            <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
-              <p className="text-[11px] text-[#667085]">
-                {promoteSemester.number === 8 || targetSemesterNum > 8
-                  ? `Graduating ${selectedStudentIds.length} student${selectedStudentIds.length === 1 ? '' : 's'} upon completing Semester 8.`
-                  : `Freezes Sem ${promoteSemester.number} records and moves ${selectedStudentIds.length} student${selectedStudentIds.length === 1 ? '' : 's'} to Sem ${targetSemesterNum}.`}
-              </p>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPromoteSemester(null)}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isProcessing}
-                  onClick={handleExecutePromotion}
-                  className={`px-5 py-2 text-xs font-bold rounded-lg text-white flex items-center gap-2 shadow-xs cursor-pointer ${
-                    promoteSemester.number === 8 || targetSemesterNum > 8
-                      ? 'bg-rose-600 hover:bg-rose-700'
-                      : 'bg-[#13284A] hover:bg-[#13284A]/90'
-                  }`}
-                >
-                  {promoteSemester.number === 8 || targetSemesterNum > 8 ? (
-                    <>
-                      <GraduationCap className="w-4 h-4 text-white" />
-                      {isProcessing ? 'Graduating...' : `Complete 8th Sem & Delete Students (${selectedStudentIds.length})`}
-                    </>
-                  ) : (
-                    <>
-                      <ArrowRight className="w-4 h-4 text-amber-400" />
-                      {isProcessing
-                        ? 'Transferring...'
-                        : `Complete Sem ${promoteSemester.number} & Promote (${selectedStudentIds.length})`}
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-slate-600 font-semibold">
+                Auto-activate next semester
+              </label>
+              <input
+                type="checkbox"
+                checked={autoActivateNext}
+                onChange={(e) => setAutoActivateNext(e.target.checked)}
+                className="rounded text-[#2E6FB0]"
+              />
             </div>
           </div>
-        )}
+
+          {/* Student Search & Select All */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                placeholder="Search students..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSelectAllStudents}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 shrink-0"
+            >
+              {selectedStudentIds.length === semesterStudents.length ? 'Deselect All' : 'Select All'} ({selectedStudentIds.length}/{semesterStudents.length})
+            </button>
+          </div>
+
+          {/* Student List */}
+          <div className="max-h-60 overflow-y-auto space-y-1 border border-slate-100 rounded-lg p-1">
+            {loadingStudents ? (
+              <div className="py-6 text-center text-slate-500">Loading students...</div>
+            ) : searchedStudents.length === 0 ? (
+              <div className="py-6 text-center text-slate-400">No students found</div>
+            ) : (
+              searchedStudents.map((s) => {
+                const isSelected = selectedStudentIds.includes(s.id);
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => toggleStudentSelection(s.id)}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                      isSelected ? 'bg-blue-50/60 border border-blue-200/60' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isSelected ? (
+                        <CheckSquare className="w-4 h-4 text-[#2E6FB0]" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-400" />
+                      )}
+                      <div>
+                        <span className="font-bold text-[#13284A] block">{s.name}</span>
+                        <span className="font-mono text-[10px] text-slate-500">{s.usn}</span>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-600">
+                      {s.attendancePercentage ? `${s.attendancePercentage}%` : '-'}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPromoteSemester(null)}
+              className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isProcessing || selectedStudentIds.length === 0}
+              onClick={handleExecutePromotion}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-[#13284A] hover:bg-[#2E6FB0] rounded-lg shadow-2xs disabled:opacity-50"
+            >
+              Promote ({selectedStudentIds.length}) Students
+            </button>
+          </div>
+        </div>
       </Modal>
 
-      {/* DIRECT SEMESTER 8 GRADUATION & DELETION MODAL */}
+      {/* GRADUATE SEMESTER 8 CONFIRMATION MODAL */}
       <Modal
         isOpen={!!graduatingSem8Direct}
         onClose={() => setGraduatingSem8Direct(null)}
-        title="Complete Semester 8 & Graduate Batch"
-        subtitle="This action finalizes the 8th semester and permanently removes graduating students."
+        title="Graduate 8th Semester Batch"
         maxWidth="md"
       >
-        {graduatingSem8Direct && (
-          <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-2">
-              <div className="flex items-center gap-2 font-bold text-sm text-rose-800">
-                <ShieldAlert className="w-5 h-5 text-rose-600" />
-                <span>Delete Graduating Students & Revoke Logins</span>
-              </div>
-              <p className="text-xs text-rose-700 leading-relaxed">
-                Completing <strong>Semester 8 ({graduatingSem8Direct.departmentCode} - Sec {graduatingSem8Direct.section})</strong> will:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-800 pl-1">
-                <li>Mark Semester 8 as completed and archived</li>
-                <li>Permanently <strong>delete all {graduatingSem8Direct.studentsCount} students</strong> in this batch</li>
-                <li>Instantly <strong>revoke student user credentials & login access</strong></li>
-                <li>Archive final marks and attendance records</li>
-              </ul>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 flex items-center justify-between">
-              <span className="font-medium">Department / Section:</span>
-              <span className="font-bold text-[#13284A]">
-                {graduatingSem8Direct.departmentCode} - Section {graduatingSem8Direct.section} (AY {graduatingSem8Direct.academicYear})
-              </span>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setGraduatingSem8Direct(null)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={handleDirectGraduateSem8}
-                className="px-5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 shadow-xs cursor-pointer"
-              >
-                <GraduationCap className="w-4 h-4 text-white" />
-                {isProcessing ? 'Processing Graduation...' : 'Confirm: Complete 8th Sem & Delete Students'}
-              </button>
-            </div>
+        <div className="space-y-3 text-xs">
+          <p className="text-slate-600">
+            Are you sure you want to graduate and complete{' '}
+            <strong>Semester 8 ({graduatingSem8Direct?.departmentCode})</strong>?
+          </p>
+          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 space-y-1">
+            <p className="font-bold">Final Academic Completion:</p>
+            <p className="text-[11px]">
+              This will archive the 8th semester cohort as graduated and update all associated academic records.
+            </p>
           </div>
-        )}
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setGraduatingSem8Direct(null)}
+              className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={handleDirectGraduateSem8}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-2xs"
+            >
+              Confirm Graduation
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

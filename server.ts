@@ -1421,6 +1421,60 @@ app.post('/api/admin/students', requireRole('admin'), (req: AuthenticatedRequest
   });
 });
 
+app.put('/api/admin/students/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { name, usn, department, semester, section, email } = req.body;
+  const store = db.getStore();
+  const student = store.students.find((s) => s.id === req.params.id || s.usn.toUpperCase() === req.params.id.toUpperCase());
+  if (!student) {
+    return res.status(404).json({ error: 'Student record not found.' });
+  }
+
+  if (usn) student.usn = usn.toUpperCase().trim();
+  if (department) student.department = department.toUpperCase().trim();
+  if (semester) student.currentSemester = Number(semester);
+  if (section) student.section = section.toUpperCase().trim();
+
+  const user = store.users.find((u) => u.id === student.userId);
+  if (user) {
+    if (name) user.name = name.trim();
+    if (email) user.email = email.toLowerCase().trim();
+  }
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'STUDENT_UPDATED',
+    `Updated student record ${student.usn} (${user?.name})`
+  );
+
+  res.json({ success: true, student: { ...student, user } });
+});
+
+app.delete('/api/admin/students/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const store = db.getStore();
+  const index = store.students.findIndex((s) => s.id === req.params.id || s.usn.toUpperCase() === req.params.id.toUpperCase());
+  if (index === -1) {
+    return res.status(404).json({ error: 'Student record not found.' });
+  }
+
+  const [removed] = store.students.splice(index, 1);
+  const userIdx = store.users.findIndex((u) => u.id === removed.userId);
+  if (userIdx !== -1) {
+    store.users.splice(userIdx, 1);
+  }
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'STUDENT_DELETED',
+    `Deleted student record ${removed.usn}`
+  );
+
+  res.json({ success: true, message: `Student ${removed.usn} deleted successfully.` });
+});
+
 app.get('/api/admin/subjects', requireRole('admin', 'teacher'), (req: AuthenticatedRequest, res: Response) => {
   const store = db.getStore();
   const enriched = store.subjects.map((sub) => {
@@ -1744,6 +1798,9 @@ app.delete('/api/admin/semesters/:id', requireRole('admin'), (req: Authenticated
     return res.status(404).json({ error: 'Semester not found.' });
   }
   const [removed] = store.semesters.splice(index, 1);
+  // Also clean up any teacher allocations for this cycle
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter((a) => a.semesterId !== req.params.id);
+
   db.logAudit(
     req.user!.id,
     req.user!.name,

@@ -107,6 +107,7 @@ const MainLayout: React.FC = () => {
           return <TimetableAIView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'semesters':
           return <SemesterManagerView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
+        case 'notices':
         case 'notices-events':
           return <NoticesEventsAdminView onBack={() => handleNavigate('overview')} onNavigate={handleNavigate} />;
         case 'reports':
@@ -129,6 +130,7 @@ const MainLayout: React.FC = () => {
           return <AssignmentsTeacherView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'marks':
           return <TestMarksTeacherView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
+        case 'notices':
         case 'notices-events':
           return <StudentNoticesEventsView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         default:
@@ -147,6 +149,7 @@ const MainLayout: React.FC = () => {
           return <StudentAssignmentsView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'marks':
           return <StudentMarksView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
+        case 'notices':
         case 'notices-events':
           return <StudentNoticesEventsView onBack={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
         case 'profile':

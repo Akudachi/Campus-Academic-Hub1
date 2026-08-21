@@ -10,29 +10,19 @@ import {
   CheckCircle2,
   AlertTriangle,
   Layers,
-  Terminal,
   Cpu,
   Clock,
   ShieldCheck,
   Globe,
   Mail,
   Sliders,
-  FileCode,
-  Copy,
-  Check,
-  RefreshCw,
-  WifiOff,
-  Wifi,
-  HardDrive,
   Calendar,
   Sparkles,
   ArrowRightLeft,
+  Check,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { storageService } from '../../lib/storageService';
 import { CampusSettings, SystemStatusInfo } from '../../types';
-import { MetricCard } from '../common/MetricCard';
-import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
 import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
@@ -43,14 +33,13 @@ interface CampusSettingsViewProps {
   onNavigate?: (tabId: string) => void;
 }
 
-export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, onNavigate }) => {
+export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }) => {
   const { showToast } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'departments' | 'backup' | 'deploy'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'departments' | 'backup' | 'system'>('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   // Settings State
   const [settings, setSettings] = useState<CampusSettings>({
@@ -66,7 +55,6 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, 
 
   // System Status State
   const [systemStatus, setSystemStatus] = useState<SystemStatusInfo | null>(null);
-  const [refreshingStatus, setRefreshingStatus] = useState(false);
   const [switchingTerm, setSwitchingTerm] = useState(false);
 
   // Restore file ref
@@ -93,8 +81,8 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, 
     fetchData();
   }, []);
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setSaving(true);
     try {
       const res = await api.updateCampusSettings(settings);
@@ -107,15 +95,11 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, 
     }
   };
 
-  const handleQuickSwitchTerm = async (termType: 'even' | 'odd' | 'custom') => {
-    let customName = '';
-    if (termType === 'even') {
-      customName = 'Even Semester (Semesters 2, 4, 6, 8)';
-    } else if (termType === 'odd') {
-      customName = 'Odd Semester (Semesters 1, 3, 5, 7)';
-    } else {
-      customName = settings.currentSemesterTerm || 'Custom Semester Term';
-    }
+  const handleQuickSwitchTerm = async (termType: 'even' | 'odd') => {
+    const customName =
+      termType === 'even'
+        ? 'Even Semester (Semesters 2, 4, 6, 8)'
+        : 'Odd Semester (Semesters 1, 3, 5, 7)';
 
     setSettings({
       ...settings,
@@ -123,25 +107,23 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, 
       currentSemesterTerm: customName,
     });
 
-    if (termType === 'even' || termType === 'odd') {
-      setSwitchingTerm(true);
-      try {
-        const res = await api.switchSemesterTerm({
-          termType,
-          academicYear: settings.academicYear,
-          customTermName: customName,
-          activateMatchingSemesters: true,
-        });
-        setSettings(res.settings);
-        showToast(
-          `Switched campus term to ${termType === 'even' ? 'Even Semester (2, 4, 6, 8)' : 'Odd Semester (1, 3, 5, 7)'}! Synchronized active semesters across all branches.`,
-          'success'
-        );
-      } catch (err: any) {
-        showToast(err.message || 'Failed to switch semester term', 'error');
-      } finally {
-        setSwitchingTerm(false);
-      }
+    setSwitchingTerm(true);
+    try {
+      const res = await api.switchSemesterTerm({
+        termType,
+        academicYear: settings.academicYear,
+        customTermName: customName,
+        activateMatchingSemesters: true,
+      });
+      setSettings(res.settings);
+      showToast(
+        `Switched campus term to ${termType === 'even' ? 'Even Semester (2, 4, 6, 8)' : 'Odd Semester (1, 3, 5, 7)'}!`,
+        'success'
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Failed to switch semester term', 'error');
+    } finally {
+      setSwitchingTerm(false);
     }
   };
 
@@ -171,8 +153,6 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, 
     }
   };
 
-  const [loadingSample, setLoadingSample] = useState(false);
-
   const handleResetDatabase = async () => {
     setResetting(true);
     try {
@@ -187,780 +167,353 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack, 
     }
   };
 
-  const handleLoadDemoDataset = async () => {
-    setLoadingSample(true);
-    try {
-      await api.loadSampleDataset();
-      showToast('Sample demo dataset loaded successfully.', 'success');
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to load sample dataset', 'error');
-    } finally {
-      setLoadingSample(false);
-    }
-  };
-
-  const copyToClipboard = (text: string, sectionKey: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSection(sectionKey);
-    setTimeout(() => setCopiedSection(null), 2500);
-    showToast('Command copied to clipboard', 'info');
-  };
-
-  const formatUptime = (seconds?: number) => {
-    if (!seconds) return 'Active';
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
-    if (mins > 0) return `${mins}m ${secs}s`;
-    return `${secs}s`;
-  };
-
   return (
-    <div className="space-y-5">
-      {/* Top Navigation Bar */}
-      {onBack && (
-        <div className="flex items-center justify-between">
-          <BackButton onClick={onBack} label="Back to Overview" />
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-[#13284A] font-serif">Campus Configuration & Deployment</h2>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-              Production Ready
-            </span>
+    <div className="space-y-3.5 max-w-full overflow-x-hidden animate-fade-in pb-4">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          {onBack && <BackButton onClick={onBack} label="Back" />}
+          <div>
+            <h1 className="text-base font-bold text-[#13284A]">Campus Settings & Config</h1>
+            <p className="text-[11px] text-slate-500">Configure college details, semester cycles, departments, and backups.</p>
           </div>
-          <p className="text-xs text-[#667085] mt-1">
-            Institutional branding, academic thresholds, database backups, and self-hosted campus deployment instructions.
-          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDownloadBackup}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] bg-white text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-xs"
-          >
-            <Download className="w-4 h-4 text-[#2E6FB0]" />
-            Export Backup (.json)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('deploy')}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs"
-          >
-            <Server className="w-4 h-4 text-[#5B93D1]" />
-            Deployment Center
-          </button>
-        </div>
+
+        {/* 1-Tap Save Button */}
+        <button
+          onClick={() => handleSaveSettings()}
+          disabled={saving}
+          className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#2E6FB0] transition-colors flex items-center justify-center gap-1.5 shadow-2xs disabled:opacity-50"
+        >
+          <Save className="w-3.5 h-3.5" />
+          <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+        </button>
       </div>
 
-      {/* Subtabs Bar */}
-      <div className="flex items-center gap-2 border-b border-[#DCE3ED] pb-3 overflow-x-auto">
+      {/* Clean Tab Switcher */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           onClick={() => setActiveSubTab('profile')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
+          className={`p-3 rounded-xl border text-left transition-all ${
             activeSubTab === 'profile'
-              ? 'bg-[#13284A] text-white shadow-xs'
-              : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
+              ? 'bg-[#13284A] text-white border-[#13284A] shadow-2xs'
+              : 'bg-white text-slate-700 border-[#DCE3ED] hover:border-[#2E6FB0]'
           }`}
         >
-          <Building2 className="w-4 h-4" />
-          Institution & Academic Profile
+          <Building2 className={`w-4 h-4 mb-1.5 ${activeSubTab === 'profile' ? 'text-amber-300' : 'text-[#2E6FB0]'}`} />
+          <span className="text-xs font-bold block truncate">Institution & Term</span>
+          <span className={`text-[10px] block truncate ${activeSubTab === 'profile' ? 'text-slate-300' : 'text-slate-500'}`}>
+            Name, cycle & threshold
+          </span>
         </button>
 
         <button
-          id="branches-subtab-btn"
           onClick={() => setActiveSubTab('departments')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
+          className={`p-3 rounded-xl border text-left transition-all ${
             activeSubTab === 'departments'
-              ? 'bg-[#13284A] text-white shadow-xs'
-              : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
+              ? 'bg-[#13284A] text-white border-[#13284A] shadow-2xs'
+              : 'bg-white text-slate-700 border-[#DCE3ED] hover:border-[#2E6FB0]'
           }`}
         >
-          <Layers className="w-4 h-4" />
-          Branches & Departments (ECE, CSE...)
+          <Layers className={`w-4 h-4 mb-1.5 ${activeSubTab === 'departments' ? 'text-amber-300' : 'text-indigo-600'}`} />
+          <span className="text-xs font-bold block truncate">Departments</span>
+          <span className={`text-[10px] block truncate ${activeSubTab === 'departments' ? 'text-slate-300' : 'text-slate-500'}`}>
+            CSE, ECE, ISE, MECH
+          </span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('backup')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
+          className={`p-3 rounded-xl border text-left transition-all ${
             activeSubTab === 'backup'
-              ? 'bg-[#13284A] text-white shadow-xs'
-              : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
+              ? 'bg-[#13284A] text-white border-[#13284A] shadow-2xs'
+              : 'bg-white text-slate-700 border-[#DCE3ED] hover:border-[#2E6FB0]'
           }`}
         >
-          <Database className="w-4 h-4" />
-          Data Backup & Recovery
+          <Database className={`w-4 h-4 mb-1.5 ${activeSubTab === 'backup' ? 'text-amber-300' : 'text-emerald-600'}`} />
+          <span className="text-xs font-bold block truncate">Backup & Restore</span>
+          <span className={`text-[10px] block truncate ${activeSubTab === 'backup' ? 'text-slate-300' : 'text-slate-500'}`}>
+            JSON export & reset
+          </span>
         </button>
 
         <button
-          onClick={() => setActiveSubTab('deploy')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
-            activeSubTab === 'deploy'
-              ? 'bg-[#13284A] text-white shadow-xs'
-              : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
+          onClick={() => setActiveSubTab('system')}
+          className={`p-3 rounded-xl border text-left transition-all ${
+            activeSubTab === 'system'
+              ? 'bg-[#13284A] text-white border-[#13284A] shadow-2xs'
+              : 'bg-white text-slate-700 border-[#DCE3ED] hover:border-[#2E6FB0]'
           }`}
         >
-          <Server className="w-4 h-4" />
-          Production Deployment & Health
+          <Server className={`w-4 h-4 mb-1.5 ${activeSubTab === 'system' ? 'text-amber-300' : 'text-amber-600'}`} />
+          <span className="text-xs font-bold block truncate">System Status</span>
+          <span className={`text-[10px] block truncate ${activeSubTab === 'system' ? 'text-slate-300' : 'text-slate-500'}`}>
+            Health & uptime
+          </span>
         </button>
       </div>
 
-      {loading ? (
-        <div className="bg-white p-12 rounded-xl border border-[#DCE3ED] text-center text-xs text-[#667085]">
-          Loading campus operational status...
-        </div>
-      ) : (
-        <>
-          {/* TAB 1: INSTITUTION PROFILE */}
-          {activeSubTab === 'profile' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <form onSubmit={handleSaveSettings} className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs space-y-5">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div>
-                      <h3 className="text-sm font-bold text-[#13284A]">Institutional Profile & Thresholds</h3>
-                      <p className="text-xs text-[#667085] mt-0.5">
-                        These parameters customize the portal titles, header branding, and alert levels for all users.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Institution / College Full Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={settings.institutionName}
-                        onChange={(e) => setSettings({ ...settings, institutionName: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden font-medium"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        College / Campus Code
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={settings.campusCode}
-                        onChange={(e) => setSettings({ ...settings, campusCode: e.target.value })}
-                        placeholder="e.g. AIT-2026 or VTU-CSE"
-                        className="w-full px-3 py-2 text-xs font-mono font-bold uppercase rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Short Abbreviation
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={settings.shortName}
-                        onChange={(e) => setSettings({ ...settings, shortName: e.target.value })}
-                        placeholder="e.g. AIT"
-                        className="w-full px-3 py-2 text-xs uppercase font-bold rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Active Academic Year
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={settings.academicYear}
-                        onChange={(e) => setSettings({ ...settings, academicYear: e.target.value })}
-                        placeholder="e.g. 2025-2026"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 p-4 rounded-xl border border-blue-200 bg-linear-to-b from-blue-50/50 to-slate-50/50 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-[#2E6FB0]" />
-                          <label className="block text-xs font-bold text-[#13284A]">
-                            Academic Semester Term (Even / Odd Cycle)
-                          </label>
-                        </div>
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-[#13284A] border border-blue-200">
-                          {settings.semesterTermType === 'even'
-                            ? 'Even Semesters (2, 4, 6, 8)'
-                            : settings.semesterTermType === 'odd'
-                            ? 'Odd Semesters (1, 3, 5, 7)'
-                            : 'Custom Term'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-[#667085]">
-                        Select whether the campus is running an <strong>Even Semester Cycle (Semesters 2, 4, 6, 8)</strong> or <strong>Odd Semester Cycle (Semesters 1, 3, 5, 7)</strong>.
-                      </p>
-
-                      {/* Quick Presets */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSwitchTerm('even')}
-                          disabled={switchingTerm}
-                          className={`p-3 rounded-lg border text-left transition-all ${
-                            settings.semesterTermType === 'even'
-                              ? 'border-[#2E6FB0] bg-blue-50/80 shadow-xs ring-1 ring-[#2E6FB0]'
-                              : 'border-[#DCE3ED] bg-white hover:border-blue-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-[#13284A]">Even Semesters</span>
-                            {settings.semesterTermType === 'even' && <CheckCircle2 className="w-3.5 h-3.5 text-[#2E6FB0]" />}
-                          </div>
-                          <p className="text-[10px] text-slate-500 font-medium">Spring Cycle</p>
-                          <div className="flex gap-1 mt-2">
-                            {['2', '4', '6', '8'].map((num) => (
-                              <span
-                                key={num}
-                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                  settings.semesterTermType === 'even'
-                                    ? 'bg-[#2E6FB0] text-white'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
-                              >
-                                Sem {num}
-                              </span>
-                            ))}
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSwitchTerm('odd')}
-                          disabled={switchingTerm}
-                          className={`p-3 rounded-lg border text-left transition-all ${
-                            settings.semesterTermType === 'odd'
-                              ? 'border-[#2E6FB0] bg-blue-50/80 shadow-xs ring-1 ring-[#2E6FB0]'
-                              : 'border-[#DCE3ED] bg-white hover:border-blue-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-[#13284A]">Odd Semesters</span>
-                            {settings.semesterTermType === 'odd' && <CheckCircle2 className="w-3.5 h-3.5 text-[#2E6FB0]" />}
-                          </div>
-                          <p className="text-[10px] text-slate-500 font-medium">Fall Cycle</p>
-                          <div className="flex gap-1 mt-2">
-                            {['1', '3', '5', '7'].map((num) => (
-                              <span
-                                key={num}
-                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                  settings.semesterTermType === 'odd'
-                                    ? 'bg-[#2E6FB0] text-white'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
-                              >
-                                Sem {num}
-                              </span>
-                            ))}
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSwitchTerm('custom')}
-                          disabled={switchingTerm}
-                          className={`p-3 rounded-lg border text-left transition-all ${
-                            settings.semesterTermType === 'custom'
-                              ? 'border-[#2E6FB0] bg-blue-50/80 shadow-xs ring-1 ring-[#2E6FB0]'
-                              : 'border-[#DCE3ED] bg-white hover:border-blue-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-[#13284A]">Custom Term</span>
-                            {settings.semesterTermType === 'custom' && <CheckCircle2 className="w-3.5 h-3.5 text-[#2E6FB0]" />}
-                          </div>
-                          <p className="text-[10px] text-slate-500 font-medium">Bespoke / Summer</p>
-                          <span className="inline-block mt-2 text-[9px] font-medium text-slate-500">
-                            Custom description
-                          </span>
-                        </button>
-                      </div>
-
-                      {/* Display String input */}
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                          Term Title / Display Name
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            required
-                            value={settings.currentSemesterTerm}
-                            onChange={(e) => setSettings({ ...settings, currentSemesterTerm: e.target.value })}
-                            placeholder="e.g. Even Semester (Semesters 2, 4, 6, 8)"
-                            className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] bg-white focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Minimum Attendance Warning Threshold (%)
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min={50}
-                          max={95}
-                          required
-                          value={settings.minAttendanceWarning}
-                          onChange={(e) => setSettings({ ...settings, minAttendanceWarning: Number(e.target.value) })}
-                          className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden font-bold text-[#13284A]"
-                        />
-                        <span className="absolute right-3 top-2 text-xs text-slate-400 font-bold">%</span>
-                      </div>
-                      <p className="text-[10px] text-[#667085] mt-1">
-                        Students falling below this percentage are flagged critical in faculty & student dashboards.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Administrator Contact Email
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={settings.adminContactEmail}
-                        onChange={(e) => setSettings({ ...settings, adminContactEmail: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4 border-t border-slate-100">
-                    <button
-                      type="submit"
-                      disabled={saving || switchingTerm}
-                      className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4 text-[#5B93D1]" />
-                      {saving ? 'Saving Changes...' : 'Save Campus Profile'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Sidebar Preview Card */}
-              <div className="space-y-4">
-                <div className="bg-white p-5 rounded-xl border border-[#DCE3ED] shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <Building2 className="w-4 h-4 text-[#2E6FB0]" />
-                    <h4 className="text-xs font-bold text-[#13284A]">Campus Identity Preview</h4>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">Institution</span>
-                      <p className="text-sm font-bold text-[#13284A]">{settings.institutionName}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-[10px] text-[#667085]">Code:</span>
-                        <p className="font-mono font-bold text-slate-800">{settings.campusCode}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#667085]">Abbreviation:</span>
-                        <p className="font-bold text-slate-800">{settings.shortName}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#667085]">Academic Year:</span>
-                        <p className="font-semibold text-slate-700">{settings.academicYear}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-[#667085]">Min Attendance:</span>
-                        <p className="font-bold text-rose-700">{settings.minAttendanceWarning}%</p>
-                      </div>
-                    </div>
-                    <div className="pt-2 border-t border-slate-200">
-                      <span className="text-[10px] text-[#667085]">Current Operational Term:</span>
-                      <div className="mt-1 flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-100 text-[#2E6FB0] border border-blue-200">
-                          {settings.semesterTermType === 'even'
-                            ? 'Even Term (2, 4, 6, 8)'
-                            : settings.semesterTermType === 'odd'
-                            ? 'Odd Term (1, 3, 5, 7)'
-                            : 'Custom Term'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-medium text-slate-700 mt-1">{settings.currentSemesterTerm}</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>Live sync active. Updates to campus codes or names propagate instantly to all faculty and students.</span>
-                  </div>
-                </div>
-              </div>
+      {/* TAB 1: INSTITUTION & TERM */}
+      {activeSubTab === 'profile' && (
+        <form onSubmit={handleSaveSettings} className="space-y-3.5 text-xs">
+          {/* Quick Term Switcher Box */}
+          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs text-[#13284A] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                Active Semester Term Cycle
+              </span>
+              <span className="text-[11px] font-bold text-[#2E6FB0]">{settings.currentSemesterTerm}</span>
             </div>
-          )}
 
-          {/* TAB: ACADEMIC BRANCHES & DEPARTMENTS */}
-          {activeSubTab === 'departments' && (
-            <DepartmentManagerView onDepartmentChanged={fetchData} />
-          )}
-
-          {/* TAB 2: DATA BACKUP & DISASTER RECOVERY */}
-          {activeSubTab === 'backup' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-6">
-                {/* Export Card */}
-                <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Database className="w-4 h-4 text-[#2E6FB0]" />
-                        <h3 className="text-sm font-bold text-[#13284A]">Full Campus Database Export</h3>
-                      </div>
-                      <p className="text-xs text-[#667085]">
-                        Download a complete, structured JSON snapshot of all registered students, faculty, subjects, attendance sessions, test marks, assignments, and audit trails.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleDownloadBackup}
-                      className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs shrink-0"
-                    >
-                      <Download className="w-4 h-4 text-[#5B93D1]" />
-                      Download Database (.json)
-                    </button>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Students</span>
-                      <p className="font-bold text-slate-800">{systemStatus?.databaseStats.studentsCount || 0}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Faculty</span>
-                      <p className="font-bold text-slate-800">{systemStatus?.databaseStats.teachersCount || 0}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Attendance Logs</span>
-                      <p className="font-bold text-slate-800">{systemStatus?.databaseStats.attendanceSessionsCount || 0}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Test Mark Sheets</span>
-                      <p className="font-bold text-slate-800">{systemStatus?.databaseStats.testMarkSheetsCount || 0}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Restore Card */}
-                <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Upload className="w-4 h-4 text-[#2E6FB0]" />
-                    <h3 className="text-sm font-bold text-[#13284A]">Restore from Backup File</h3>
-                  </div>
-                  <p className="text-xs text-[#667085]">
-                    Upload a previously exported campus backup file (.json) to restore records or migrate from another campus server instance.
-                  </p>
-
-                  <input
-                    ref={restoreFileRef}
-                    type="file"
-                    accept=".json"
-                    onChange={handleRestoreFile}
-                    className="hidden"
-                  />
-
-                  <div
-                    onClick={() => restoreFileRef.current?.click()}
-                    className="p-6 border-2 border-dashed border-[#DCE3ED] rounded-xl text-center cursor-pointer hover:bg-slate-50/80 transition-colors"
-                  >
-                    <Upload className="w-8 h-8 text-[#2E6FB0] mx-auto mb-2 opacity-80" />
-                    <p className="text-xs font-bold text-slate-800">
-                      {isRestoring ? 'Restoring Database...' : 'Click to select campus backup JSON file'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Accepts campus_academic_backup_*.json files
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Danger Zone: Factory Reset & Demo Pack */}
-              <div className="space-y-4">
-                <div className="bg-rose-50/50 p-5 rounded-xl border border-rose-200 shadow-xs space-y-3">
-                  <div className="flex items-center gap-2 text-rose-800">
-                    <AlertTriangle className="w-4 h-4 text-rose-600" />
-                    <h4 className="text-xs font-bold">Wipe Data & Reset to Clean State</h4>
-                  </div>
-                  <p className="text-xs text-rose-700 leading-relaxed">
-                    Clear all attendance records, marks, assignments, uploaded timetables, and demo faculty/students so you can test with real campus data.
-                  </p>
-                  <button
-                    onClick={() => setIsResetModalOpen(true)}
-                    className="w-full px-3.5 py-2 text-xs font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Wipe to Clean Slate (0 Demo Records)
-                  </button>
-                </div>
-
-                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
-                  <div className="flex items-center gap-2 text-[#13284A]">
-                    <Layers className="w-4 h-4 text-[#2E6FB0]" />
-                    <h4 className="text-xs font-bold">Sample Demo Pack (Optional)</h4>
-                  </div>
-                  <p className="text-xs text-[#667085] leading-relaxed">
-                    Populate mock faculty, students, and attendance sheets for rapid feature demonstration and UI walkthroughs.
-                  </p>
-                  <button
-                    disabled={loadingSample}
-                    onClick={handleLoadDemoDataset}
-                    className="w-full px-3.5 py-2 text-xs font-bold rounded-lg border border-[#13284A] text-[#13284A] hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loadingSample ? 'animate-spin' : ''}`} />
-                    {loadingSample ? 'Loading Sample Pack...' : 'Load Sample Demo Pack'}
-                  </button>
-                </div>
-
-                {/* Local Storage Offline Cache Controls */}
-                <div className="bg-white p-5 rounded-xl border border-[#DCE3ED] shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[#13284A]">
-                      <HardDrive className="w-4 h-4 text-[#2E6FB0]" />
-                      <h4 className="text-xs font-bold">Offline Local Cache</h4>
-                    </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
-                      {storageService.getCacheMetrics().totalEntries} Stores
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#667085] leading-relaxed">
-                    Persistent client-side browser cache for offline dashboard and schedule viewing.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const next = !storageService.isSimulatedOffline();
-                        storageService.setSimulatedOffline(next);
-                        showToast(next ? 'Simulated Offline Mode Enabled' : 'Offline Mode Disabled', 'info');
-                      }}
-                      className="flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 text-slate-700"
-                    >
-                      {storageService.isSimulatedOffline() ? (
-                        <>
-                          <Wifi className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Go Online</span>
-                        </>
-                      ) : (
-                        <>
-                          <WifiOff className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Test Offline</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        storageService.clearAll();
-                        showToast('Local offline cache cleared.', 'success');
-                      }}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
-                      title="Clear offline storage cache"
-                    >
-                      Purge Cache
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: DEPLOYMENT CENTER & HEALTH */}
-          {activeSubTab === 'deploy' && (
-            <div className="space-y-6">
-              {/* Metric Overview */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <MetricCard
-                  title="Server State"
-                  value="100% Operational"
-                  subtitle={`Uptime: ${formatUptime(systemStatus?.uptimeSeconds)}`}
-                  icon={Cpu}
-                  accentColor="green"
-                />
-                <MetricCard
-                  title="Node.js Engine"
-                  value={systemStatus?.nodeVersion || 'v22.x'}
-                  subtitle="TypeScript native execution"
-                  icon={Server}
-                  accentColor="navy"
-                />
-                <MetricCard
-                  title="Gemini AI Extraction"
-                  value={systemStatus?.geminiConfigured ? 'Connected' : 'Mock/Manual'}
-                  subtitle="Timetable parser & automation"
-                  icon={SparklesIcon}
-                  accentColor="blue"
-                />
-                <MetricCard
-                  title="Port Ingress"
-                  value="Port 3000"
-                  subtitle="Single-port reverse proxy ready"
-                  icon={Globe}
-                  accentColor="amber"
-                />
-              </div>
-
-              {/* Ready to Deploy Guide */}
-              <div className="bg-white p-6 rounded-xl border border-[#DCE3ED] shadow-xs space-y-6">
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleQuickSwitchTerm('even')}
+                disabled={switchingTerm}
+                className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                  settings.semesterTermType === 'even'
+                    ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
                 <div>
-                  <h3 className="text-base font-bold text-[#13284A] font-serif">Campus Production Deployment Guide</h3>
-                  <p className="text-xs text-[#667085] mt-1">
-                    Follow these step-by-step instructions to run Campus Academic Hub on your institution’s servers, Docker, or intranet VM.
-                  </p>
+                  <span className="font-bold text-xs block">Even Semesters</span>
+                  <span className="text-[10px] text-slate-500 block">Sem 2, 4, 6 & 8</span>
                 </div>
+                {settings.semesterTermType === 'even' && <Check className="w-4 h-4 text-[#2E6FB0]" />}
+              </button>
 
-                {/* Step 1: Standalone Node / Intranet VM */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#13284A] text-white text-[11px] font-bold flex items-center justify-center">1</span>
-                      <h4 className="text-xs font-bold text-slate-800">Production Build & Start (Campus Server / VPS / VM)</h4>
-                    </div>
-                    <button
-                      onClick={() =>
-                        copyToClipboard('npm run build\nnpm start', 'cmd-build')
-                      }
-                      className="px-2.5 py-1 text-[11px] font-semibold text-[#2E6FB0] hover:bg-blue-50 rounded border border-blue-200 flex items-center gap-1"
-                    >
-                      {copiedSection === 'cmd-build' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      Copy Script
-                    </button>
-                  </div>
-                  <pre className="p-3 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono overflow-x-auto">
-                    <code>{`# 1. Compile Vite frontend and bundle TypeScript backend to CommonJS (dist/server.cjs)
-npm run build
-
-# 2. Launch production server on port 3000 (binds to 0.0.0.0:3000)
-npm start`}</code>
-                  </pre>
+              <button
+                type="button"
+                onClick={() => handleQuickSwitchTerm('odd')}
+                disabled={switchingTerm}
+                className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                  settings.semesterTermType === 'odd'
+                    ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <div>
+                  <span className="font-bold text-xs block">Odd Semesters</span>
+                  <span className="text-[10px] text-slate-500 block">Sem 1, 3, 5 & 7</span>
                 </div>
+                {settings.semesterTermType === 'odd' && <Check className="w-4 h-4 text-[#2E6FB0]" />}
+              </button>
+            </div>
+          </div>
 
-                {/* Step 2: Docker Container */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#13284A] text-white text-[11px] font-bold flex items-center justify-center">2</span>
-                      <h4 className="text-xs font-bold text-slate-800">Docker Container Execution (Campus Local Network)</h4>
-                    </div>
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          'docker build -t campus-academic-hub .\ndocker run -d -p 3000:3000 -e GEMINI_API_KEY="YOUR_KEY" --name campus-app campus-academic-hub',
-                          'cmd-docker'
-                        )
-                      }
-                      className="px-2.5 py-1 text-[11px] font-semibold text-[#2E6FB0] hover:bg-blue-50 rounded border border-blue-200 flex items-center gap-1"
-                    >
-                      {copiedSection === 'cmd-docker' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      Copy Docker
-                    </button>
-                  </div>
-                  <pre className="p-3 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono overflow-x-auto">
-                    <code>{`# Build Container Image
-docker build -t campus-academic-hub .
+          {/* Profile Form Fields */}
+          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
+            <h2 className="font-bold text-xs text-[#13284A] uppercase tracking-wider">Institution Profile</h2>
 
-# Run Container bound to Port 3000
-docker run -d -p 3000:3000 -e NODE_ENV=production -e GEMINI_API_KEY="YOUR_KEY" --name campus-app campus-academic-hub`}</code>
-                  </pre>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-700 mb-1">College / Institution Name</label>
+                <input
+                  type="text"
+                  value={settings.institutionName}
+                  onChange={(e) => setSettings({ ...settings, institutionName: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs font-semibold"
+                  required
+                />
+              </div>
 
-                {/* Step 3: Nginx Reverse Proxy for Campus Intranet */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#13284A] text-white text-[11px] font-bold flex items-center justify-center">3</span>
-                      <h4 className="text-xs font-bold text-slate-800">Campus Intranet Nginx Reverse Proxy (e.g. portal.campus.edu)</h4>
-                    </div>
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          `server {\n  listen 80;\n  server_name portal.campus.edu;\n\n  location / {\n    proxy_pass http://127.0.0.1:3000;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection 'upgrade';\n    proxy_set_header Host $host;\n    proxy_cache_bypass $http_upgrade;\n  }\n}`,
-                          'cmd-nginx'
-                        )
-                      }
-                      className="px-2.5 py-1 text-[11px] font-semibold text-[#2E6FB0] hover:bg-blue-50 rounded border border-blue-200 flex items-center gap-1"
-                    >
-                      {copiedSection === 'cmd-nginx' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      Copy Nginx Config
-                    </button>
-                  </div>
-                  <pre className="p-3 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono overflow-x-auto">
-                    <code>{`server {
-  listen 80;
-  server_name portal.campus.edu;
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">College Short Code / Abbreviation</label>
+                <input
+                  type="text"
+                  value={settings.shortName}
+                  onChange={(e) => setSettings({ ...settings, shortName: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs font-mono font-bold"
+                  required
+                />
+              </div>
 
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_cache_bypass $http_upgrade;
-  }
-}`}</code>
-                  </pre>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Campus Code</label>
+                <input
+                  type="text"
+                  value={settings.campusCode}
+                  onChange={(e) => setSettings({ ...settings, campusCode: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Current Academic Year</label>
+                <input
+                  type="text"
+                  value={settings.academicYear}
+                  onChange={(e) => setSettings({ ...settings, academicYear: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Admin Contact Email</label>
+                <input
+                  type="email"
+                  value={settings.adminContactEmail}
+                  onChange={(e) => setSettings({ ...settings, adminContactEmail: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-700 mb-1">
+                  Minimum Attendance Shortage Threshold (%): <span className="text-[#2E6FB0] font-mono">{settings.minAttendanceWarning}%</span>
+                </label>
+                <input
+                  type="range"
+                  min="50"
+                  max="90"
+                  step="5"
+                  value={settings.minAttendanceWarning}
+                  onChange={(e) => setSettings({ ...settings, minAttendanceWarning: Number(e.target.value) })}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#2E6FB0]"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                  <span>50%</span>
+                  <span>75% (Standard)</span>
+                  <span>90%</span>
                 </div>
               </div>
             </div>
-          )}
-        </>
+          </div>
+        </form>
       )}
 
-      {/* Reset Confirmation Modal */}
+      {/* TAB 2: DEPARTMENTS */}
+      {activeSubTab === 'departments' && (
+        <DepartmentManagerView onBack={() => setActiveSubTab('profile')} />
+      )}
+
+      {/* TAB 3: BACKUP & RESTORE */}
+      {activeSubTab === 'backup' && (
+        <div className="space-y-3 text-xs">
+          {/* Download JSON Backup Card */}
+          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-xs text-[#13284A] flex items-center gap-1.5">
+                <Download className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                Export Campus JSON Backup
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Download a complete snapshot of all students, faculty, timetables, and attendance logs.
+              </p>
+            </div>
+            <button
+              onClick={handleDownloadBackup}
+              className="px-4 py-2 rounded-lg bg-[#13284A] text-white font-bold hover:bg-[#2E6FB0] transition-colors flex items-center justify-center gap-1.5 shadow-2xs shrink-0"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download JSON Backup</span>
+            </button>
+          </div>
+
+          {/* Restore Backup Card */}
+          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-xs text-[#13284A] flex items-center gap-1.5">
+                <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                Restore from JSON File
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Import a previous campus backup file to restore database state.
+              </p>
+            </div>
+            <div>
+              <input
+                ref={restoreFileRef}
+                type="file"
+                accept=".json"
+                onChange={handleRestoreFile}
+                className="hidden"
+              />
+              <button
+                onClick={() => restoreFileRef.current?.click()}
+                disabled={isRestoring}
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs shrink-0 disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isRestoring ? 'Restoring...' : 'Choose JSON File'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reset Database Card */}
+          <div className="bg-rose-50/60 p-4 rounded-xl border border-rose-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-xs text-rose-900 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                Reset Database to Clean State
+              </h2>
+              <p className="text-[11px] text-rose-700 mt-0.5">
+                Wipes all temporary session records and initializes a fresh slate.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsResetModalOpen(true)}
+              className="px-4 py-2 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Database</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: SYSTEM STATUS */}
+      {activeSubTab === 'system' && (
+        <div className="space-y-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto mb-1" />
+              <span className="text-[10px] text-slate-500 font-semibold uppercase block">System Health</span>
+              <span className="text-sm font-bold text-emerald-700">100% Operational</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
+              <Server className="w-6 h-6 text-[#2E6FB0] mx-auto mb-1" />
+              <span className="text-[10px] text-slate-500 font-semibold uppercase block">Server Environment</span>
+              <span className="text-sm font-bold text-slate-800">Node.js + Express API</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
+              <Clock className="w-6 h-6 text-indigo-600 mx-auto mb-1" />
+              <span className="text-[10px] text-slate-500 font-semibold uppercase block">Uptime</span>
+              <span className="text-sm font-bold text-indigo-700">Active</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET CONFIRMATION MODAL */}
       <Modal
         isOpen={isResetModalOpen}
         onClose={() => setIsResetModalOpen(false)}
-        title="Confirm Campus Database Reset"
-        subtitle="This action resets all attendance records, test marks, assignments, and timetable uploads to the initial institutional baseline."
-        maxWidth="md"
+        title="Reset Database"
+        maxWidth="sm"
       >
-        <div className="space-y-4">
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-            <span>
-              Warning: All modifications created during the active session will be replaced by the default clean dataset.
-            </span>
-          </div>
-
-          <p className="text-xs text-[#667085]">
-            If you want to preserve your current faculty, student rosters, and attendance logs, please download a <strong>Backup (.json)</strong> first before confirming.
+        <div className="space-y-3 text-xs">
+          <p className="text-slate-700">
+            Are you sure you want to reset the database to a clean state? This will clear all attendance logs and temporary sessions.
           </p>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
             <button
-              type="button"
               onClick={() => setIsResetModalOpen(false)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-bold"
             >
               Cancel
             </button>
             <button
-              type="button"
-              disabled={resetting}
               onClick={handleResetDatabase}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
+              disabled={resetting}
+              className="px-4 py-1.5 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700 shadow-2xs disabled:opacity-50"
             >
-              <RotateCcw className="w-4 h-4" />
-              {resetting ? 'Resetting...' : 'Yes, Reset Database'}
+              {resetting ? 'Resetting...' : 'Confirm Reset'}
             </button>
           </div>
         </div>
@@ -968,26 +521,3 @@ docker run -d -p 3000:3000 -e NODE_ENV=production -e GEMINI_API_KEY="YOUR_KEY" -
     </div>
   );
 };
-
-function SparklesIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-      <path d="M5 3v4" />
-      <path d="M19 17v4" />
-      <path d="M3 5h4" />
-      <path d="M17 19h4" />
-    </svg>
-  );
-}

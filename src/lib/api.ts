@@ -190,6 +190,24 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  updateStudent: (studentId: string, payload: {
+    usn?: string;
+    name?: string;
+    department?: string;
+    semester?: number;
+    section?: string;
+    email?: string;
+  }) =>
+    request<{ success: boolean; student: Student & { user: User } }>(`/api/admin/students/${studentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteStudent: (studentId: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/students/${studentId}`, {
+      method: 'DELETE',
+    }),
+
   getSubjects: () =>
     request<{ subjects: (Subject & { departmentCode?: string; departmentName?: string })[] }>('/api/admin/subjects'),
 

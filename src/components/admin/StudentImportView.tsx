@@ -8,19 +8,21 @@ import {
   AlertTriangle,
   Download,
   Search,
-  RefreshCw,
   Edit2,
-  Save,
+  Trash2,
+  Copy,
   Check,
-  UserCheck,
-  FileText,
-  X,
+  Mail,
+  GraduationCap,
   Layers,
   Settings,
+  Grid,
+  List,
+  Filter,
+  X,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Student, User, StudentImportRowResult, Department } from '../../types';
-import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
 import { BackButton } from '../common/BackButton';
@@ -40,15 +42,22 @@ interface StudentImportViewProps {
   onNavigate?: (tabId: string) => void;
 }
 
-export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, onNavigate }) => {
+export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) => {
   const [students, setStudents] = useState<(Student & { user: User })[]>([]);
   const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [semFilter, setSemFilter] = useState('ALL');
+  const [viewLayout, setViewLayout] = useState<'cards' | 'table'>('cards');
+  const [copiedUsn, setCopiedUsn] = useState<string | null>(null);
+
+  // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSingleAddModalOpen, setIsSingleAddModalOpen] = useState(false);
+  const [studentToEdit, setStudentToEdit] = useState<(Student & { user: User }) | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<(Student & { user: User }) | null>(null);
+
   const { showToast } = useAuth();
 
   // Cohort target for bulk upload
@@ -70,11 +79,21 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
     section: 'A',
     email: '',
   });
-  const [isSubmittingSingle, setIsSubmittingSingle] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Student Form State
+  const [editFormData, setEditFormData] = useState({
+    usn: '',
+    name: '',
+    department: 'CSE',
+    semester: 4,
+    section: 'A',
+    email: '',
+  });
 
   // Import Workflow State
   const [importStep, setImportStep] = useState<'upload' | 'validation' | 'complete'>('upload');
-  const [batchId, setBatchId] = useState<string>('');
+  const [, setBatchId] = useState<string>('');
   const [rawText, setRawText] = useState('');
   const [validationResults, setValidationResults] = useState<StudentImportRowResult[]>([]);
   const [validCount, setValidCount] = useState(0);
@@ -111,7 +130,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
       showToast('Please provide both USN and Student Name.', 'warning');
       return;
     }
-    setIsSubmittingSingle(true);
+    setIsSubmitting(true);
     try {
       await api.createStudent({
         usn: singleStudent.usn.trim().toUpperCase(),
@@ -121,7 +140,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
         section: singleStudent.section,
         email: singleStudent.email.trim() || `${singleStudent.usn.trim().toLowerCase()}@student.campus.edu`,
       });
-      showToast(`Student ${singleStudent.name} (${singleStudent.usn.toUpperCase()}) added successfully!`, 'success');
+      showToast(`Student ${singleStudent.name} (${singleStudent.usn.toUpperCase()}) added!`, 'success');
       setIsSingleAddModalOpen(false);
       setSingleStudent({
         usn: '',
@@ -135,8 +154,65 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
-      setIsSubmittingSingle(false);
+      setIsSubmitting(false);
     }
+  };
+
+  const openEditModal = (stu: Student & { user: User }) => {
+    setStudentToEdit(stu);
+    setEditFormData({
+      usn: stu.usn,
+      name: stu.user?.name || (stu as any).name || '',
+      department: stu.department,
+      semester: stu.currentSemester,
+      section: stu.section,
+      email: stu.user?.email || '',
+    });
+  };
+
+  const handleUpdateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentToEdit) return;
+    setIsSubmitting(true);
+    try {
+      await api.updateStudent(studentToEdit.id, {
+        usn: editFormData.usn.trim().toUpperCase(),
+        name: editFormData.name.trim(),
+        department: editFormData.department,
+        semester: Number(editFormData.semester),
+        section: editFormData.section,
+        email: editFormData.email.trim(),
+      });
+      showToast('Student record updated successfully!', 'success');
+      setStudentToEdit(null);
+      fetchStudents();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update student', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setIsSubmitting(true);
+    try {
+      await api.deleteStudent(studentToDelete.id);
+      showToast(`Student ${studentToDelete.usn} deleted successfully.`, 'info');
+      setStudentToDelete(null);
+      fetchStudents();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete student', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyUsn = (usn: string) => {
+    navigator.clipboard.writeText(usn);
+    setCopiedUsn(usn);
+    showToast(`Copied USN ${usn}`, 'info');
+    setTimeout(() => setCopiedUsn(null), 2000);
   };
 
   const handleFileDrop = async (e: React.DragEvent<HTMLDivElement>) => {
@@ -173,7 +249,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
       }
 
       if (parsedRows.length === 0) {
-        showToast('No valid student rows found (Columns: 1. Sl.No, 2. USN, 3. Name).', 'warning');
+        showToast('No valid student rows found in file.', 'warning');
         setIsProcessing(false);
         return;
       }
@@ -191,42 +267,9 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
       setValidCount(res.validRows);
       setInvalidCount(res.invalidRows);
       setImportStep('validation');
-      showToast(`Extracted ${res.totalRows} students (1: Sl.No, 2: USN, 3: Name) from ${file.name}.`, 'success');
+      showToast(`Extracted ${res.totalRows} students from ${file.name}.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to read file', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleValidateImport = async () => {
-    if (!rawText.trim()) {
-      showToast('Please upload an Excel file or paste student spreadsheet rows.', 'warning');
-      return;
-    }
-    setIsProcessing(true);
-    try {
-      const options = {
-        defaultDept: targetDept,
-        defaultSemester: targetSem,
-        defaultSection: targetSec,
-      };
-      const parsedRows = parseStudentText(rawText, options);
-      const res = await api.validateStudentImport({
-        rows: parsedRows.length > 0 ? parsedRows : undefined,
-        rawText: parsedRows.length === 0 ? rawText : undefined,
-        department: targetDept,
-        semester: targetSem,
-        section: targetSec,
-      });
-      setBatchId(res.batchId);
-      setValidationResults(res.results);
-      setValidCount(res.validRows);
-      setInvalidCount(res.invalidRows);
-      setImportStep('validation');
-      showToast(`Validated ${res.totalRows} student rows: ${res.validRows} valid, ${res.invalidRows} issues.`, 'info');
-    } catch (err: any) {
-      showToast(err.message, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -237,7 +280,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
     try {
       const res = await api.commitStudentImport({ rows: validationResults });
       showToast(
-        `Enrollment complete: ${res.insertedCount} new students enrolled, ${res.updatedCount} records updated.`,
+        `Import complete: ${res.insertedCount} new students enrolled, ${res.updatedCount} updated.`,
         'success'
       );
       setImportStep('complete');
@@ -261,8 +304,6 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
     const errors: string[] = [];
     if (!newUsn || newUsn.length < 4) errors.push('USN must be at least 4 alphanumeric characters.');
     if (!newName || newName.length < 2) errors.push('Name must be at least 2 characters.');
-    if (!['CSE', 'ECE', 'ISE', 'MECH', 'CIVIL'].includes(newDept)) errors.push('Invalid department code.');
-    if (isNaN(newSem) || newSem < 1 || newSem > 8) errors.push('Semester must be between 1 and 8.');
 
     updated[index] = {
       ...currentRow,
@@ -282,623 +323,366 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
     setEditedRowData({});
   };
 
-  const downloadErrorReport = () => {
-    const invalidRows = validationResults.filter((r) => !r.isValid);
-    if (invalidRows.length === 0) {
-      showToast('No invalid rows to download.', 'info');
-      return;
-    }
-    const header = 'Row,USN,Name,Department,Semester,Section,Errors\n';
-    const rows = invalidRows
-      .map(
-        (r) =>
-          `${r.rowNumber},"${r.usn}","${r.name}","${r.department}",${r.semester},"${r.section}","${r.errors.join('; ')}"`
-      )
-      .join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `student_import_error_report_${Date.now()}.csv`;
-    a.click();
-  };
-
   const filteredStudents = students.filter((s) => {
-    const matchesDept = deptFilter === 'ALL' || s.department === deptFilter;
+    const matchesDept = deptFilter === 'ALL' || s.department.toUpperCase() === deptFilter.toUpperCase();
     const matchesSem = semFilter === 'ALL' || String(s.currentSemester) === semFilter;
     const matchesSearch =
-      (s.user?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.user?.name || (s as any).name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.usn.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.user?.email || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesDept && matchesSem && matchesSearch;
   });
 
   return (
-    <div className="space-y-5">
-      {/* Top Navigation Bar */}
-      {onBack && (
-        <div className="flex items-center justify-between">
-          <BackButton onClick={onBack} label="Back to Overview" />
+    <div className="space-y-3.5 animate-fade-in pb-4">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-[#DCE3ED] shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          {onBack && <BackButton onClick={onBack} label="Back" />}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-[#13284A]">Student Directory</h1>
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#2E6FB0] text-xs font-mono font-bold">
+                {students.length}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500">Manage enrolled student rosters, USNs, and cohorts.</p>
+          </div>
         </div>
-      )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
-        <div>
-          <h2 className="text-xl font-bold text-[#13284A] font-serif">Student Enrollment</h2>
-          <p className="text-xs text-[#667085] mt-0.5">Student roster and batch records.</p>
-        </div>
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
           <button
-            id="open-single-student-modal-btn"
             onClick={() => setIsSingleAddModalOpen(true)}
-            className="flex-1 sm:flex-none justify-center px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] bg-white text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-xs"
+            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-[#DCE3ED] text-[#13284A] hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
           >
-            <Plus className="w-4 h-4 text-[#2E6FB0]" />
+            <Plus className="w-3.5 h-3.5 text-[#2E6FB0]" />
             <span>Add Student</span>
           </button>
           <button
-            id="open-student-import-modal-btn"
             onClick={() => {
               setImportStep('upload');
               setUploadedFileName('');
               setIsImportModalOpen(true);
             }}
-            className="w-full sm:w-auto justify-center px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs"
+            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#13284A] text-white hover:bg-[#2E6FB0] transition-colors flex items-center gap-1.5 shadow-2xs"
           >
-            <Upload className="w-4 h-4 text-[#5B93D1]" />
-            <span>Bulk Import (XLSX / CSV)</span>
+            <Upload className="w-3.5 h-3.5" />
+            <span>Import Excel</span>
           </button>
         </div>
       </div>
 
-      {/* Metric Cards Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MetricCard
-          title="Total Enrolled Students"
-          value={students.length}
-          subtitle="Unique USN-verified student records"
-          icon={Users}
-          accentColor="navy"
-        />
-        <MetricCard
-          title="Active Semester 4"
-          value={students.filter((s) => s.currentSemester === 4).length}
-          subtitle="CSE & ECE Cohorts"
-          icon={FileSpreadsheet}
-          accentColor="blue"
-        />
-        <MetricCard
-          title="Departments Represented"
-          value={Array.from(new Set(students.map((s) => s.department))).length}
-          subtitle="CSE, ECE, ISE, MECH"
-          icon={CheckCircle2}
-          accentColor="green"
-        />
-      </div>
-
-      {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#DCE3ED]">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            id="search-students-input"
-            type="text"
-            placeholder="Search by student name, USN, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-          />
-        </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-xs font-semibold text-[#667085]">Dept:</span>
-            {['ALL', ...departments.map((d) => d.code)].map((d) => (
+      {/* Search & Filter Bar */}
+      <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Search by student name, USN, or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+            />
+            {searchQuery && (
               <button
-                key={d}
-                onClick={() => setDeptFilter(d)}
-                className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  deptFilter === d
-                    ? 'bg-[#13284A] text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
               >
-                {d}
+                <X className="w-3.5 h-3.5" />
               </button>
-            ))}
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            <span className="text-xs font-semibold text-[#667085]">Sem:</span>
-            {['ALL', '1', '2', '3', '4', '5', '6', '7', '8'].map((s) => (
-              <button
-                key={s}
-                onClick={() => setSemFilter(s)}
-                className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors shrink-0 ${
-                  semFilter === s
-                    ? 'bg-[#2E6FB0] text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {s === 'ALL' ? 'ALL' : `Sem ${s}`}
-              </button>
-            ))}
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg shrink-0">
+            <button
+              onClick={() => setViewLayout('cards')}
+              title="Card View"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewLayout === 'cards' ? 'bg-white text-[#13284A] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Grid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewLayout('table')}
+              title="Table View"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewLayout === 'table' ? 'bg-white text-[#13284A] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
           </div>
+        </div>
+
+        {/* Branch Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <span className="font-bold text-slate-400 shrink-0 text-[11px]">Branch:</span>
+          <button
+            onClick={() => setDeptFilter('ALL')}
+            className={`px-2.5 py-1 rounded-md font-bold text-xs transition-colors shrink-0 ${
+              deptFilter === 'ALL' ? 'bg-[#13284A] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            All
+          </button>
+          {departments.map((dept) => (
+            <button
+              key={dept.code}
+              onClick={() => setDeptFilter(dept.code)}
+              className={`px-2.5 py-1 rounded-md font-bold text-xs transition-colors shrink-0 ${
+                deptFilter === dept.code
+                  ? 'bg-[#13284A] text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {dept.code}
+            </button>
+          ))}
+        </div>
+
+        {/* Semester Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-1 border-t border-slate-100 text-xs">
+          <span className="font-bold text-slate-400 shrink-0 text-[11px]">Sem:</span>
+          <button
+            onClick={() => setSemFilter('ALL')}
+            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors shrink-0 ${
+              semFilter === 'ALL' ? 'bg-[#2E6FB0] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            All (1–8)
+          </button>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+            <button
+              key={s}
+              onClick={() => setSemFilter(semFilter === String(s) ? 'ALL' : String(s))}
+              className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-colors shrink-0 ${
+                semFilter === String(s) ? 'bg-[#2E6FB0] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              S{s}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Students Table */}
-      <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="py-12 text-center text-sm text-[#667085]">Loading enrolled student records...</div>
-        ) : filteredStudents.length === 0 ? (
-          <div className="py-12 text-center text-sm text-[#667085]">No students found matching filters.</div>
-        ) : (
+      {/* Main Student Display */}
+      {loading ? (
+        <div className="py-12 text-center text-xs text-slate-500 bg-white rounded-xl border border-[#DCE3ED]">
+          Loading student roster...
+        </div>
+      ) : filteredStudents.length === 0 ? (
+        <div className="py-12 text-center text-xs text-slate-500 bg-white rounded-xl border border-[#DCE3ED] space-y-2">
+          <p className="font-semibold text-slate-700">No students found matching filters.</p>
+          <button
+            onClick={() => {
+              setDeptFilter('ALL');
+              setSemFilter('ALL');
+              setSearchQuery('');
+            }}
+            className="text-xs text-[#2E6FB0] hover:underline font-bold"
+          >
+            Clear Filters
+          </button>
+        </div>
+      ) : viewLayout === 'cards' ? (
+        /* Native App Card Grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredStudents.map((s) => {
+            const displayName = s.user?.name || s.name || 'Unknown Student';
+            const initials = displayName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2)
+              .toUpperCase();
+
+            return (
+              <div
+                key={s.id}
+                className="bg-white rounded-xl border border-[#DCE3ED] p-3.5 flex flex-col justify-between shadow-2xs hover:border-[#2E6FB0]/40 transition-all group"
+              >
+                <div className="space-y-2.5">
+                  {/* Top Bar: Avatar, Name, USN */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-[#13284A]/5 text-[#13284A] font-bold text-xs flex items-center justify-center border border-[#13284A]/10 shrink-0">
+                        {initials}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-xs text-[#13284A] truncate">{displayName}</h3>
+                        <p className="text-[11px] text-slate-500 truncate">{s.user?.email}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Badges Row */}
+                  <div className="flex items-center justify-between gap-1.5 pt-1">
+                    <button
+                      onClick={() => handleCopyUsn(s.usn)}
+                      title="Click to copy USN"
+                      className="inline-flex items-center gap-1 font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors border border-slate-200/60"
+                    >
+                      <span>{s.usn}</span>
+                      {copiedUsn === s.usn ? (
+                        <Check className="w-2.5 h-2.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-2.5 h-2.5 text-slate-400" />
+                      )}
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-[#13284A] text-white">
+                        {s.department}
+                      </span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-[#2E6FB0]">
+                        Sem {s.currentSemester}-{s.section}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Action Strip */}
+                <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
+                    Active Student
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditModal(s)}
+                      title="Edit Student"
+                      className="p-1 rounded-md text-slate-400 hover:text-[#2E6FB0] hover:bg-blue-50 transition-colors"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setStudentToDelete(s)}
+                      title="Delete Student"
+                      className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Table Layout */
+        <div className="bg-white rounded-xl border border-[#DCE3ED] shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] uppercase tracking-wider font-semibold">
                 <tr>
-                  <th className="py-3 px-4">USN</th>
-                  <th className="py-3 px-4">Student Name</th>
-                  <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4">Semester & Section</th>
-                  <th className="py-3 px-4">Official Email</th>
-                  <th className="py-3 px-4">Access Mode</th>
+                  <th className="py-2.5 px-3">USN</th>
+                  <th className="py-2.5 px-3">Student Name</th>
+                  <th className="py-2.5 px-3">Branch</th>
+                  <th className="py-2.5 px-3">Semester</th>
+                  <th className="py-2.5 px-3">Email</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredStudents.map((s, idx) => (
-                  <tr key={s.id || s.usn || `stu-row-${idx}`} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#13284A]">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                {filteredStudents.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-2.5 px-3 font-mono font-bold text-[#13284A]">
+                      <button
+                        onClick={() => handleCopyUsn(s.usn)}
+                        className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1"
+                      >
                         {s.usn}
+                        <Copy className="w-2.5 h-2.5 text-slate-400" />
+                      </button>
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-slate-800">{s.user?.name || (s as any).name || 'Student'}</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700">{s.department}</td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-[#2E6FB0] font-bold text-[11px]">
+                        Sem {s.currentSemester} ({s.section})
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-bold text-slate-800">{s.user?.name}</td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-700">{s.department}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium">
-                        Sem {s.currentSemester} - Sec {s.section}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600">{s.user?.email}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <Check className="w-3 h-3" />
-                        100% Read-Only
-                      </span>
+                    <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">{s.user?.email}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => openEditModal(s)}
+                          className="p-1 rounded text-slate-400 hover:text-[#2E6FB0] hover:bg-blue-50"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setStudentToDelete(s)}
+                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Import Modal */}
-      <Modal
-        isOpen={isImportModalOpen}
-        onClose={() => {
-          setIsImportModalOpen(false);
-          setImportStep('upload');
-          setValidationResults([]);
-          setUploadedFileName('');
-        }}
-        title="Student Bulk Import (3-Column Format)"
-        subtitle="1st Col: Sl.No | 2nd Col: USN | 3rd Col: Name. Any extra columns or non-student rows are automatically ignored."
-        maxWidth="4xl"
-      >
-        {importStep === 'upload' && (
-          <div className="space-y-4">
-            {/* Target Cohort Assignment Bar */}
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#13284A] mb-2.5">
-                <Settings className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                <span>Target Cohort Assignment (For 3-Column List)</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Target Department</label>
-                  <select
-                    value={targetDept}
-                    onChange={(e) => setTargetDept(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                  >
-                    {departments.map((d) => (
-                      <option key={d.code} value={d.code}>
-                        {d.code} ({d.name})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Target Semester</label>
-                  <select
-                    value={targetSem}
-                    onChange={(e) => setTargetSem(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                      <option key={s} value={s}>Semester {s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Section</label>
-                  <select
-                    value={targetSec}
-                    onChange={(e) => setTargetSec(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-                  >
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
-                    <option value="C">Section C</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Download Template Banner */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-blue-50/60 rounded-lg border border-blue-200 text-xs text-[#13284A]">
-              <div className="flex items-start gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-[#2E6FB0] shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">3 Columns: Column 1 = Sl.No, Column 2 = USN, Column 3 = Name</p>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Excel (.xlsx, .xls) and CSV supported. Other columns/rows are safely ignored.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={downloadStudentSampleExcel}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#2E6FB0] text-[#2E6FB0] hover:bg-blue-50 transition-colors flex items-center gap-1.5 shrink-0 shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download 3-Col Template (.xlsx)
-              </button>
-            </div>
-
-            {/* Drag and Drop Zone */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
-                isDragging
-                  ? 'border-[#2E6FB0] bg-blue-50/50 scale-[0.99]'
-                  : 'border-[#DCE3ED] bg-slate-50/60 hover:bg-slate-100/70 hover:border-slate-400'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv,.txt"
-                onChange={handleFileInputChange}
-                className="hidden"
-              />
-              <Upload className="w-8 h-8 text-[#2E6FB0] mx-auto mb-2 opacity-80" />
-              <p className="text-xs font-bold text-slate-800">
-                {uploadedFileName ? (
-                  <span className="text-[#2E6FB0]">Selected: {uploadedFileName}</span>
-                ) : (
-                  'Click to browse or drag & drop student file (1: Sl.No, 2: USN, 3: Name)'
-                )}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Reads 3 columns and automatically filters out extraneous rows
-              </p>
-            </div>
-
-            <div className="relative flex py-1 items-center">
-              <div className="grow border-t border-slate-200"></div>
-              <span className="shrink mx-3 text-xs text-slate-400 font-semibold uppercase">Or Paste 3 Columns</span>
-              <div className="grow border-t border-slate-200"></div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Paste 3-Column Text (Sl.No, USN, Name)
-              </label>
-              <textarea
-                rows={5}
-                placeholder={`Sl.No, USN, Name\n1, 2KL23CS011, Ananya Rao\n2, 2KL23CS012, Vignesh Iyer\n3, 2KL23CS013, Rohit Sharma`}
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                className="w-full p-3 font-mono text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-              />
-            </div>
-
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() =>
-                  setRawText(
-                    `Sl.No, USN, Name\n1, 2KL23CS011, Ananya Rao\n2, 2KL23CS012, Vignesh Iyer\n3, 2KL23CS013, Rohit Sharma\n4, 2KL23CS014, Pooja Hegde\n5, 2KL23CS015, Divya Kulkarni`
-                  )
-                }
-                className="text-xs text-[#2E6FB0] hover:underline font-semibold"
-              >
-                Fill 3-Column Sample Data
-              </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsImportModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isProcessing}
-                  onClick={handleValidateImport}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-[#5B93D1]" />
-                  {isProcessing ? 'Validating...' : 'Validate 3-Column Data'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {importStep === 'validation' && (
-          <div className="space-y-4">
-            {/* Validation Summary Bar */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">
-                <span className="text-xs font-semibold text-slate-500">Students Extracted</span>
-                <p className="text-xl font-bold text-slate-800">{validationResults.length}</p>
-              </div>
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
-                <span className="text-xs font-semibold text-emerald-700">Valid Rows</span>
-                <p className="text-xl font-bold text-emerald-800">{validCount}</p>
-              </div>
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-center">
-                <span className="text-xs font-semibold text-rose-700">Need Correction</span>
-                <p className="text-xl font-bold text-rose-800">{invalidCount}</p>
-              </div>
-            </div>
-
-            {invalidCount > 0 && (
-              <div className="flex items-center justify-between p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-                  <span>Some rows contain validation errors. You can fix them inline below or download a report.</span>
-                </div>
-                <button
-                  onClick={downloadErrorReport}
-                  className="text-xs font-bold text-[#2E6FB0] hover:underline flex items-center gap-1 shrink-0"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download Error CSV
-                </button>
-              </div>
-            )}
-
-            {/* Validation Row Inspector */}
-            <div className="border border-[#DCE3ED] rounded-lg overflow-hidden max-h-72 overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] sticky top-0">
-                  <tr>
-                    <th className="py-2 px-3">Sl.No</th>
-                    <th className="py-2 px-3">USN</th>
-                    <th className="py-2 px-3">Name</th>
-                    <th className="py-2 px-3">Dept & Sem</th>
-                    <th className="py-2 px-3">Type</th>
-                    <th className="py-2 px-3">Status</th>
-                    <th className="py-2 px-3">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {validationResults.map((row, idx) => {
-                    const isEditing = editingRowIndex === idx;
-                    return (
-                      <tr key={`val-row-${row.usn || row.rowNumber || idx}`} className={row.isValid ? 'bg-white' : 'bg-rose-50/40'}>
-                        <td className="py-2 px-3 font-mono text-slate-400">{row.rowNumber}</td>
-                        <td className="py-2 px-3 font-mono font-bold">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editedRowData.usn !== undefined ? editedRowData.usn : row.usn}
-                              onChange={(e) => setEditedRowData({ ...editedRowData, usn: e.target.value })}
-                              className="px-1.5 py-0.5 border rounded text-xs w-28 uppercase"
-                            />
-                          ) : (
-                            row.usn
-                          )}
-                        </td>
-                        <td className="py-2 px-3 font-medium">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editedRowData.name !== undefined ? editedRowData.name : row.name}
-                              onChange={(e) => setEditedRowData({ ...editedRowData, name: e.target.value })}
-                              className="px-1.5 py-0.5 border rounded text-xs w-36"
-                            />
-                          ) : (
-                            row.name
-                          )}
-                        </td>
-                        <td className="py-2 px-3 font-semibold text-slate-700">
-                          {row.department} - Sem {row.semester} ({row.section})
-                        </td>
-                        <td className="py-2 px-3">
-                          {row.isExisting ? (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-sky-50 text-sky-700 border border-sky-200">
-                              Update Existing
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              New Student
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {row.isValid ? (
-                            <StatusPill status="good" label="Valid" size="sm" />
-                          ) : (
-                            <div className="space-y-0.5">
-                              <StatusPill status="critical" label="Error" size="sm" />
-                              <p className="text-[10px] text-rose-700 font-medium">{row.errors[0]}</p>
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {isEditing ? (
-                            <button
-                              onClick={() => handleSaveInlineEdit(idx)}
-                              className="p-1 text-emerald-700 hover:bg-emerald-100 rounded"
-                              title="Save inline fix"
-                            >
-                              <Save className="w-3.5 h-3.5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setEditingRowIndex(idx);
-                                setEditedRowData(row);
-                              }}
-                              className="p-1 text-slate-600 hover:bg-slate-200 rounded"
-                              title="Edit row"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setImportStep('upload')}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:underline"
-              >
-                ← Back to Upload
-              </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsImportModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={validCount === 0 || isProcessing}
-                  onClick={handleCommitImport}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#1E8E5A] text-white hover:bg-[#1E8E5A]/90 transition-colors flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
-                >
-                  <Check className="w-4 h-4" />
-                  {isProcessing ? 'Enrolling...' : `Commit & Enroll ${validCount} Valid Students`}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {importStep === 'complete' && (
-          <div className="py-8 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-[#13284A]">Student Roster Updated!</h4>
-              <p className="text-xs text-[#667085] mt-1 max-w-md mx-auto">
-                All student records have been committed to the database. Students can now access their personalized student portal.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setIsImportModalOpen(false);
-                setImportStep('upload');
-              }}
-              className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90"
-            >
-              Done
-            </button>
-          </div>
-        )}
-      </Modal>
-
-      {/* Single Student Enrollment Modal */}
+      {/* SINGLE STUDENT ADD MODAL */}
       <Modal
         isOpen={isSingleAddModalOpen}
         onClose={() => setIsSingleAddModalOpen(false)}
-        title="Enroll Individual Student"
-        subtitle="Create an individual student record with verified USN and cohort assignment."
+        title="Add Single Student"
         maxWidth="md"
       >
-        <form onSubmit={handleAddSingleStudent} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Student Full Name</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Divya Kulkarni"
-              value={singleStudent.name}
-              onChange={(e) => {
-                const name = e.target.value;
-                setSingleStudent({ ...singleStudent, name });
-              }}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">USN / Roll Number</label>
+        <form onSubmit={handleAddSingleStudent} className="space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Student Full Name</label>
               <input
                 type="text"
+                placeholder="e.g. Rahul Sharma"
+                value={singleStudent.name}
+                onChange={(e) => setSingleStudent({ ...singleStudent, name: e.target.value })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
                 required
-                placeholder="e.g. 2KL23CS015"
-                value={singleStudent.usn}
-                onChange={(e) => {
-                  const usn = e.target.value.toUpperCase();
-                  setSingleStudent({
-                    ...singleStudent,
-                    usn,
-                    email: singleStudent.email || (usn ? `${usn.toLowerCase()}@student.campus.edu` : ''),
-                  });
-                }}
-                className="w-full px-3 py-2 text-xs font-mono uppercase rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden font-bold"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+              <label className="block font-bold text-slate-700 mb-1">USN (University Seat No.)</label>
+              <input
+                type="text"
+                placeholder="e.g. 2KL22EC045"
+                value={singleStudent.usn}
+                onChange={(e) => setSingleStudent({ ...singleStudent, usn: e.target.value.toUpperCase() })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] font-mono text-xs"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Department</label>
               <select
                 value={singleStudent.department}
                 onChange={(e) => setSingleStudent({ ...singleStudent, department: e.target.value })}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden bg-white font-medium"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
               >
                 {departments.map((d) => (
                   <option key={d.code} value={d.code}>
-                    {d.code} ({d.name})
+                    {d.code}
                   </option>
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Current Semester</label>
+              <label className="block font-bold text-slate-700 mb-1">Semester</label>
               <select
                 value={singleStudent.semester}
                 onChange={(e) => setSingleStudent({ ...singleStudent, semester: Number(e.target.value) })}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden bg-white"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
                   <option key={s} value={s}>
@@ -907,52 +691,370 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack, on
                 ))}
               </select>
             </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Section</label>
-              <select
+              <label className="block font-bold text-slate-700 mb-1">Section</label>
+              <input
+                type="text"
+                placeholder="A"
                 value={singleStudent.section}
-                onChange={(e) => setSingleStudent({ ...singleStudent, section: e.target.value })}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden bg-white font-medium"
-              >
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-              </select>
+                onChange={(e) => setSingleStudent({ ...singleStudent, section: e.target.value.toUpperCase() })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+                required
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Email (Optional)</label>
+              <input
+                type="email"
+                placeholder="Auto-generated if left blank"
+                value={singleStudent.email}
+                onChange={(e) => setSingleStudent({ ...singleStudent, email: e.target.value })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Official Student Email</label>
-            <input
-              type="email"
-              placeholder="e.g. 2kl23cs015@student.campus.edu"
-              value={singleStudent.email}
-              onChange={(e) => setSingleStudent({ ...singleStudent, email: e.target.value })}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
-            />
-            <p className="text-[10px] text-[#667085] mt-1">
-              Auto-generated as USN@student.campus.edu if left blank.
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsSingleAddModalOpen(false)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+              className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSubmittingSingle}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-1.5 disabled:opacity-50"
+              disabled={isSubmitting}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-[#13284A] hover:bg-[#2E6FB0] rounded-lg shadow-2xs"
             >
-              <UserCheck className="w-4 h-4 text-[#5B93D1]" />
-              {isSubmittingSingle ? 'Enrolling...' : 'Enroll Student'}
+              {isSubmitting ? 'Saving...' : 'Add Student'}
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* EDIT STUDENT MODAL */}
+      <Modal
+        isOpen={!!studentToEdit}
+        onClose={() => setStudentToEdit(null)}
+        title="Edit Student Record"
+        maxWidth="md"
+      >
+        <form onSubmit={handleUpdateStudent} className="space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Student Full Name</label>
+              <input
+                type="text"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">USN</label>
+              <input
+                type="text"
+                value={editFormData.usn}
+                onChange={(e) => setEditFormData({ ...editFormData, usn: e.target.value.toUpperCase() })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] font-mono text-xs"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Department</label>
+              <select
+                value={editFormData.department}
+                onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
+              >
+                {departments.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Semester</label>
+              <select
+                value={editFormData.semester}
+                onChange={(e) => setEditFormData({ ...editFormData, semester: Number(e.target.value) })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <option key={s} value={s}>
+                    Semester {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Section</label>
+              <input
+                type="text"
+                value={editFormData.section}
+                onChange={(e) => setEditFormData({ ...editFormData, section: e.target.value.toUpperCase() })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+                required
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setStudentToEdit(null)}
+              className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-[#13284A] hover:bg-[#2E6FB0] rounded-lg shadow-2xs"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal
+        isOpen={!!studentToDelete}
+        onClose={() => setStudentToDelete(null)}
+        title="Delete Student"
+        maxWidth="sm"
+      >
+        <div className="space-y-3 text-xs">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-rose-900">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-xs">
+                Delete student {studentToDelete?.user?.name || studentToDelete?.name} ({studentToDelete?.usn})?
+              </p>
+              <p className="text-[11px] text-rose-700 mt-0.5">
+                This will remove the student from active enrollment records.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setStudentToDelete(null)}
+              className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleDeleteStudent}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-2xs"
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* IMPORT EXCEL MODAL */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => {
+          setIsImportModalOpen(false);
+          setImportStep('upload');
+          setValidationResults([]);
+          setUploadedFileName('');
+        }}
+        title="Student Bulk Import (XLSX / CSV)"
+        maxWidth="4xl"
+      >
+        {importStep === 'upload' && (
+          <div className="space-y-3.5 text-xs">
+            {/* Target Cohort Bar */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-1.5 font-bold text-[#13284A] mb-2">
+                <Settings className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                <span>Target Cohort Assignment</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Target Department</label>
+                  <select
+                    value={targetDept}
+                    onChange={(e) => setTargetDept(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
+                  >
+                    {departments.map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.code} - {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Target Semester</label>
+                  <select
+                    value={targetSem}
+                    onChange={(e) => setTargetSem(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] bg-white text-xs"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Target Section</label>
+                  <input
+                    type="text"
+                    value={targetSec}
+                    onChange={(e) => setTargetSec(e.target.value.toUpperCase())}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DCE3ED] text-xs font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Dropzone */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleFileDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? 'border-[#2E6FB0] bg-blue-50/50'
+                  : 'border-slate-300 hover:border-[#2E6FB0] bg-slate-50/50'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls, .csv, .txt"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              <Upload className="w-8 h-8 text-[#2E6FB0] mx-auto mb-2" />
+              <p className="font-bold text-slate-800 text-xs">
+                {uploadedFileName ? uploadedFileName : 'Click to browse or drag & drop Excel / CSV file'}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">Columns: Sl.No, USN, Student Name</p>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={downloadStudentSampleExcel}
+                className="text-xs text-[#2E6FB0] hover:underline font-bold inline-flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download Sample Excel Template
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {importStep === 'validation' && (
+          <div className="space-y-3 text-xs">
+            <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <span className="font-bold text-[#13284A]">
+                Validated: {validCount} valid rows, {invalidCount} with issues
+              </span>
+              <button
+                onClick={handleCommitImport}
+                disabled={validCount === 0 || isProcessing}
+                className="px-4 py-1.5 rounded-lg bg-[#13284A] text-white font-bold hover:bg-[#2E6FB0] transition-colors disabled:opacity-50"
+              >
+                {isProcessing ? 'Enrolling...' : `Enroll (${validCount}) Students`}
+              </button>
+            </div>
+
+            <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                  <tr>
+                    <th className="p-2">#</th>
+                    <th className="p-2">USN</th>
+                    <th className="p-2">Name</th>
+                    <th className="p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {validationResults.map((r, i) => (
+                    <tr key={i} className={r.isValid ? 'bg-white' : 'bg-rose-50/50'}>
+                      <td className="p-2 font-mono">{r.rowNumber}</td>
+                      <td className="p-2 font-mono font-bold">{r.usn}</td>
+                      <td className="p-2">{r.name}</td>
+                      <td className="p-2">
+                        {r.isValid ? (
+                          <span className="text-emerald-700 font-bold">Valid</span>
+                        ) : (
+                          <span className="text-rose-600 font-bold">{r.errors.join(', ')}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setImportStep('upload')}
+                className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {importStep === 'complete' && (
+          <div className="py-8 text-center space-y-3">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+            <h3 className="font-bold text-slate-800 text-sm">Enrollment Complete!</h3>
+            <p className="text-xs text-slate-500">Students have been enrolled into the system.</p>
+            <button
+              onClick={() => setIsImportModalOpen(false)}
+              className="px-4 py-2 rounded-lg bg-[#13284A] text-white font-bold text-xs"
+            >
+              Done
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );
