@@ -41,6 +41,14 @@ export interface Department {
   id: string;
   name: string;
   code: string;
+  description?: string;
+  headOfDepartment?: string;
+  establishedYear?: string;
+  createdAt?: string;
+  studentsCount?: number;
+  teachersCount?: number;
+  semestersCount?: number;
+  subjectsCount?: number;
 }
 
 export interface Semester {

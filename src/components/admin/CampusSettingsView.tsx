@@ -21,17 +21,22 @@ import {
   Copy,
   Check,
   RefreshCw,
+  WifiOff,
+  Wifi,
+  HardDrive,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { storageService } from '../../lib/storageService';
 import { CampusSettings, SystemStatusInfo } from '../../types';
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { DepartmentManagerView } from './DepartmentManagerView';
 
 export const CampusSettingsView: React.FC = () => {
   const { showToast } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'backup' | 'deploy'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'departments' | 'backup' | 'deploy'>('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -201,10 +206,10 @@ export const CampusSettingsView: React.FC = () => {
       </div>
 
       {/* Subtabs Bar */}
-      <div className="flex items-center gap-2 border-b border-[#DCE3ED] pb-3">
+      <div className="flex items-center gap-2 border-b border-[#DCE3ED] pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveSubTab('profile')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
             activeSubTab === 'profile'
               ? 'bg-[#13284A] text-white shadow-xs'
               : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
@@ -215,27 +220,40 @@ export const CampusSettingsView: React.FC = () => {
         </button>
 
         <button
+          id="branches-subtab-btn"
+          onClick={() => setActiveSubTab('departments')}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'departments'
+              ? 'bg-[#13284A] text-white shadow-xs'
+              : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          Branches & Departments (ECE, CSE...)
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('backup')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
             activeSubTab === 'backup'
               ? 'bg-[#13284A] text-white shadow-xs'
               : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
           }`}
         >
           <Database className="w-4 h-4" />
-          Data Backup & Disaster Recovery
+          Data Backup & Recovery
         </button>
 
         <button
           onClick={() => setActiveSubTab('deploy')}
-          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shrink-0 ${
             activeSubTab === 'deploy'
               ? 'bg-[#13284A] text-white shadow-xs'
               : 'bg-white text-slate-600 border border-[#DCE3ED] hover:bg-slate-50'
           }`}
         >
           <Server className="w-4 h-4" />
-          Campus Production Deployment & Health
+          Production Deployment & Health
         </button>
       </div>
 
@@ -418,6 +436,11 @@ export const CampusSettingsView: React.FC = () => {
             </div>
           )}
 
+          {/* TAB: ACADEMIC BRANCHES & DEPARTMENTS */}
+          {activeSubTab === 'departments' && (
+            <DepartmentManagerView onDepartmentChanged={fetchData} />
+          )}
+
           {/* TAB 2: DATA BACKUP & DISASTER RECOVERY */}
           {activeSubTab === 'backup' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -531,6 +554,54 @@ export const CampusSettingsView: React.FC = () => {
                     <RefreshCw className={`w-3.5 h-3.5 ${loadingSample ? 'animate-spin' : ''}`} />
                     {loadingSample ? 'Loading Sample Pack...' : 'Load Sample Demo Pack'}
                   </button>
+                </div>
+
+                {/* Local Storage Offline Cache Controls */}
+                <div className="bg-white p-5 rounded-xl border border-[#DCE3ED] shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[#13284A]">
+                      <HardDrive className="w-4 h-4 text-[#2E6FB0]" />
+                      <h4 className="text-xs font-bold">Offline Local Cache</h4>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
+                      {storageService.getCacheMetrics().totalEntries} Stores
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#667085] leading-relaxed">
+                    Persistent client-side browser cache for offline dashboard and schedule viewing.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const next = !storageService.isSimulatedOffline();
+                        storageService.setSimulatedOffline(next);
+                        showToast(next ? 'Simulated Offline Mode Enabled' : 'Offline Mode Disabled', 'info');
+                      }}
+                      className="flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 text-slate-700"
+                    >
+                      {storageService.isSimulatedOffline() ? (
+                        <>
+                          <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Go Online</span>
+                        </>
+                      ) : (
+                        <>
+                          <WifiOff className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Test Offline</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        storageService.clearAll();
+                        showToast('Local offline cache cleared.', 'success');
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+                      title="Clear offline storage cache"
+                    >
+                      Purge Cache
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

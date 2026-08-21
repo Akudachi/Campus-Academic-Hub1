@@ -50,17 +50,18 @@ interface SemesterStudentItem {
   attendancePercentage: number;
 }
 
-const DEPARTMENTS = [
-  { code: 'CSE', name: 'Computer Science & Eng' },
-  { code: 'ECE', name: 'Electronics & Comm Eng' },
-  { code: 'ISE', name: 'Information Science' },
-  { code: 'MECH', name: 'Mechanical Eng' },
-  { code: 'CIVIL', name: 'Civil Eng' },
-  { code: 'AI-ML', name: 'Artificial Intelligence' },
+const DEFAULT_DEPARTMENTS: Department[] = [
+  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
+  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Comm Eng' },
+  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
+  { id: 'dept-mech', code: 'MECH', name: 'Mechanical Eng' },
+  { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
+  { id: 'dept-aiml', code: 'AI-ML', name: 'Artificial Intelligence' },
 ];
 
 export const SemesterManagerView: React.FC = () => {
   const [semesters, setSemesters] = useState<EnrichedSemester[]>([]);
+  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(true);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -86,8 +87,14 @@ export const SemesterManagerView: React.FC = () => {
   const fetchSemesters = async () => {
     setLoading(true);
     try {
-      const res = await api.getSemesters();
-      setSemesters(res.semesters as EnrichedSemester[]);
+      const [semRes, deptRes] = await Promise.all([
+        api.getSemesters(),
+        api.getDepartments().catch(() => ({ departments: DEFAULT_DEPARTMENTS })),
+      ]);
+      setSemesters(semRes.semesters as EnrichedSemester[]);
+      if (deptRes.departments && deptRes.departments.length > 0) {
+        setDepartments(deptRes.departments);
+      }
     } catch (err: any) {
       showToast(err.message || 'Failed to load semester cycles', 'error');
     } finally {
@@ -310,7 +317,7 @@ export const SemesterManagerView: React.FC = () => {
         >
           All Departments ({semesters.length})
         </button>
-        {DEPARTMENTS.map((dept) => {
+        {departments.map((dept) => {
           const count = semesters.filter((s) => s.departmentCode === dept.code).length;
           return (
             <button
@@ -496,7 +503,7 @@ export const SemesterManagerView: React.FC = () => {
                 onChange={(e) => setNewSemDept(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] bg-white"
               >
-                {DEPARTMENTS.map((d) => (
+                {departments.map((d) => (
                   <option key={d.code} value={d.code}>
                     {d.code} - {d.name}
                   </option>

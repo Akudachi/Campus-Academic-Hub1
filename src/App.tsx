@@ -6,6 +6,7 @@ import { BottomNavBar } from './components/common/BottomNavBar';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { Modal } from './components/common/Modal';
 import { LoginView } from './components/auth/LoginView';
+import { OfflineBanner } from './components/common/OfflineBanner';
 
 // Admin Components
 import { AdminOverview } from './components/admin/AdminOverview';
@@ -143,6 +144,9 @@ const MainLayout: React.FC = () => {
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onNavigate={handleNavigate}
       />
+
+      {/* Offline Status & Local Storage Cache Banner */}
+      <OfflineBanner />
 
       {/* Main Body */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">

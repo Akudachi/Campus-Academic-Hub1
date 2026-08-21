@@ -17,7 +17,9 @@ import {
   StudentDashboardSummary,
   CampusSettings,
   SystemStatusInfo,
+  Department,
 } from '../types';
+import { storageService } from './storageService';
 
 let currentToken: string | null = localStorage.getItem('cah_token') || 'usr-admin-1';
 let currentUserId: string | null = localStorage.getItem('cah_user_id') || 'usr-admin-1';
@@ -43,6 +45,21 @@ export function getCurrentUserId(): string | null {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+  const cacheKey = `req_${endpoint}_${currentUserId || 'anon'}`;
+
+  // If offline and making a GET request, serve cached data if available
+  if (!storageService.isOnline()) {
+    if (isGet) {
+      const cached = storageService.get<T>(cacheKey);
+      if (cached) {
+        return cached.data;
+      }
+    } else {
+      throw new Error('You are currently offline. Changes cannot be saved until network is restored.');
+    }
+  }
+
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
@@ -53,18 +70,35 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set('x-user-id', currentUserId);
   }
 
-  const response = await fetch(endpoint, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(data.error || `HTTP Error ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP Error ${response.status}: ${response.statusText}`);
+    }
+
+    // Automatically cache successful GET responses to LocalStorage
+    if (isGet) {
+      storageService.save<T>(cacheKey, data);
+    }
+
+    return data;
+  } catch (err: any) {
+    // If network error/offline occurs during fetch, gracefully fallback to Local Storage Cache
+    if (isGet) {
+      const cached = storageService.get<T>(cacheKey);
+      if (cached) {
+        console.info(`[Offline Mode] Falling back to cached data for: ${endpoint}`);
+        return cached.data;
+      }
+    }
+    throw err;
   }
-
-  return data;
 }
 
 export const api = {
@@ -480,6 +514,33 @@ export const api = {
   getNotifications: () => request<{ notifications: Notification[]; unreadCount: number }>('/api/notifications'),
   markNotificationRead: (id: string) => request<{ success: boolean }>(`/api/notifications/${id}/read`, { method: 'PATCH' }),
   markAllNotificationsRead: () => request<{ success: boolean }>('/api/notifications/read-all', { method: 'POST' }),
+
+  // Academic Departments & Branches
+  getDepartments: () =>
+    request<{ departments: Department[]; total: number }>('/api/departments'),
+  getAdminDepartments: () =>
+    request<{ departments: Department[]; total: number }>('/api/admin/departments'),
+  createDepartment: (payload: {
+    name: string;
+    code: string;
+    description?: string;
+    headOfDepartment?: string;
+    establishedYear?: string;
+  }) =>
+    request<{ success: boolean; department: Department; message: string }>('/api/admin/departments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateDepartment: (id: string, payload: Partial<Department>) =>
+    request<{ success: boolean; department: Department }>(`/api/admin/departments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteDepartment: (id: string, force: boolean = false) =>
+    request<{ success: boolean; message: string; deletedDepartment: Department }>(`/api/admin/departments/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ force }),
+    }),
 
   // Campus Settings & System Health / Deployment
   getCampusSettings: () => request<{ settings: CampusSettings }>('/api/settings'),

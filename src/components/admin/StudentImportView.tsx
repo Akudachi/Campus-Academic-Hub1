@@ -19,15 +19,24 @@ import {
   Settings,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { Student, User, StudentImportRowResult } from '../../types';
+import { Student, User, StudentImportRowResult, Department } from '../../types';
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { parseStudentFile, parseStudentText, downloadStudentSampleExcel } from '../../lib/excelParser';
 
+const DEFAULT_DEPARTMENTS: Department[] = [
+  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
+  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Comm Eng' },
+  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
+  { id: 'dept-mech', code: 'MECH', name: 'Mechanical Eng' },
+  { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
+];
+
 export const StudentImportView: React.FC = () => {
   const [students, setStudents] = useState<(Student & { user: User })[]>([]);
+  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -71,8 +80,14 @@ export const StudentImportView: React.FC = () => {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.getStudents();
-      setStudents(res.students);
+      const [stuRes, deptRes] = await Promise.all([
+        api.getStudents(),
+        api.getDepartments().catch(() => ({ departments: DEFAULT_DEPARTMENTS })),
+      ]);
+      setStudents(stuRes.students);
+      if (deptRes.departments && deptRes.departments.length > 0) {
+        setDepartments(deptRes.departments);
+      }
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
@@ -364,10 +379,10 @@ export const StudentImportView: React.FC = () => {
             className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
           />
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-xs font-semibold text-[#667085]">Dept:</span>
-            {['ALL', 'CSE', 'ECE', 'ISE'].map((d) => (
+            {['ALL', ...departments.map((d) => d.code)].map((d) => (
               <button
                 key={d}
                 onClick={() => setDeptFilter(d)}
@@ -479,11 +494,11 @@ export const StudentImportView: React.FC = () => {
                     onChange={(e) => setTargetDept(e.target.value)}
                     className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white font-medium focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
                   >
-                    <option value="CSE">CSE (Computer Science)</option>
-                    <option value="ECE">ECE (Electronics & Comm)</option>
-                    <option value="ISE">ISE (Information Science)</option>
-                    <option value="MECH">MECH (Mechanical)</option>
-                    <option value="CIVIL">CIVIL (Civil Engg)</option>
+                    {departments.map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.code} ({d.name})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -857,11 +872,11 @@ export const StudentImportView: React.FC = () => {
                 onChange={(e) => setSingleStudent({ ...singleStudent, department: e.target.value })}
                 className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden bg-white font-medium"
               >
-                <option value="CSE">CSE (Computer Science)</option>
-                <option value="ECE">ECE (Electronics & Comm)</option>
-                <option value="ISE">ISE (Information Science)</option>
-                <option value="MECH">MECH (Mechanical)</option>
-                <option value="CIVIL">CIVIL (Civil Engg)</option>
+                {departments.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code} ({d.name})
+                  </option>
+                ))}
               </select>
             </div>
           </div>

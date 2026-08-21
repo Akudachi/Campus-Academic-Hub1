@@ -47,12 +47,60 @@ export interface DatabaseStore {
 
 function initializeCleanData(): DatabaseStore {
   const departments: Department[] = [
-    { id: 'dept-cse', name: 'Computer Science & Engineering', code: 'CSE' },
-    { id: 'dept-ece', name: 'Electronics & Communication Engineering', code: 'ECE' },
-    { id: 'dept-ise', name: 'Information Science & Engineering', code: 'ISE' },
-    { id: 'dept-mech', name: 'Mechanical Engineering', code: 'MECH' },
-    { id: 'dept-civil', name: 'Civil Engineering', code: 'CIVIL' },
-    { id: 'dept-aiml', name: 'Artificial Intelligence & Machine Learning', code: 'AI-ML' },
+    {
+      id: 'dept-cse',
+      name: 'Computer Science & Engineering',
+      code: 'CSE',
+      headOfDepartment: 'Dr. Ramesh Sharma',
+      description: 'Core computing, algorithms, software engineering, and systems architecture.',
+      establishedYear: '2005',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 'dept-ece',
+      name: 'Electronics & Communication Engineering',
+      code: 'ECE',
+      headOfDepartment: 'Dr. Ananya Joshi',
+      description: 'VLSI design, embedded systems, signal processing, and communication networks.',
+      establishedYear: '2005',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 'dept-ise',
+      name: 'Information Science & Engineering',
+      code: 'ISE',
+      headOfDepartment: 'Dr. Sanjay Kulkarni',
+      description: 'Cloud technologies, database engineering, enterprise software, and cybersecurity.',
+      establishedYear: '2010',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 'dept-mech',
+      name: 'Mechanical Engineering',
+      code: 'MECH',
+      headOfDepartment: 'Dr. Rajesh Patil',
+      description: 'Thermodynamics, robotics, manufacturing systems, and finite element modeling.',
+      establishedYear: '2008',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 'dept-civil',
+      name: 'Civil Engineering',
+      code: 'CIVIL',
+      headOfDepartment: 'Dr. Meera Nambiar',
+      description: 'Structural engineering, geotechnics, urban transport, and environmental hydrology.',
+      establishedYear: '2008',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 'dept-aiml',
+      name: 'Artificial Intelligence & Machine Learning',
+      code: 'AI-ML',
+      headOfDepartment: 'Dr. Vikramaditya Rao',
+      description: 'Deep neural networks, computer vision, natural language processing, and LLMs.',
+      establishedYear: '2022',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
   ];
 
   const semesters: Semester[] = [

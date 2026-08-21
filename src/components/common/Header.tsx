@@ -9,10 +9,13 @@ import {
   BookOpen,
   User,
   Sparkles,
+  WifiOff,
+  Wifi,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { NotificationDrawer } from './NotificationDrawer';
 import { api } from '../../lib/api';
+import { storageService } from '../../lib/storageService';
 
 interface HeaderProps {
   onOpenLoginModal?: () => void;
@@ -25,6 +28,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
   const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
   const [institutionName, setInstitutionName] = useState('Apex Institute of Technology');
   const [academicYear, setAcademicYear] = useState('2025–26');
+  const [isOnline, setIsOnline] = useState<boolean>(storageService.isOnline());
+
+  useEffect(() => {
+    const unsub = storageService.subscribeToNetworkStatus((online) => {
+      setIsOnline(online);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     api.getCampusSettings()
@@ -117,6 +128,26 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
 
             {/* Right Action Tools: Notifications, User Profile, Switcher Dropdown */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Network Status Badge */}
+              {!isOnline ? (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 text-xs font-bold shadow-2xs"
+                  title="Offline Mode Active: Serving local storage cache"
+                >
+                  <WifiOff className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+                  <span className="hidden sm:inline">Offline</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => storageService.setSimulatedOffline(true)}
+                  title="Simulate Offline Mode to test Local Storage caching"
+                  className="hidden md:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors"
+                >
+                  <Wifi className="w-3 h-3 text-emerald-600" />
+                  <span>Online</span>
+                </button>
+              )}
+
               {/* Notifications Button */}
               <button
                 id="header-notification-btn"

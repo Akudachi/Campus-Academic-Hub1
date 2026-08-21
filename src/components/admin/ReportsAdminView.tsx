@@ -15,9 +15,18 @@ import { api } from '../../lib/api';
 import { MetricCard } from '../common/MetricCard';
 import { StatusPill } from '../common/StatusPill';
 import { useAuth } from '../../context/AuthContext';
+import { Department } from '../../types';
+
+const DEFAULT_DEPARTMENTS: Department[] = [
+  { id: 'dept-cse', code: 'CSE', name: 'Computer Science' },
+  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Communication' },
+  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
+  { id: 'dept-mech', code: 'MECH', name: 'Mechanical' },
+];
 
 export const ReportsAdminView: React.FC = () => {
   const [reportType, setReportType] = useState<'attendance' | 'assignments' | 'marks' | 'audit'>('attendance');
+  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(true);
   const { showToast } = useAuth();
 
@@ -83,6 +92,14 @@ export const ReportsAdminView: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    api.getDepartments().then((res) => {
+      if (res.departments && res.departments.length > 0) {
+        setDepartments(res.departments);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (reportType === 'attendance') {
@@ -287,10 +304,11 @@ export const ReportsAdminView: React.FC = () => {
                 className="px-3 py-1.5 text-xs rounded-lg border border-[#DCE3ED] bg-white"
               >
                 <option value="">All Departments</option>
-                <option value="CSE">CSE</option>
-                <option value="ECE">ECE</option>
-                <option value="ISE">ISE</option>
-                <option value="MECH">MECH</option>
+                {departments.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code} - {d.name}
+                  </option>
+                ))}
               </select>
 
               <select

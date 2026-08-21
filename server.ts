@@ -22,6 +22,7 @@ import {
   ExtractedTimetableRow,
   StudentImportRowResult,
   StudentDashboardSummary,
+  Department,
 } from './src/types';
 
 dotenv.config();
@@ -152,6 +153,248 @@ app.get('/api/admin/system/status', requireRole('admin'), (req: AuthenticatedReq
 app.get('/api/admin/settings', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
   const store = db.getStore();
   res.json({ settings: store.settings });
+});
+
+// ==========================================
+// 1.2 ACADEMIC DEPARTMENTS & BRANCHES CRUD
+// ==========================================
+
+// Public / General Departments List
+app.get('/api/departments', (req: Request, res: Response) => {
+  const store = db.getStore();
+  const enriched = store.departments.map((dept) => {
+    const deptCodeUpper = dept.code.toUpperCase();
+    const studentsCount = store.students.filter(
+      (s) => s.department && s.department.toUpperCase() === deptCodeUpper
+    ).length;
+    const teachersCount = store.teachers.filter(
+      (t) => t.department && t.department.toUpperCase() === deptCodeUpper
+    ).length;
+    const semestersCount = store.semesters.filter(
+      (sem) => sem.departmentCode && sem.departmentCode.toUpperCase() === deptCodeUpper
+    ).length;
+    const subjectsCount = store.subjects.filter(
+      (sub) => sub.departmentId === dept.id || sub.code?.toUpperCase().startsWith(deptCodeUpper)
+    ).length;
+
+    return {
+      ...dept,
+      studentsCount,
+      teachersCount,
+      semestersCount,
+      subjectsCount,
+    };
+  });
+
+  res.json({ departments: enriched, total: enriched.length });
+});
+
+// Admin: Get all departments with detailed counts
+app.get('/api/admin/departments', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const store = db.getStore();
+  const enriched = store.departments.map((dept) => {
+    const deptCodeUpper = dept.code.toUpperCase();
+    const studentsCount = store.students.filter(
+      (s) => s.department && s.department.toUpperCase() === deptCodeUpper
+    ).length;
+    const teachersCount = store.teachers.filter(
+      (t) => t.department && t.department.toUpperCase() === deptCodeUpper
+    ).length;
+    const semestersCount = store.semesters.filter(
+      (sem) => sem.departmentCode && sem.departmentCode.toUpperCase() === deptCodeUpper
+    ).length;
+    const subjectsCount = store.subjects.filter(
+      (sub) => sub.departmentId === dept.id || sub.code?.toUpperCase().startsWith(deptCodeUpper)
+    ).length;
+
+    return {
+      ...dept,
+      studentsCount,
+      teachersCount,
+      semestersCount,
+      subjectsCount,
+    };
+  });
+
+  res.json({ departments: enriched, total: enriched.length });
+});
+
+// Admin: Create Department / Academic Branch
+app.post('/api/admin/departments', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { name, code, description, headOfDepartment, establishedYear, createDefaultSemesters } = req.body;
+  const store = db.getStore();
+
+  if (!name || !code) {
+    return res.status(400).json({ error: 'Department name and department code (e.g. ECE, CSE) are required.' });
+  }
+
+  const cleanCode = code.trim().toUpperCase();
+  const cleanName = name.trim();
+
+  // Validate unique code
+  const existingCode = store.departments.find((d) => d.code.toUpperCase() === cleanCode);
+  if (existingCode) {
+    return res.status(409).json({ error: `Department with code "${cleanCode}" already exists (${existingCode.name}).` });
+  }
+
+  const deptId = `dept-${cleanCode.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now().toString(36)}`;
+  const newDept: Department = {
+    id: deptId,
+    name: cleanName,
+    code: cleanCode,
+    description: description?.trim() || `Department of ${cleanName}`,
+    headOfDepartment: headOfDepartment?.trim() || '',
+    establishedYear: establishedYear?.trim() || new Date().getFullYear().toString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  store.departments.push(newDept);
+
+  // Automatically create default initial Semester cycles
+  const ay = store.settings?.academicYear || '2025-2026';
+  const defaultSemNumbers = [4, 6];
+  defaultSemNumbers.forEach((semNum) => {
+    const semId = `sem-${cleanCode.toLowerCase()}-${semNum}-${Date.now().toString(36)}`;
+    const semExists = store.semesters.some((s) => s.departmentCode === cleanCode && s.number === semNum && s.section === 'A');
+    if (!semExists) {
+      store.semesters.push({
+        id: semId,
+        number: semNum,
+        academicYear: ay,
+        departmentCode: cleanCode,
+        section: 'A',
+        status: semNum === 4 ? 'active' : 'setup',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  });
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'DEPARTMENT_CREATED',
+    `Created academic branch/department ${cleanName} (${cleanCode}) with HOD "${headOfDepartment || 'Unassigned'}"`
+  );
+
+  res.status(201).json({
+    success: true,
+    department: {
+      ...newDept,
+      studentsCount: 0,
+      teachersCount: 0,
+      semestersCount: 2,
+      subjectsCount: 0,
+    },
+    message: `Academic branch ${cleanCode} (${cleanName}) created successfully.`,
+  });
+});
+
+// Admin: Update Department / Academic Branch
+app.put('/api/admin/departments/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { name, code, description, headOfDepartment, establishedYear } = req.body;
+  const store = db.getStore();
+
+  const dept = store.departments.find((d) => d.id === id || d.code.toUpperCase() === id.toUpperCase());
+  if (!dept) {
+    return res.status(404).json({ error: 'Department not found.' });
+  }
+
+  const oldCode = dept.code;
+
+  if (name) dept.name = name.trim();
+  if (description !== undefined) dept.description = description.trim();
+  if (headOfDepartment !== undefined) dept.headOfDepartment = headOfDepartment.trim();
+  if (establishedYear !== undefined) dept.establishedYear = establishedYear.trim();
+
+  // If code changed, check uniqueness and update referenced records
+  if (code && code.trim().toUpperCase() !== oldCode) {
+    const newCode = code.trim().toUpperCase();
+    const existing = store.departments.find((d) => d.id !== dept.id && d.code.toUpperCase() === newCode);
+    if (existing) {
+      return res.status(409).json({ error: `Department code "${newCode}" is already in use by ${existing.name}.` });
+    }
+    dept.code = newCode;
+
+    // Cascade update to students, teachers, semesters
+    store.students.forEach((s) => {
+      if (s.department && s.department.toUpperCase() === oldCode) {
+        s.department = newCode;
+      }
+    });
+    store.teachers.forEach((t) => {
+      if (t.department && t.department.toUpperCase() === oldCode) {
+        t.department = newCode;
+      }
+    });
+    store.semesters.forEach((sem) => {
+      if (sem.departmentCode && sem.departmentCode.toUpperCase() === oldCode) {
+        sem.departmentCode = newCode;
+      }
+    });
+  }
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'DEPARTMENT_UPDATED',
+    `Updated academic branch ${dept.code} (${dept.name})`
+  );
+
+  res.json({ success: true, department: dept });
+});
+
+// Admin: Delete Department / Academic Branch
+app.delete('/api/admin/departments/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { force } = req.body || {};
+  const store = db.getStore();
+
+  const deptIndex = store.departments.findIndex((d) => d.id === id || d.code.toUpperCase() === id.toUpperCase());
+  if (deptIndex === -1) {
+    return res.status(404).json({ error: 'Department not found.' });
+  }
+
+  const dept = store.departments[deptIndex];
+  const deptCodeUpper = dept.code.toUpperCase();
+
+  // Check counts
+  const studentsCount = store.students.filter((s) => s.department && s.department.toUpperCase() === deptCodeUpper).length;
+  const teachersCount = store.teachers.filter((t) => t.department && t.department.toUpperCase() === deptCodeUpper).length;
+  const semestersCount = store.semesters.filter((sem) => sem.departmentCode && sem.departmentCode.toUpperCase() === deptCodeUpper).length;
+
+  // Prevent accidental deletion if records exist and force is not specified
+  if ((studentsCount > 0 || teachersCount > 0) && !force) {
+    return res.status(400).json({
+      error: `Cannot delete branch ${dept.code} directly: ${studentsCount} students and ${teachersCount} faculty are assigned. Confirm deletion with force flag to cascade or reassign first.`,
+      requiresForce: true,
+      stats: { studentsCount, teachersCount, semestersCount },
+    });
+  }
+
+  // Remove the department
+  const [removedDept] = store.departments.splice(deptIndex, 1);
+
+  // If forced deletion, also safely clean up associated semester cycles
+  if (force) {
+    store.semesters = store.semesters.filter((sem) => !sem.departmentCode || sem.departmentCode.toUpperCase() !== deptCodeUpper);
+  }
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'DEPARTMENT_DELETED',
+    `Deleted academic branch/department ${removedDept.code} (${removedDept.name}) [force=${Boolean(force)}]`
+  );
+
+  res.json({
+    success: true,
+    message: `Academic branch ${removedDept.code} (${removedDept.name}) deleted successfully.`,
+    deletedDepartment: removedDept,
+  });
 });
 
 app.post('/api/admin/settings', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
