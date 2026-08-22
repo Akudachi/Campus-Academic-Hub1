@@ -21,8 +21,8 @@ import {
 } from '../types';
 import { storageService } from './storageService';
 
-let currentToken: string | null = localStorage.getItem('cah_token') || 'usr-admin-1';
-let currentUserId: string | null = localStorage.getItem('cah_user_id') || 'usr-admin-1';
+let currentToken: string | null = localStorage.getItem('cah_token');
+let currentUserId: string | null = localStorage.getItem('cah_user_id');
 
 export function setAuthToken(token: string | null, userId?: string | null) {
   currentToken = token;
@@ -103,7 +103,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Auth
-  login: (credentials: { email?: string; userId?: string; role?: string }) =>
+  login: (credentials: {
+    key?: string;
+    credential?: string;
+    email?: string;
+    userId?: string;
+    role?: string;
+    password?: string;
+    teacherCode?: string;
+    usn?: string;
+  }) =>
     request<{ token: string; user: User; teacher?: Teacher; student?: Student }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),

@@ -2,10 +2,10 @@
 
 @layer base {
   :root {
-    --font-outfit: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
-    --font-cinzel: 'Cinzel', serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
   body {
@@ -14,11 +14,19 @@
     background-color: #F3F6FB;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4, .font-display, .font-heading {
-    font-family: var(--font-outfit);
-    letter-spacing: -0.02em;
+  h1, h2, h3, h4, h5, h6, .font-display, .font-heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: var(--font-mono);
   }
 
   /* Prevent iOS zoom on input focus while keeping UI compact */

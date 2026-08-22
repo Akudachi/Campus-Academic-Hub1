@@ -237,73 +237,29 @@ export const MobileAppDrawer: React.FC<MobileAppDrawerProps> = ({
             </div>
           </div>
 
-          {/* Quick Role Switcher Cards (Fast demo & testing) */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <h4 className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
-                Instant Role Switcher
-              </h4>
-              <span className="text-[10px] text-slate-400 font-medium">1-Tap Live Switch</span>
+          {/* Account Status & Sign Out */}
+          <div className="pt-3 border-t border-slate-100 space-y-2">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <div className="text-[10px] uppercase font-bold text-slate-400">Signed In As</div>
+              <div className="font-bold text-xs text-[#13284A] truncate mt-0.5">{user?.name}</div>
+              <div className="text-[11px] text-slate-500 truncate">{user?.email}</div>
             </div>
 
-            <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto">
-              {personas.map((p) => {
-                const isCurrent = user?.id === p.user.id;
-                const pRole = p.user.role;
-                return (
-                  <button
-                    key={p.user.id}
-                    onClick={() => {
-                      switchPersona(p.user.id);
-                      onClose();
-                    }}
-                    className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-colors ${
-                      isCurrent
-                        ? 'bg-blue-50 border-[#2E6FB0] text-[#13284A] font-semibold'
-                        : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                          pRole === 'admin'
-                            ? 'bg-[#13284A] text-white'
-                            : pRole === 'teacher'
-                            ? 'bg-[#2E6FB0] text-white'
-                            : 'bg-[#1E8E5A] text-white'
-                        }`}
-                      >
-                        {p.user.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold truncate text-[#13284A]">{p.user.name}</div>
-                        <div className="text-[10px] text-slate-500 truncate">{p.displaySub}</div>
-                      </div>
-                    </div>
-
-                    {isCurrent && (
-                      <span className="text-[10px] font-bold text-[#2E6FB0] px-2 py-0.5 rounded bg-blue-100 shrink-0">
-                        Active
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Sign Out Button */}
-          <div className="pt-2 border-t border-slate-100">
             <button
               onClick={() => {
                 onClose();
                 logout();
               }}
-              className="w-full py-3 px-4 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               Sign Out from Account
             </button>
+
+            <div className="text-center pt-1 pb-1 text-[11px] text-slate-500 font-medium flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>Developed by <strong className="text-slate-700 font-semibold">Adarsh Kudachi</strong></span>
+            </div>
           </div>
         </div>
       </div>

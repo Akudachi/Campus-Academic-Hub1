@@ -27,6 +27,7 @@ import { Modal } from '../common/Modal';
 import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { DepartmentManagerView } from './DepartmentManagerView';
+import { AppLogo } from '../common/AppLogo';
 
 interface CampusSettingsViewProps {
   onBack?: () => void;
@@ -43,13 +44,14 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
 
   // Settings State
   const [settings, setSettings] = useState<CampusSettings>({
-    institutionName: 'Apex Institute of Technology',
-    shortName: 'AIT',
-    campusCode: 'AIT-2026',
-    academicYear: '2025-2026',
-    currentSemesterTerm: 'Even Semester (Sem 4 & 6)',
+    institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
+    shortName: 'KLECET',
+    campusCode: 'KLECET-2026',
+    academicYear: '2026-2027',
+    currentSemesterTerm: 'Even Semester (Semesters 2, 4, 6, 8)',
+    semesterTermType: 'even',
     minAttendanceWarning: 75,
-    adminContactEmail: 'admin@campus.edu',
+    adminContactEmail: 'ecedept123456@gmail.com',
     systemStatus: 'operational',
   });
 
@@ -468,7 +470,7 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
 
       {/* TAB 4: SYSTEM STATUS */}
       {activeSubTab === 'system' && (
-        <div className="space-y-3 text-xs">
+        <div className="space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs text-center">
               <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto mb-1" />
@@ -484,6 +486,31 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
               <Clock className="w-6 h-6 text-indigo-600 mx-auto mb-1" />
               <span className="text-[10px] text-slate-500 font-semibold uppercase block">Uptime</span>
               <span className="text-sm font-bold text-indigo-700">Active</span>
+            </div>
+          </div>
+
+          {/* Institutional App Identity & Developer Card */}
+          <div className="p-5 bg-white rounded-2xl border border-[#DCE3ED] shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md ring-1 ring-slate-200 shrink-0">
+                <AppLogo className="w-full h-full" withSquircle={true} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-[#13284A]">{settings.institutionName}</h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Official Academic Operations & ERP Platform • {settings.campusCode}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-slate-700">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Developed by <strong className="font-bold text-[#13284A]">Adarsh Kudachi</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-bold text-[#2E6FB0]">
+                Official Enterprise Release
+              </span>
             </div>
           </div>
         </div>

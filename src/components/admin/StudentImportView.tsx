@@ -30,8 +30,9 @@ import { useAuth } from '../../context/AuthContext';
 import { parseStudentFile, parseStudentText, downloadStudentSampleExcel } from '../../lib/excelParser';
 
 const DEFAULT_DEPARTMENTS: Department[] = [
-  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
   { id: 'dept-ece', code: 'ECE', name: 'Electronics & Comm Eng' },
+  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
+  { id: 'dept-aiml', code: 'AI-ML', name: 'Artificial Intelligence & ML' },
   { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
   { id: 'dept-mech', code: 'MECH', name: 'Mechanical Eng' },
   { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },

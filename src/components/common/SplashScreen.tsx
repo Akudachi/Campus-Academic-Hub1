@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, Sparkles, ShieldCheck, Zap, ArrowRight, Layers, School } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
+import { AppLogo } from './AppLogo';
 
 interface SplashScreenProps {
   onComplete?: () => void;
@@ -9,38 +10,36 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
-  campusName = 'Apex Institute of Technology',
-  campusCode = 'AIT-2026',
+  campusName = "K.L.E. Society's KLE College of Engineering and Technology",
+  campusCode = 'KLECET-2026',
 }) => {
-  const [progress, setProgress] = useState(12);
-  const [stageText, setStageText] = useState('Initializing campus core...');
+  const [progress, setProgress] = useState(15);
+  const [stageText, setStageText] = useState('Initializing Institutional Workspace...');
   const [isClosing, setIsClosing] = useState(false);
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Stage 1
     const t1 = setTimeout(() => {
-      setProgress(38);
-      setStageText('Connecting Academic Cloud & Firebase Engine...');
-    }, 320);
+      setProgress(45);
+      setStageText('Authenticating Academic Services...');
+    }, 280);
 
     // Stage 2
     const t2 = setTimeout(() => {
-      setProgress(74);
-      setStageText('Synchronizing Faculty Allocations & Semesters...');
-    }, 780);
+      setProgress(80);
+      setStageText('Loading Faculty & Student Registers...');
+    }, 650);
 
     // Stage 3
     const t3 = setTimeout(() => {
       setProgress(100);
       setStageText('System Verified • Ready');
-      setIsReady(true);
-    }, 1250);
+    }, 1050);
 
     // Auto-dismiss
     const t4 = setTimeout(() => {
       handleDismiss();
-    }, 1650);
+    }, 1450);
 
     return () => {
       clearTimeout(t1);
@@ -54,107 +53,95 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     setIsClosing(true);
     setTimeout(() => {
       if (onComplete) onComplete();
-    }, 380);
+    }, 320);
   };
 
   return (
     <div
       id="app-splash-screen"
       onClick={handleDismiss}
-      className={`fixed inset-0 z-9999 flex flex-col items-center justify-between p-6 sm:p-10 select-none overflow-hidden cursor-pointer transition-all duration-380 ease-out bg-[#0B1528] ${
+      className={`fixed inset-0 z-9999 flex flex-col items-center justify-between p-6 sm:p-10 select-none overflow-hidden cursor-pointer transition-all duration-320 ease-out bg-[#0B1528] ${
         isClosing
-          ? 'opacity-0 scale-102 pointer-events-none'
+          ? 'opacity-0 scale-98 pointer-events-none'
           : 'opacity-100 scale-100'
       }`}
       style={{
-        background: 'radial-gradient(circle at 50% 35%, #152B4D 0%, #0B1528 70%, #060D1A 100%)',
+        background: 'radial-gradient(ellipse at 50% 30%, #13284A 0%, #0B1629 65%, #070E1A 100%)',
       }}
     >
-      {/* Background Ambient Glowing Rings */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div className="w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-3xl animate-pulse" />
-        <div className="w-[320px] h-[320px] rounded-full bg-indigo-500/10 blur-2xl animate-pulse delay-300" />
-      </div>
+      {/* Background Subtle Accent */}
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
       {/* Top Header Badge */}
       <div className="w-full flex items-center justify-between max-w-md relative z-10 animate-fade-in">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-[11px] font-semibold text-slate-300 tracking-wide font-mono">
-            LIVE CAMPUS OS
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase font-mono">
+            {campusCode}
           </span>
         </div>
 
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             handleDismiss();
           }}
-          className="text-xs font-semibold text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1"
+          className="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
         >
           <span>Skip</span>
-          <ArrowRight className="w-3 h-3" />
+          <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Central Brand Icon & Identity */}
+      {/* Central Brand Identity */}
       <div className="relative z-10 flex flex-col items-center text-center max-w-sm space-y-6 animate-fade-in my-auto">
-        {/* Glowing App Icon Frame */}
-        <div className="relative group">
-          <div className="absolute -inset-2 bg-gradient-to-r from-[#2E6FB0] via-[#5B93D1] to-[#E0982A] rounded-3xl blur-md opacity-70 group-hover:opacity-100 transition-opacity animate-pulse" />
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-linear-to-br from-[#1E3A63] to-[#0D1C33] border-2 border-white/20 shadow-2xl flex items-center justify-center text-white">
-            <GraduationCap className="w-12 h-12 sm:w-14 sm:h-14 text-white drop-shadow-md" />
-            <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-[#E0982A] border-2 border-[#0D1C33] flex items-center justify-center shadow-md">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
+        {/* Official Logo with Refined Glow */}
+        <div className="relative">
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl shadow-2xl overflow-hidden border border-white/20 relative group">
+            <AppLogo className="w-full h-full" withSquircle={true} />
           </div>
         </div>
 
-        {/* Typography */}
+        {/* Institution Titles */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#2E6FB0]/20 border border-[#2E6FB0]/40 text-[11px] font-bold text-[#8FC4F8] uppercase tracking-wider">
-            Academic Operations Platform
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2E6FB0]/20 border border-[#2E6FB0]/40 text-[11px] font-bold text-[#8FC4F8] uppercase tracking-wider">
+            <span>Academic Portal</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-display">
-            Campus Academic Hub
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-heading leading-snug">
             {campusName}
-          </p>
-          <p className="text-[11px] text-slate-400 font-mono">
-            {campusCode} • Enterprise Academic Cloud
+          </h1>
+          <p className="text-xs text-blue-200/70 font-medium">
+            Campus Academic Management System
           </p>
         </div>
 
-        {/* Progress Bar & Status Text */}
-        <div className="w-full space-y-2 pt-3">
+        {/* Streamlined Progress Indicator */}
+        <div className="w-full space-y-2 pt-2">
           <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden backdrop-blur-xs p-[1px] border border-white/10">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#2E6FB0] via-[#5B93D1] to-emerald-400 transition-all duration-300 ease-out shadow-sm"
+              className="h-full rounded-full bg-linear-to-r from-[#2E6FB0] via-[#5B93D1] to-emerald-400 transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-300 font-medium px-0.5">
-            <span className="truncate max-w-[240px] text-left">{stageText}</span>
+          <div className="flex items-center justify-between text-[11px] text-slate-300 font-medium px-1">
+            <span className="truncate max-w-[220px] text-left">{stageText}</span>
             <span className="font-mono text-slate-400">{progress}%</span>
           </div>
         </div>
       </div>
 
-      {/* Bottom Footer Info */}
-      <div className="w-full max-w-md relative z-10 flex flex-col items-center text-center space-y-2 animate-fade-in">
-        <div className="flex items-center gap-4 text-[11px] text-slate-400 font-medium">
-          <span className="flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            Role Guard Active
-          </span>
-          <span>•</span>
-          <span className="flex items-center gap-1">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            Real-time Sync
+      {/* Bottom Footer Credits & Developer Attribution */}
+      <div className="w-full max-w-md relative z-10 flex flex-col items-center text-center space-y-3 animate-fade-in">
+        {/* Developed by Adarsh Kudachi Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-xs">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-xs font-semibold text-slate-200">
+            Developed by <span className="text-white font-bold tracking-wide">Adarsh Kudachi</span>
           </span>
         </div>
+
         <p className="text-[10px] text-slate-500">
           Tap anywhere to continue
         </p>

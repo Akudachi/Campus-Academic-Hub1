@@ -632,50 +632,100 @@ app.post('/api/admin/load-demo', requireRole('admin'), (req: AuthenticatedReques
 });
 
 app.post('/api/auth/login', (req: AuthenticatedRequest, res: Response) => {
-  const { email, role, userId, usn } = req.body;
+  const { key, credential, email, role, userId, usn, teacherCode, password } = req.body;
   const store = db.getStore();
 
   let user: User | undefined;
+
+  // 1. Direct login by userId (persona switch)
   if (userId) {
     user = store.users.find((u) => u.id === userId);
-  } else if (email) {
-    const rawInput = email.trim();
-    const input = rawInput.toLowerCase();
-    
-    // 1. Direct email match
-    user = store.users.find((u) => u.email.toLowerCase() === input);
-    
-    // 2. Fallback for the campus admin email variants
-    if (!user && (input === '00adarsh.kudachi00@gmail.com' || input === 'admin@campus.edu')) {
-      user = store.users.find((u) => u.role === 'admin');
-    }
-    
-    // 3. Match by student USN
     if (!user) {
-      const studentMatch = store.students.find((s) => s.usn.toLowerCase() === input);
-      if (studentMatch) {
-        user = store.users.find((u) => u.id === studentMatch.userId);
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+  } else {
+    const rawInput = (key || credential || usn || teacherCode || email || '').trim();
+    const inputLower = rawInput.toLowerCase();
+    const inputUpper = rawInput.toUpperCase();
+    const normalizedAlphanumeric = inputUpper.replace(/[^A-Z0-9]/g, '');
+
+    if (!rawInput) {
+      return res.status(400).json({
+        error: 'Please enter your Student USN (e.g. 2KL23EC001), Faculty Code (e.g. ECE01), or Admin Key.',
+      });
+    }
+
+    // 2. Admin Key check (e.g. admin@123, admin123, ecedept123456@gmail.com, etc.)
+    const adminKeys = [
+      'admin@123',
+      'admin123',
+      'admin',
+      'ecedept123456@gmail.com',
+      'admin@klecet.edu.in',
+      'ecedept123',
+      'klecet2026',
+      'password',
+      '123456',
+    ];
+
+    if (
+      role === 'admin' ||
+      adminKeys.includes(inputLower) ||
+      adminKeys.includes(rawInput) ||
+      (rawInput.includes('@') && (inputLower.includes('admin') || inputLower.includes('ecedept')))
+    ) {
+      user = store.users.find(
+        (u) =>
+          u.role === 'admin' &&
+          (u.email.toLowerCase() === inputLower ||
+            u.name.toLowerCase().includes(inputLower) ||
+            inputLower === 'admin@123' ||
+            inputLower === 'admin123' ||
+            inputLower === 'admin')
+      );
+      if (!user) {
+        user = store.users.find((u) => u.role === 'admin');
       }
     }
-    
-    // 4. Match by teacher code
+
+    // 3. Faculty / Teacher Code check (e.g. ECE01, CSE01, T101)
     if (!user) {
-      const teacherMatch = store.teachers.find((t) => t.teacherCode.toLowerCase() === input);
+      const teacherMatch = store.teachers.find((t) => {
+        const tCode = t.teacherCode.toUpperCase();
+        return tCode === inputUpper || tCode.replace(/[^A-Z0-9]/g, '') === normalizedAlphanumeric;
+      });
+
       if (teacherMatch) {
         user = store.users.find((u) => u.id === teacherMatch.userId);
       }
     }
-  } else if (usn) {
-    const studentMatch = store.students.find((s) => s.usn.toLowerCase() === usn.trim().toLowerCase());
-    if (studentMatch) {
-      user = store.users.find((u) => u.id === studentMatch.userId);
+
+    // 4. Student USN check (e.g. 2KL23EC001)
+    if (!user) {
+      const studentMatch = store.students.find((s) => {
+        const sUSN = s.usn.toUpperCase();
+        return sUSN === inputUpper || sUSN.replace(/[^A-Z0-9]/g, '') === normalizedAlphanumeric;
+      });
+
+      if (studentMatch) {
+        user = store.users.find((u) => u.id === studentMatch.userId);
+      }
     }
-  } else if (role) {
-    user = store.users.find((u) => u.role === role);
+
+    // 5. Match by registered user email or name
+    if (!user) {
+      user = store.users.find(
+        (u) =>
+          u.email.toLowerCase() === inputLower ||
+          u.name.toLowerCase() === inputLower
+      );
+    }
   }
 
   if (!user) {
-    return res.status(401).json({ error: 'User not found. Please check your email, USN, or Teacher Code.' });
+    return res.status(401).json({
+      error: `Invalid Access Key / ID "${key || credential || usn || teacherCode || email}". Please verify your Student USN (e.g. 2KL23EC001), Faculty Code (e.g. ECE01), or Admin Key.`,
+    });
   }
 
   let teacherProfile = undefined;

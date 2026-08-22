@@ -16,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { NotificationDrawer } from './NotificationDrawer';
 import { api } from '../../lib/api';
 import { storageService } from '../../lib/storageService';
+import { AppLogo } from './AppLogo';
 
 interface HeaderProps {
   onOpenLoginModal?: () => void;
@@ -26,8 +27,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
   const { user, teacher, student, role, personas, switchPersona, logout, unreadCount } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
-  const [institutionName, setInstitutionName] = useState('Campus Institute of Technology');
-  const [academicYear, setAcademicYear] = useState('2025–26');
+  const [institutionName, setInstitutionName] = useState("K.L.E. College of Engineering & Technology");
+  const [academicYear, setAcademicYear] = useState('2026–27');
   const [currentTerm, setCurrentTerm] = useState('Even Sem (2, 4, 6, 8)');
   const [isOnline, setIsOnline] = useState<boolean>(storageService.isOnline());
 
@@ -95,16 +96,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
           <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
             {/* Logo & College Info */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#13284A] flex items-center justify-center text-white shadow-xs shrink-0 ring-2 ring-[#13284A]/10">
-                <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-[#5B93D1]" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-xs shrink-0 ring-1 ring-slate-200">
+                <AppLogo className="w-full h-full" withSquircle={true} />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h1 className="font-serif text-sm sm:text-base lg:text-lg font-bold text-[#13284A] tracking-tight truncate">
-                    Campus Hub
+                  <h1 className="font-heading text-sm sm:text-base lg:text-lg font-bold text-[#13284A] tracking-tight truncate">
+                    KLECET Portal
                   </h1>
-                  <span className="text-[8px] sm:text-[9px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200/80 shrink-0">
-                    SaaS
+                  <span className="text-[8px] sm:text-[9px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                    Live
                   </span>
                 </div>
                 <p className="text-[11px] text-[#667085] truncate hidden sm:flex items-center gap-1.5">
@@ -122,28 +123,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
               </div>
             </div>
 
-            {/* Middle Quick Persona Switcher Bar (Desktop) */}
-            <div className="hidden lg:flex items-center bg-[#F3F6FB] border border-[#DCE3ED] rounded-xl p-1 gap-1">
-              <span className="text-[11px] font-semibold text-[#667085] px-2 flex items-center gap-1">
-                <UserCheck className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                Role:
+            {/* Middle Institutional Status Badge (Desktop) */}
+            <div className="hidden lg:flex items-center bg-[#F3F6FB] border border-[#DCE3ED] rounded-xl px-3 py-1.5 gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-semibold text-[#13284A]">
+                {institutionName}
               </span>
-              {personas.slice(0, 4).map((p) => {
-                const isActive = user?.id === p.user.id;
-                return (
-                  <button
-                    key={p.user.id}
-                    onClick={() => switchPersona(p.user.id)}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-white text-[#13284A] shadow-xs font-bold border border-[#DCE3ED]'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-                    }`}
-                  >
-                    {p.user.role === 'admin' ? 'Admin' : p.user.role === 'teacher' ? `Faculty (${p.teacher?.teacherCode})` : `Student (${p.student?.usn?.slice(-3)})`}
-                  </button>
-                );
-              })}
+              <span className="text-slate-300">•</span>
+              <span className="text-[11px] font-mono font-bold text-[#2E6FB0]">
+                AY {academicYear}
+              </span>
             </div>
 
             {/* Right Action Tools: Network, Notifications, Persona Switcher */}
@@ -173,6 +162,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
                     {unreadCount}
                   </span>
                 )}
+              </button>
+
+              {/* Quick Sign Out Button (Desktop) */}
+              <button
+                type="button"
+                id="header-direct-logout-btn"
+                onClick={() => logout()}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100/90 text-rose-700 hover:text-rose-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                title="Sign out of your session"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span>Sign Out</span>
               </button>
 
               {/* Mobile Role Switcher Pill & Desktop Profile Dropdown */}
@@ -228,71 +229,51 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
                         <div className="mt-2">{getRoleBadge()}</div>
                       </div>
 
-                      {/* Switch Persona section */}
-                      <div className="p-3 overflow-y-auto flex-1 overscroll-contain">
-                        <div className="flex items-center justify-between px-1 mb-2">
-                          <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider flex items-center gap-1">
-                            <UserCheck className="w-3.5 h-3.5 text-[#2E6FB0]" />
-                            Switch Demo Persona
-                          </p>
-                          <span className="text-[10px] text-slate-400 font-medium">1-Tap Switch</span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {personas.map((p) => {
-                            const isCurrent = user?.id === p.user.id;
-                            let roleColor = 'border-slate-200 text-slate-700 bg-slate-50';
-                            if (p.user.role === 'admin') roleColor = 'border-[#13284A]/30 text-[#13284A] bg-blue-50/50';
-                            if (p.user.role === 'teacher') roleColor = 'border-[#2E6FB0]/30 text-[#2E6FB0] bg-sky-50/50';
-                            if (p.user.role === 'student') roleColor = 'border-emerald-600/30 text-emerald-800 bg-emerald-50/50';
-
-                            return (
-                              <button
-                                key={p.user.id}
-                                onClick={() => {
-                                  switchPersona(p.user.id);
-                                  setIsPersonaMenuOpen(false);
-                                }}
-                                className={`w-full text-left p-2.5 rounded-xl text-xs transition-all flex items-center justify-between gap-3 border ${
-                                  isCurrent
-                                    ? 'bg-[#13284A] text-white font-bold border-[#13284A] shadow-xs'
-                                    : 'hover:bg-slate-100 text-slate-700 bg-white border-slate-200'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs shadow-2xs ${
-                                    isCurrent ? 'bg-white text-[#13284A]' : 'bg-slate-100 text-slate-700'
-                                  }`}>
-                                    {p.user.name.charAt(0)}
+                      {/* Quick Portal Switcher for Admins if available */}
+                      {role === 'admin' && personas.length > 1 && (
+                        <div className="p-3 overflow-y-auto max-h-48 border-b border-slate-100">
+                          <div className="flex items-center justify-between px-1 mb-2">
+                            <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider flex items-center gap-1">
+                              <UserCheck className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                              Quick Portal Switch (Admin)
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            {personas.filter((p) => p.user.id !== user?.id).slice(0, 5).map((p) => {
+                              return (
+                                <button
+                                  key={p.user.id}
+                                  onClick={() => {
+                                    switchPersona(p.user.id);
+                                    setIsPersonaMenuOpen(false);
+                                  }}
+                                  className="w-full text-left p-2 rounded-xl text-xs transition-all flex items-center justify-between gap-2 hover:bg-slate-100 text-slate-700 bg-white border border-slate-200/80 cursor-pointer"
+                                >
+                                  <div className="min-w-0 flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full shrink-0 ${p.user.role === 'admin' ? 'bg-[#13284A]' : p.user.role === 'teacher' ? 'bg-[#2E6FB0]' : 'bg-emerald-600'}`} />
+                                    <div className="truncate font-semibold text-xs">{p.user.name}</div>
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className="truncate font-bold text-xs">{p.user.name}</div>
-                                    <div className={`text-[10px] truncate ${isCurrent ? 'text-slate-200' : 'text-slate-500'}`}>
-                                      {p.displaySub}
-                                    </div>
-                                  </div>
-                                </div>
-                                <span className={`text-[9px] uppercase font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                                  isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                                }`}>
-                                  {p.user.role}
-                                </span>
-                              </button>
-                            );
-                          })}
+                                  <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">
+                                    {p.user.role}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="border-t border-slate-100 p-2.5 bg-slate-50/80 rounded-b-2xl space-y-1">
+                      <div className="p-2 bg-slate-50/80 rounded-b-2xl space-y-1">
                         {onOpenLoginModal && (
                           <button
                             onClick={() => {
                               setIsPersonaMenuOpen(false);
                               onOpenLoginModal();
                             }}
-                            className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 rounded-xl flex items-center gap-2 transition-colors"
+                            className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                           >
                             <User className="w-4 h-4 text-slate-500" />
-                            Sign In with Another Account
+                            Switch Portal / Change Account
                           </button>
                         )}
                         <button
@@ -300,7 +281,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
                             setIsPersonaMenuOpen(false);
                             logout();
                           }}
-                          className="w-full text-left px-3 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100/70 rounded-xl flex items-center gap-2 transition-colors"
+                          className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100/70 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                         >
                           <LogOut className="w-4 h-4 text-rose-600" />
                           Sign Out

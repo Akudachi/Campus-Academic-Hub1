@@ -44,9 +44,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigate }) => {
     below50Count: number;
   }>({ avgAttendance: 0, below80Count: 0, below50Count: 0 });
   const [campusInfo, setCampusInfo] = useState({
-    institutionName: 'Campus Institute of Technology',
-    campusCode: 'CIT-2026',
-    academicYear: '2025-2026',
+    institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
+    campusCode: 'KLECET-2026',
+    academicYear: '2026-2027',
     currentSemesterTerm: 'Even Semester (Sem 2, 4, 6, 8)',
     semesterTermType: 'even',
   });
@@ -69,9 +69,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigate }) => {
           })),
           api.getCampusSettings().catch(() => ({
             settings: {
-              institutionName: 'Campus Institute of Technology',
-              campusCode: 'CIT-2026',
-              academicYear: '2025-2026',
+              institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
+              campusCode: 'KLECET-2026',
+              academicYear: '2026-2027',
               currentSemesterTerm: 'Even Semester (Sem 2, 4, 6, 8)',
               semesterTermType: 'even',
             },
@@ -90,9 +90,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigate }) => {
         }
         if (setRes?.settings) {
           setCampusInfo({
-            institutionName: setRes.settings.institutionName || 'Campus Institute of Technology',
-            campusCode: setRes.settings.campusCode || 'CIT-2026',
-            academicYear: setRes.settings.academicYear || '2025-2026',
+            institutionName: setRes.settings.institutionName || "K.L.E. Society's KLE College of Engineering and Technology",
+            campusCode: setRes.settings.campusCode || 'KLECET-2026',
+            academicYear: setRes.settings.academicYear || '2026-2027',
             currentSemesterTerm: setRes.settings.currentSemesterTerm || 'Even Semester (Sem 2, 4, 6, 8)',
             semesterTermType: setRes.settings.semesterTermType || 'even',
           });

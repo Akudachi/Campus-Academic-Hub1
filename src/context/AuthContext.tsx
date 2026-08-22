@@ -26,7 +26,16 @@ interface AuthContextType {
   toasts: ToastMessage[];
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   removeToast: (id: string) => void;
-  login: (credentials: { email?: string; userId?: string; role?: string }) => Promise<void>;
+  login: (credentials: {
+    key?: string;
+    credential?: string;
+    email?: string;
+    userId?: string;
+    role?: string;
+    password?: string;
+    teacherCode?: string;
+    usn?: string;
+  }) => Promise<void>;
   logout: () => void;
   switchPersona: (targetUserId: string) => Promise<void>;
   refreshNotifications: () => Promise<void>;
@@ -67,33 +76,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch available personas for the switch bar
-      const pRes = await api.getPersonas();
-      setPersonas(pRes.personas);
-
-      // 2. Fetch active me session
-      const meRes = await api.getMe();
-      setUser(meRes.user);
-      setTeacher(meRes.teacher || null);
-      setStudent(meRes.student || null);
-      setAuthToken(meRes.user.id, meRes.user.id);
-
-      // 3. Unread notification count
-      const notifRes = await api.getNotifications();
-      setUnreadCount(notifRes.unreadCount);
-    } catch (err: any) {
-      console.warn('Boot auth load fallback:', err.message);
-      // If no session found, fallback to first persona (Admin)
+      // 1. Fetch available personas for directory / quick switcher
       try {
         const pRes = await api.getPersonas();
-        if (pRes.personas.length > 0) {
-          const first = pRes.personas[0];
-          setUser(first.user);
-          setTeacher(first.teacher || null);
-          setStudent(first.student || null);
-          setAuthToken(first.user.id, first.user.id);
+        setPersonas(pRes.personas || []);
+      } catch (e) {
+        console.warn('Persona list load:', e);
+      }
+
+      // 2. Fetch active session if token exists in localStorage
+      const savedToken = localStorage.getItem('cah_token');
+      if (savedToken) {
+        const meRes = await api.getMe();
+        if (meRes?.user) {
+          setUser(meRes.user);
+          setTeacher(meRes.teacher || null);
+          setStudent(meRes.student || null);
+          setAuthToken(meRes.user.id, meRes.user.id);
+          await refreshNotifications();
         }
-      } catch {}
+      } else {
+        // No saved token -> Stay on Login Page
+        setUser(null);
+        setTeacher(null);
+        setStudent(null);
+      }
+    } catch (err: any) {
+      console.warn('Boot auth load:', err.message);
+      setUser(null);
+      setTeacher(null);
+      setStudent(null);
+      setAuthToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +116,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadInitialData();
   }, []);
 
-  const login = async (credentials: { email?: string; userId?: string; role?: string }) => {
+  const login = async (credentials: {
+    key?: string;
+    credential?: string;
+    email?: string;
+    userId?: string;
+    role?: string;
+    password?: string;
+    teacherCode?: string;
+    usn?: string;
+  }) => {
     setIsLoading(true);
     try {
       const res = await api.login(credentials);
@@ -111,7 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTeacher(res.teacher || null);
       setStudent(res.student || null);
       setAuthToken(res.token, res.user.id);
-      showToast(`Signed in as ${res.user.name} (${res.user.role.toUpperCase()})`, 'success');
+      showToast(`Welcome back, ${res.user.name}! (${res.user.role.toUpperCase()} Portal)`, 'success');
+      
+      // Refresh directory list after login
+      try {
+        const pRes = await api.getPersonas();
+        setPersonas(pRes.personas || []);
+      } catch {}
+
       await refreshNotifications();
     } catch (err: any) {
       showToast(err.message || 'Login failed', 'error');
@@ -124,15 +153,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchPersona = async (targetUserId: string) => {
     setIsLoading(true);
     try {
-      const target = personas.find((p) => p.user.id === targetUserId);
-      if (target) {
-        setAuthToken(target.user.id, target.user.id);
-        setUser(target.user);
-        setTeacher(target.teacher || null);
-        setStudent(target.student || null);
-        showToast(`Switched active persona to ${target.user.name} (${target.user.role})`, 'info');
-        await refreshNotifications();
-      }
+      const res = await api.login({ userId: targetUserId });
+      setUser(res.user);
+      setTeacher(res.teacher || null);
+      setStudent(res.student || null);
+      setAuthToken(res.token, res.user.id);
+      showToast(`Switched active portal to ${res.user.name} (${res.user.role.toUpperCase()})`, 'info');
+      await refreshNotifications();
+    } catch (err: any) {
+      showToast(err.message || 'Switch persona failed', 'error');
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setTeacher(null);
     setStudent(null);
-    showToast('Signed out successfully.', 'info');
+    showToast('Signed out of campus portal.', 'info');
   };
 
   const role: UserRole = user?.role || 'admin';

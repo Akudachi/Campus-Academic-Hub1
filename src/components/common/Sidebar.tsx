@@ -3,19 +3,17 @@ import {
   LayoutDashboard,
   Users,
   UserCheck,
-  CalendarDays,
-  FileSpreadsheet,
   Megaphone,
   BarChart3,
   BookOpen,
   FileCheck2,
   Award,
-  Calendar,
   Sparkles,
   Layers,
   GraduationCap,
-  ShieldAlert,
   Settings,
+  LogOut,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,7 +23,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
-  const { role } = useAuth();
+  const { role, user, logout } = useAuth();
 
   const adminNav = [
     { id: 'overview', label: 'Admin Dashboard', icon: LayoutDashboard },
@@ -60,8 +58,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
   if (role === 'student') currentNav = studentNav;
 
   return (
-    <aside className="w-64 bg-white border-r border-[#DCE3ED] shrink-0 flex flex-col justify-between py-6 px-3">
-      <div className="space-y-6">
+    <aside className="w-64 bg-white border-r border-[#DCE3ED] shrink-0 flex flex-col justify-between py-5 px-3 h-full overflow-y-auto">
+      <div className="space-y-5">
         {/* Role Header Title */}
         <div className="px-3">
           <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
@@ -78,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
               }`}
             />
             <span className="text-sm font-bold text-[#13284A] capitalize">
-              {role === 'admin' ? 'Operations Hub' : role === 'teacher' ? 'Academic Workspace' : 'Read-Only Workspace'}
+              {role === 'admin' ? 'Operations Hub' : role === 'teacher' ? 'Faculty Workspace' : 'Student Workspace'}
             </span>
           </div>
         </div>
@@ -93,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                 key={item.id}
                 id={`nav-${item.id}`}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                   isActive
                     ? 'bg-[#13284A] text-white font-semibold shadow-xs'
                     : 'text-slate-600 hover:text-[#13284A] hover:bg-slate-100/80'
@@ -118,34 +116,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
         </nav>
       </div>
 
-      {/* Role Security Notice footer */}
-      <div className="px-3 pt-4 border-t border-slate-100">
-        {role === 'student' ? (
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-              <ShieldAlert className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Read-Only Portal</span>
+      {/* User Status & Direct Sign Out Footer */}
+      <div className="pt-4 border-t border-slate-100 space-y-2 mt-4">
+        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 ${
+                role === 'admin' ? 'bg-[#13284A]' : role === 'teacher' ? 'bg-[#2E6FB0]' : 'bg-emerald-700'
+              }`}
+            >
+              {user?.name?.charAt(0) || 'U'}
             </div>
-            <p className="text-[11px] text-[#667085] leading-snug">
-              Academic records are verified and managed by assigned faculty & administration.
-            </p>
-          </div>
-        ) : role === 'teacher' ? (
-          <div className="p-2.5 rounded-xl bg-blue-50/50 border border-[#2E6FB0]/20 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#13284A]">
-              <BookOpen className="w-3.5 h-3.5 text-[#2E6FB0] shrink-0" />
-              <span>Assigned Subjects</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-800 truncate">{user?.name || 'User'}</div>
+              <div className="text-[10px] text-slate-500 capitalize flex items-center gap-1 truncate">
+                <Shield className="w-2.5 h-2.5 text-slate-400" />
+                <span>{role} Portal</span>
+              </div>
             </div>
-            <p className="text-[11px] text-[#667085] leading-snug">
-              Mutations locked to your verified semester assignments only.
-            </p>
           </div>
-        ) : (
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <p className="text-[11px] font-semibold text-[#13284A]">College Administration</p>
-            <p className="text-[10px] text-[#667085]">Apex Institute of Technology</p>
-          </div>
-        )}
+        </div>
+
+        <button
+          type="button"
+          id="sidebar-logout-btn"
+          onClick={() => logout()}
+          className="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-rose-700 bg-rose-50/70 border border-rose-200/80 hover:bg-rose-100 hover:border-rose-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-[0.98]"
+        >
+          <LogOut className="w-3.5 h-3.5 text-rose-600" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </aside>
   );

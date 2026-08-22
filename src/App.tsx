@@ -6,8 +6,10 @@ import { BottomNavBar } from './components/common/BottomNavBar';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { Modal } from './components/common/Modal';
 import { LoginView } from './components/auth/LoginView';
+import { LoginPage } from './components/auth/LoginPage';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { SplashScreen } from './components/common/SplashScreen';
+import { AppLogo } from './components/common/AppLogo';
 import { api } from './lib/api';
 
 // Admin Components
@@ -43,6 +45,7 @@ import {
   X,
   Menu,
   GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
@@ -53,8 +56,8 @@ const MainLayout: React.FC = () => {
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [campusInfo, setCampusInfo] = useState({
-    institutionName: 'Apex Institute of Technology',
-    campusCode: 'AIT-2026',
+    institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
+    campusCode: 'KLECET-2026',
   });
 
   useEffect(() => {
@@ -85,10 +88,65 @@ const MainLayout: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#13284A] text-white flex items-center justify-center animate-pulse">
-          <GraduationCap className="w-7 h-7 text-[#5B93D1]" />
+        <div className="w-16 h-16 rounded-2xl shadow-xl overflow-hidden animate-pulse">
+          <AppLogo className="w-full h-full" withSquircle={true} />
         </div>
         <p className="text-sm font-semibold text-[#13284A]">Initializing Campus Academic Hub...</p>
+        <p className="text-xs text-slate-400 font-medium">Developed by Adarsh Kudachi</p>
+      </div>
+    );
+  }
+
+  // Not logged in: Show the 3-Role Institutional Login Page
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#F0F4FA] antialiased text-slate-800 selection:bg-[#2E6FB0] selection:text-white relative">
+        <LoginPage />
+
+        {/* Dynamic SaaS Splash Screen if enabled */}
+        {showSplash && (
+          <SplashScreen
+            campusName={campusInfo.institutionName}
+            campusCode={campusInfo.campusCode}
+            onComplete={() => setShowSplash(false)}
+          />
+        )}
+
+        {/* Toast Notification Container */}
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-[calc(100vw-32px)] sm:w-full pointer-events-none">
+          {toasts.map((toast) => {
+            let bg = 'bg-[#13284A] text-white';
+            let Icon = CheckCircle2;
+            if (toast.type === 'error') {
+              bg = 'bg-rose-700 text-white';
+              Icon = AlertCircle;
+            } else if (toast.type === 'warning') {
+              bg = 'bg-amber-600 text-white';
+              Icon = AlertTriangle;
+            } else if (toast.type === 'info') {
+              bg = 'bg-[#2E6FB0] text-white';
+              Icon = Info;
+            }
+
+            return (
+              <div
+                key={toast.id}
+                className={`p-3.5 rounded-xl shadow-xl flex items-start justify-between gap-3 text-xs font-medium pointer-events-auto border border-white/10 animate-fade-in ${bg}`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <Icon className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{toast.message}</span>
+                </div>
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="opacity-70 hover:opacity-100 p-0.5 rounded transition-opacity"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -207,8 +265,23 @@ const MainLayout: React.FC = () => {
         )}
 
         {/* Content Container - Responsive padding for mobile bottom bar */}
-        <main className="flex-1 px-3 py-4 sm:p-5 lg:p-8 min-w-0 overflow-y-auto pb-28 lg:pb-8">
-          {renderContent()}
+        <main className="flex-1 px-3 py-4 sm:p-5 lg:p-8 min-w-0 overflow-y-auto pb-28 lg:pb-8 flex flex-col justify-between">
+          <div>{renderContent()}</div>
+
+          {/* Institutional Footer & Developer Attribution */}
+          <footer className="mt-12 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <AppLogo className="w-5 h-5" withSquircle={true} />
+              <span className="font-semibold text-slate-700">{campusInfo.institutionName}</span>
+              <span className="text-slate-300 hidden sm:inline">•</span>
+              <span className="text-slate-400 hidden sm:inline">{campusInfo.campusCode}</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Developed by <strong className="text-slate-800 font-bold">Adarsh Kudachi</strong></span>
+            </div>
+          </footer>
         </main>
       </div>
 

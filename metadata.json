@@ -1,6 +1,6 @@
 {
   "name": "Campus Academic Hub",
-  "description": "Centralized SaaS academic operations platform for colleges managing attendance, assignments, test marks, notices, and events across Admins, Teachers, and Students.",
+  "description": "Centralized academic operations platform for K.L.E. College of Engineering and Technology managing attendance, assignments, test marks, notices, and events across Admins, Teachers, and Students.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
