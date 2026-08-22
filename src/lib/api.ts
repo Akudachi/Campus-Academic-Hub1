@@ -180,6 +180,35 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  autoAssignTeachers: (payload?: { department?: string; semesterNumber?: number; replaceExisting?: boolean }) =>
+    request<{
+      success: boolean;
+      message: string;
+      assignedCount: number;
+      assignments: any[];
+    }>('/api/admin/teachers/auto-assign', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    }),
+
+  updateTeacher: (id: string, payload: {
+    name?: string;
+    email?: string;
+    department?: string;
+    teacherCode?: string;
+    designation?: string;
+    qualification?: string;
+  }) =>
+    request<{ success: boolean; teacher: Teacher & { user: User } }>(`/api/admin/teachers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteTeacher: (id: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/teachers/${id}`, {
+      method: 'DELETE',
+    }),
+
   unassignTeacherSubject: (teacherId: string, subjectId: string) =>
     request<{ success: boolean; message: string }>(`/api/admin/teachers/${teacherId}/assign-subject/${subjectId}`, {
       method: 'DELETE',

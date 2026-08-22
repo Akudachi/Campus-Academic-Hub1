@@ -17,6 +17,16 @@ export interface User {
   createdAt: string;
 }
 
+export interface TeacherAssignedSubjectSummary {
+  assignmentId: string;
+  subjectId: string;
+  semesterId: string;
+  code: string;
+  name: string;
+  semesterNumber: number;
+  departmentCode: string;
+}
+
 export interface Teacher {
   id: string;
   userId: string;
@@ -25,6 +35,8 @@ export interface Teacher {
   designation?: string;
   qualification?: string;
   user?: User;
+  assignedSubjects?: TeacherAssignedSubjectSummary[];
+  assignedSubjectsCount?: number;
 }
 
 export interface Student {
@@ -207,6 +219,7 @@ export interface ExtractedTimetableRow {
   subjectName: string;
   subjectCode: string;
   teacherNameRaw: string;
+  teacherCode?: string;
   matchedTeacherId: string | null;
   matchedTeacherName?: string;
   confidence: number; // 0.0 to 1.0
@@ -258,6 +271,8 @@ export interface TeacherImportRowResult {
   email: string;
   designation: string;
   qualification: string;
+  subjectCode?: string;
+  subjectName?: string;
   isValid: boolean;
   isExisting?: boolean;
   errors: string[];

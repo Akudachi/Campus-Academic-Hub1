@@ -34,6 +34,7 @@ interface RawExtractedItem {
   subjectName: string;
   subjectCode: string;
   teacherNameRaw: string;
+  teacherCode?: string;
   departmentCode?: string;
   credits?: number;
   professorEmail?: string;
@@ -107,6 +108,7 @@ The uploaded document follows this exact college timetable structure:
    - Subject Code: Official alphanumeric code in uppercase (e.g. BEC701, BECL701, BEC786).
    - Subject Name: Clean, complete title without abbreviations.
    - Teacher Name: Full faculty name including title (Dr./Prof./Mr./Ms.).
+   - Teacher Code: If a faculty code, initials (e.g. CS-ALAN, SAP, MRB), or code in parentheses is mentioned, extract it into teacherCode.
    - Department Code: Department abbreviation (e.g. ECE, CSE, AIML, MECH, CIVIL).
    - Credits: Assign 4 for regular theory, 3 for electives, 2 for Labs/IPCC, 4-6 for Major Projects.
 
@@ -164,6 +166,7 @@ ${teacherNames || 'None currently registered'}
                 subjectName: { type: Type.STRING, description: 'Full course or subject title' },
                 subjectCode: { type: Type.STRING, description: 'Official course code e.g. BEC701, 21CS42' },
                 teacherNameRaw: { type: Type.STRING, description: 'Assigned faculty or professor name' },
+                teacherCode: { type: Type.STRING, description: 'Optional faculty code / initials e.g. CS-ALAN, SAP, MRB if present' },
                 departmentCode: { type: Type.STRING, description: 'Department code e.g. CSE, ECE' },
                 credits: { type: Type.INTEGER, description: 'Course credits e.g. 4, 3, 2' },
                 professorEmail: { type: Type.STRING, description: 'Optional professor email if detected' },
@@ -216,25 +219,37 @@ function matchAndScoreRows(
       confidence: 0.3,
     };
 
+    const cleanRaw = rawTeacher.replace(/^(dr\.|dr|prof\.|prof|mr\.|mr|mrs\.|mrs|ms\.|ms)\s+/i, '').trim();
+    
+    // Extract code in parenthesis if present e.g. Dr. Alan Turing (CS-ALAN)
+    let extractedCode = '';
+    const codeMatch = rawTeacher.match(/\(([^)]+)\)/);
+    if (codeMatch && codeMatch[1]) {
+      extractedCode = codeMatch[1].trim().toLowerCase();
+    }
+
     // Calculate match confidence against existing faculty list
     for (const t of teachers) {
-      const tName = (t.user?.name || '').toLowerCase();
+      const tName = (t.user?.name || '').toLowerCase().replace(/^(dr\.|dr|prof\.|prof|mr\.|mr|mrs\.|mrs|ms\.|ms)\s+/i, '').trim();
       const tCode = t.teacherCode.toLowerCase();
 
-      if (tName && (rawTeacher.includes(tName) || tName.includes(rawTeacher))) {
+      if (extractedCode && tCode === extractedCode) {
+        bestMatch = { teacherId: t.id, name: t.user?.name || '', confidence: 1.0 };
+        break;
+      } else if (tCode && (rawTeacher.includes(`(${tCode})`) || rawTeacher.includes(` ${tCode}`))) {
         bestMatch = { teacherId: t.id, name: t.user?.name || '', confidence: 0.98 };
         break;
-      } else if (rawTeacher.includes(tCode)) {
-        bestMatch = { teacherId: t.id, name: t.user?.name || '', confidence: 0.95 };
+      } else if (tName && (cleanRaw === tName || cleanRaw.includes(tName) || tName.includes(cleanRaw))) {
+        bestMatch = { teacherId: t.id, name: t.user?.name || '', confidence: 0.98 };
         break;
-      } else if (tName) {
-        // partial word match
-        const parts = tName.split(' ').filter((p) => p.length > 2);
-        const matchedParts = parts.filter((p) => rawTeacher.includes(p));
-        if (matchedParts.length > 0) {
-          const conf = 0.6 + 0.15 * matchedParts.length;
+      } else if (tName && cleanRaw) {
+        // partial word match on significant tokens (ignore honorary titles)
+        const parts = tName.split(/[\s,.-]+/).filter((p) => p.length > 2 && !['dr', 'prof', 'mr', 'mrs', 'ms'].includes(p));
+        const matchedParts = parts.filter((p) => cleanRaw.includes(p));
+        if (matchedParts.length >= 2 || (parts.length === 1 && matchedParts.length === 1)) {
+          const conf = 0.7 + 0.15 * matchedParts.length;
           if (conf > bestMatch.confidence) {
-            bestMatch = { teacherId: t.id, name: t.user?.name || '', confidence: Math.min(conf, 0.9) };
+            bestMatch = { teacherId: t.id, name: t.user?.name || '', confidence: Math.min(conf, 0.92) };
           }
         }
       }
@@ -256,6 +271,7 @@ function matchAndScoreRows(
       subjectName: row.subjectName || 'Academic Course',
       subjectCode: cleanCode,
       teacherNameRaw: row.teacherNameRaw || 'Faculty Member',
+      teacherCode: row.teacherCode || (extractedCode ? extractedCode.toUpperCase() : undefined),
       matchedTeacherId: bestMatch.teacherId,
       matchedTeacherName: bestMatch.name || (isNew ? row.teacherNameRaw : undefined),
       confidence: bestMatch.teacherId ? bestMatch.confidence : 0.92,
@@ -361,24 +377,45 @@ function fallbackDeterministicParser(
       line.startsWith('=') ||
       line.toLowerCase().includes('sl.no') ||
       line.toLowerCase().includes('course code') ||
-      line.toLowerCase().includes('course title')
+      line.toLowerCase().includes('course title') ||
+      line.toLowerCase().includes('subject code') ||
+      line.toLowerCase().includes('subject name') ||
+      (line.toLowerCase().includes('day') && line.toLowerCase().includes('time'))
     ) {
       continue;
     }
     const parts = line.split(/[,\t|]/).map((p) => p.trim()).filter(Boolean);
-    if (parts.length >= 3) {
+    if (parts.length >= 2) {
       let semNum = defaultSemester || 4;
-      let subCode = parts[0];
-      let subName = parts[1];
-      let teacher = parts[2];
+      let subCode = '';
+      let subName = '';
+      let teacher = '';
 
-      if (parts.length >= 4) {
+      // Find subject code part (must contain both letters and numbers, e.g. 21CS43, BEC701, CS101, BECL701)
+      const codeIndex = parts.findIndex(
+        (p) =>
+          !/^(mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(p) &&
+          /[A-Z]/i.test(p) &&
+          /[0-9]/.test(p) &&
+          /^[A-Z0-9-]{4,10}$/i.test(p)
+      );
+
+      if (codeIndex !== -1) {
+        subCode = parts[codeIndex];
+        if (parts[codeIndex + 1]) subName = parts[codeIndex + 1];
+        if (parts[codeIndex + 2]) teacher = parts[codeIndex + 2];
+        else if (codeIndex > 0 && !teacher) teacher = parts[parts.length - 1];
+      } else if (parts.length >= 3) {
         const numCandidate = parseInt(parts[0].replace(/\D/g, ''), 10);
         if (!isNaN(numCandidate) && numCandidate >= 1 && numCandidate <= 8) {
           semNum = numCandidate;
           subCode = parts[1];
           subName = parts[2];
-          teacher = parts[3];
+          teacher = parts[3] || '';
+        } else {
+          subCode = parts[0];
+          subName = parts[1];
+          teacher = parts[2];
         }
       }
 

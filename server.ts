@@ -796,19 +796,161 @@ app.get('/api/auth/personas', (req, res) => {
 // 2. ADMIN ENDPOINTS
 // ==========================================
 
+// Standard Curriculum Course Template Repository for reliable auto-assignment
+const STANDARD_CURRICULUM_CATALOG: Record<string, { code: string; name: string; semester: number; credits: number }[]> = {
+  ECE: [
+    { code: 'BEC701', name: 'Microwave Engineering and Antenna Theory', semester: 7, credits: 4 },
+    { code: 'BEC702', name: 'Computer Networks and Protocols', semester: 7, credits: 4 },
+    { code: 'BEC703', name: 'Wireless Communication Systems', semester: 7, credits: 4 },
+    { code: 'BEC714D', name: 'Radar Communication', semester: 7, credits: 3 },
+    { code: 'BME755D', name: 'Non-conventional energy resources', semester: 7, credits: 3 },
+    { code: 'BECL701', name: 'Microwave Engineering Lab(IPCC)', semester: 7, credits: 2 },
+    { code: 'BECL702', name: 'Computer Networks Lab(IPCC)', semester: 7, credits: 2 },
+    { code: 'BEC786', name: 'Major Project Phase-II', semester: 7, credits: 6 },
+    { code: '21EC41', name: 'Signals and Systems', semester: 4, credits: 4 },
+    { code: '21EC42', name: 'Digital Signal Processing', semester: 4, credits: 4 },
+    { code: '21EC43', name: 'Microcontrollers & Embedded Systems', semester: 4, credits: 4 },
+    { code: '21EC44', name: 'Communication Circuits', semester: 4, credits: 3 },
+    { code: '21ECL46', name: 'DSP & Microcontroller Simulation Lab', semester: 4, credits: 2 },
+    { code: '21EC61', name: 'Digital Communication', semester: 6, credits: 4 },
+    { code: '21EC62', name: 'VLSI Design & Technology', semester: 6, credits: 4 },
+    { code: '21EC63', name: 'Embedded Systems Architecture', semester: 6, credits: 3 },
+    { code: '21ECL66', name: 'VLSI & Embedded Lab', semester: 6, credits: 2 },
+  ],
+  CSE: [
+    { code: '21CS41', name: 'Analysis & Design of Algorithms', semester: 4, credits: 4 },
+    { code: '21CS42', name: 'Operating Systems Architecture', semester: 4, credits: 4 },
+    { code: '21CS43', name: 'Database Management Systems', semester: 4, credits: 4 },
+    { code: '21CS44', name: 'Object Oriented Programming with Java', semester: 4, credits: 3 },
+    { code: '21CS45', name: 'Python & Data Engineering', semester: 4, credits: 3 },
+    { code: '21CSL46', name: 'Design of Algorithms & DBMS Lab', semester: 4, credits: 2 },
+    { code: '21CS61', name: 'Software Engineering & Agile Methodologies', semester: 6, credits: 4 },
+    { code: '21CS62', name: 'Computer Networks & Security', semester: 6, credits: 4 },
+    { code: '21CS63', name: 'Full Stack Web Applications', semester: 6, credits: 3 },
+    { code: '21CSL66', name: 'Web Technology & Cloud Lab', semester: 6, credits: 2 },
+    { code: '21CS71', name: 'Artificial Intelligence & Machine Learning', semester: 7, credits: 4 },
+    { code: '21CS72', name: 'Cloud Computing Architecture', semester: 7, credits: 4 },
+    { code: '21CS73', name: 'Cyber Security & Cryptography', semester: 7, credits: 3 },
+  ],
+  'AI-ML': [
+    { code: '21AI41', name: 'Foundations of Data Science', semester: 4, credits: 4 },
+    { code: '21AI42', name: 'Mathematics for Machine Learning', semester: 4, credits: 4 },
+    { code: '21AI43', name: 'Data Structures & Algorithms in Python', semester: 4, credits: 4 },
+    { code: '21AIL46', name: 'Machine Learning Experimentation Lab', semester: 4, credits: 2 },
+    { code: '21AI61', name: 'Deep Learning & Neural Networks', semester: 6, credits: 4 },
+    { code: '21AI62', name: 'Natural Language Processing & LLMs', semester: 6, credits: 4 },
+  ],
+  ISE: [
+    { code: '21IS41', name: 'Design and Analysis of Algorithms', semester: 4, credits: 4 },
+    { code: '21IS42', name: 'Relational Database Engineering', semester: 4, credits: 4 },
+    { code: '21IS43', name: 'Operating Systems & System Programming', semester: 4, credits: 4 },
+    { code: '21ISL46', name: 'DBMS & Systems Lab', semester: 4, credits: 2 },
+    { code: '21IS61', name: 'Information Security & Privacy', semester: 6, credits: 4 },
+    { code: '21IS62', name: 'Cloud Platforms & DevOps', semester: 6, credits: 4 },
+  ],
+  MECH: [
+    { code: '21ME41', name: 'Fluid Mechanics & Turbo Machinery', semester: 4, credits: 4 },
+    { code: '21ME42', name: 'Kinematics of Machines', semester: 4, credits: 4 },
+    { code: '21ME43', name: 'Manufacturing Technology & Metallurgy', semester: 4, credits: 4 },
+    { code: '21MEL46', name: 'Fluid Mechanics & Machine Shop Lab', semester: 4, credits: 2 },
+    { code: '21ME61', name: 'Design of Machine Elements', semester: 6, credits: 4 },
+    { code: '21ME62', name: 'Heat and Mass Transfer', semester: 6, credits: 4 },
+  ],
+  CIVIL: [
+    { code: '21CV41', name: 'Structural Mechanics & Analysis', semester: 4, credits: 4 },
+    { code: '21CV42', name: 'Hydrology and Water Resources Engineering', semester: 4, credits: 4 },
+    { code: '21CV43', name: 'Surveying & Geomatics Engineering', semester: 4, credits: 4 },
+    { code: '21CVL46', name: 'Surveying Field Practice Lab', semester: 4, credits: 2 },
+    { code: '21CV61', name: 'Design of Concrete Structures', semester: 6, credits: 4 },
+    { code: '21CV62', name: 'Geotechnical Engineering', semester: 6, credits: 4 },
+  ],
+};
+
+function ensureDepartmentSubjectsExist(store: any, deptCode: string, targetSemester?: number): Subject[] {
+  const normCode = normalizeDeptCode(deptCode, ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
+  const deptObj = store.departments.find(
+    (d: any) => d.code.toUpperCase() === normCode || d.id.toLowerCase().includes(normCode.toLowerCase())
+  );
+  const deptId = deptObj ? deptObj.id : `dept-${normCode.toLowerCase()}`;
+
+  let existing = store.subjects.filter(
+    (s: any) =>
+      s.departmentId === deptId ||
+      s.departmentId?.toLowerCase().includes(normCode.toLowerCase()) ||
+      (s as any).departmentCode?.toUpperCase() === normCode ||
+      !s.departmentId
+  );
+
+  if (targetSemester) {
+    existing = existing.filter((s: any) => s.semesterNumber === Number(targetSemester));
+  }
+
+  if (existing.length > 0) {
+    return existing;
+  }
+
+  const catalog = STANDARD_CURRICULUM_CATALOG[normCode] || STANDARD_CURRICULUM_CATALOG['CSE'];
+  const toAdd = targetSemester ? catalog.filter((c) => c.semester === Number(targetSemester)) : catalog;
+  const itemsToAdd = toAdd.length > 0 ? toAdd : catalog.slice(0, 6);
+
+  itemsToAdd.forEach((item) => {
+    const exists = store.subjects.some((s: any) => s.code.toUpperCase() === item.code.toUpperCase());
+    if (!exists) {
+      const newSub: Subject = {
+        id: `sub-${item.code.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+        code: item.code,
+        name: item.name,
+        departmentId: deptId,
+        semesterNumber: item.semester,
+        credits: item.credits,
+      };
+      store.subjects.push(newSub);
+    }
+  });
+
+  return store.subjects.filter(
+    (s: any) =>
+      s.departmentId === deptId ||
+      s.departmentId?.toLowerCase().includes(normCode.toLowerCase()) ||
+      (s as any).departmentCode?.toUpperCase() === normCode ||
+      !s.departmentId
+  );
+}
+
 // 2.1 Teachers Master List CRUD & Bulk
 app.get('/api/admin/teachers', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
   const store = db.getStore();
-  const teachersWithUser = store.teachers.map((t) => ({
-    ...t,
-    user: store.users.find((u) => u.id === t.userId),
-    assignedSubjectsCount: store.teacherSubjectAssignments.filter((a) => a.teacherId === t.id && a.confirmedByAdmin).length,
-  }));
+  const teachersWithUser = store.teachers.map((t) => {
+    const user = store.users.find((u) => u.id === t.userId);
+    const assignments = store.teacherSubjectAssignments.filter(
+      (a) => (a.teacherId === t.id || a.teacherId === t.userId) && a.confirmedByAdmin !== false
+    );
+    const assignedSubjects = assignments.map((a) => {
+      const sub = store.subjects.find((s) => s.id === a.subjectId);
+      const sem = store.semesters.find((s) => s.id === a.semesterId);
+      return {
+        assignmentId: a.id,
+        subjectId: a.subjectId,
+        semesterId: a.semesterId,
+        code: sub?.code || 'SUB',
+        name: sub?.name || 'Subject',
+        semesterNumber: sem?.number || sub?.semesterNumber || 4,
+        departmentCode: sem?.departmentCode || t.department || 'CSE',
+      };
+    });
+
+    return {
+      ...t,
+      user,
+      assignedSubjects,
+      assignedSubjectsCount: assignments.length,
+    };
+  });
   res.json({ teachers: teachersWithUser, total: teachersWithUser.length });
 });
 
 app.post('/api/admin/teachers', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
-  const { name, email, department, teacherCode, designation, qualification } = req.body;
+  const { name, email, department, teacherCode, designation, qualification, initialSubjectId } = req.body;
   const store = db.getStore();
 
   if (!name || !email || !department || !teacherCode) {
@@ -848,16 +990,31 @@ app.post('/api/admin/teachers', requireRole('admin'), (req: AuthenticatedRequest
   store.teachers.push(newTeacher);
 
   // If initial subject was provided for assignment
-  if (req.body.initialSubjectId && req.body.initialSemesterId) {
-    const existingAssignment = store.teacherSubjectAssignments.find(
-      (a) => a.teacherId === teacherId && a.subjectId === req.body.initialSubjectId
-    );
-    if (!existingAssignment) {
+  if (initialSubjectId) {
+    const subject = store.subjects.find((s) => s.id === initialSubjectId);
+    if (subject) {
+      let targetSemester = store.semesters.find(
+        (s) => s.number === subject.semesterNumber && s.departmentCode.toUpperCase() === department.toUpperCase() && s.status === 'active'
+      ) || store.semesters.find((s) => s.number === subject.semesterNumber) || store.semesters[0];
+
+      if (!targetSemester) {
+        targetSemester = {
+          id: `sem-${department.toLowerCase()}-${subject.semesterNumber}`,
+          number: subject.semesterNumber,
+          academicYear: store.settings.academicYear || '2026-2027',
+          departmentCode: department.toUpperCase(),
+          section: 'A',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        };
+        store.semesters.push(targetSemester);
+      }
+
       store.teacherSubjectAssignments.push({
         id: `tsa-${Date.now()}`,
         teacherId,
-        subjectId: req.body.initialSubjectId,
-        semesterId: req.body.initialSemesterId,
+        subjectId: initialSubjectId,
+        semesterId: targetSemester.id,
         createdFrom: 'manual',
         confirmedByAdmin: true,
       });
@@ -867,6 +1024,336 @@ app.post('/api/admin/teachers', requireRole('admin'), (req: AuthenticatedRequest
   db.logAudit(req.user!.id, req.user!.name, 'admin', 'TEACHER_CREATED', `Created teacher ${name} (${teacherCode})`);
 
   res.status(201).json({ teacher: { ...newTeacher, user: newUser } });
+});
+
+app.put('/api/admin/teachers/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { name, email, department, teacherCode, designation, qualification } = req.body;
+  const store = db.getStore();
+
+  const teacher = store.teachers.find((t) => t.id === id);
+  if (!teacher) {
+    return res.status(404).json({ error: 'Teacher not found.' });
+  }
+
+  const user = store.users.find((u) => u.id === teacher.userId);
+
+  if (teacherCode && teacherCode.trim()) {
+    const cleanCode = teacherCode.trim().toUpperCase();
+    const duplicate = store.teachers.find((t) => t.id !== id && t.teacherCode.toUpperCase() === cleanCode);
+    if (duplicate) {
+      return res.status(400).json({ error: `Teacher code ${cleanCode} is already assigned to another faculty member.` });
+    }
+    teacher.teacherCode = cleanCode;
+  }
+
+  if (department) teacher.department = department.trim();
+  if (designation) teacher.designation = designation.trim();
+  if (qualification) teacher.qualification = qualification.trim();
+
+  if (user) {
+    if (name) user.name = name.trim();
+    if (email) user.email = email.trim().toLowerCase();
+  }
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'TEACHER_UPDATED',
+    `Updated faculty ${teacher.teacherCode} (${user?.name || ''})`
+  );
+
+  res.json({ success: true, teacher: { ...teacher, user } });
+});
+
+app.delete('/api/admin/teachers/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const store = db.getStore();
+
+  const teacherIndex = store.teachers.findIndex((t) => t.id === id);
+  if (teacherIndex === -1) {
+    return res.status(404).json({ error: 'Teacher not found.' });
+  }
+
+  const teacher = store.teachers[teacherIndex];
+  // Remove teacher
+  store.teachers.splice(teacherIndex, 1);
+
+  // Remove corresponding user account if exists
+  if (teacher.userId) {
+    store.users = store.users.filter((u) => u.id !== teacher.userId);
+  }
+
+  // Remove teacher's subject assignments
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter((a) => a.teacherId !== id);
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'TEACHER_DELETED',
+    `Deleted faculty ${teacher.teacherCode}`
+  );
+
+  res.json({ success: true, message: `Faculty ${teacher.teacherCode} deleted successfully.` });
+});
+
+// Subjects CRUD
+app.get('/api/admin/subjects', requireRole('admin', 'teacher'), (req: AuthenticatedRequest, res: Response) => {
+  const store = db.getStore();
+  const subjectsEnriched = store.subjects.map((sub) => {
+    const dept = store.departments.find((d) => d.id === sub.departmentId);
+    return {
+      ...sub,
+      departmentCode: dept?.code || '',
+      departmentName: dept?.name || '',
+    };
+  });
+  res.json({ subjects: subjectsEnriched, total: subjectsEnriched.length });
+});
+
+app.post('/api/admin/subjects', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { name, code, departmentId, semesterNumber, credits } = req.body;
+  const store = db.getStore();
+
+  if (!name || !code || !departmentId || !semesterNumber) {
+    return res.status(400).json({ error: 'Name, code, departmentId, and semesterNumber are required.' });
+  }
+
+  const cleanCode = code.trim().toUpperCase();
+  const existing = store.subjects.find((s) => s.code.toUpperCase() === cleanCode);
+  if (existing) {
+    return res.status(409).json({ error: `Subject with code ${cleanCode} already exists.` });
+  }
+
+  const newSubject: Subject = {
+    id: `sub-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    name: name.trim(),
+    code: cleanCode,
+    departmentId: departmentId.trim(),
+    semesterNumber: Number(semesterNumber),
+    credits: credits ? Number(credits) : 4,
+  };
+
+  store.subjects.push(newSubject);
+  db.logAudit(req.user!.id, req.user!.name, 'admin', 'SUBJECT_CREATED', `Created subject ${newSubject.name} (${newSubject.code})`);
+
+  res.status(201).json({ success: true, subject: newSubject });
+});
+
+app.put('/api/admin/subjects/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { name, code, departmentId, semesterNumber, credits } = req.body;
+  const store = db.getStore();
+
+  const sub = store.subjects.find((s) => s.id === id);
+  if (!sub) {
+    return res.status(404).json({ error: 'Subject not found.' });
+  }
+
+  if (code) {
+    const cleanCode = code.trim().toUpperCase();
+    const duplicate = store.subjects.find((s) => s.id !== id && s.code.toUpperCase() === cleanCode);
+    if (duplicate) {
+      return res.status(409).json({ error: `Subject code ${cleanCode} is already in use.` });
+    }
+    sub.code = cleanCode;
+  }
+
+  if (name) sub.name = name.trim();
+  if (departmentId) sub.departmentId = departmentId.trim();
+  if (semesterNumber) sub.semesterNumber = Number(semesterNumber);
+  if (credits !== undefined) sub.credits = Number(credits);
+
+  db.logAudit(req.user!.id, req.user!.name, 'admin', 'SUBJECT_UPDATED', `Updated subject ${sub.code} (${sub.name})`);
+
+  res.json({ success: true, subject: sub });
+});
+
+app.delete('/api/admin/subjects/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const store = db.getStore();
+
+  const idx = store.subjects.findIndex((s) => s.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Subject not found.' });
+  }
+
+  const [removed] = store.subjects.splice(idx, 1);
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter((a) => a.subjectId !== id);
+
+  db.logAudit(req.user!.id, req.user!.name, 'admin', 'SUBJECT_DELETED', `Deleted subject ${removed.code} (${removed.name})`);
+
+  res.json({ success: true, message: `Subject ${removed.code} deleted successfully.` });
+});
+
+// Auto-assign subjects to faculty
+app.post('/api/admin/teachers/auto-assign', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { department, semesterNumber, replaceExisting } = req.body || {};
+  const store = db.getStore();
+
+  let targetTeachers = store.teachers;
+  if (department && department !== 'all' && department !== 'ALL') {
+    const normDept = normalizeDeptCode(department, ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
+    targetTeachers = targetTeachers.filter(
+      (t) =>
+        t.department.toUpperCase() === department.toUpperCase() ||
+        normalizeDeptCode(t.department, ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']) === normDept
+    );
+  }
+
+  if (targetTeachers.length === 0) {
+    return res.status(400).json({ error: 'No faculty members found for the selected department/criteria.' });
+  }
+
+  if (replaceExisting) {
+    const teacherIds = new Set(targetTeachers.map((t) => t.id));
+    store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter((a) => !teacherIds.has(a.teacherId));
+  }
+
+  // Ensure department subjects exist for all required departments
+  const deptSet = new Set<string>();
+  targetTeachers.forEach((t) => {
+    deptSet.add(normalizeDeptCode(t.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']));
+  });
+
+  deptSet.forEach((deptCode) => {
+    ensureDepartmentSubjectsExist(store, deptCode, semesterNumber ? Number(semesterNumber) : undefined);
+  });
+
+  let assignedCount = 0;
+  const createdAssignments: any[] = [];
+
+  // Group teachers by department
+  const deptMap = new Map<string, Teacher[]>();
+  targetTeachers.forEach((t) => {
+    const deptKey = normalizeDeptCode(t.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
+    if (!deptMap.has(deptKey)) deptMap.set(deptKey, []);
+    deptMap.get(deptKey)!.push(t);
+  });
+
+  deptMap.forEach((deptTeachers, deptCode) => {
+    const deptObj = store.departments.find((d) => d.code.toUpperCase() === deptCode);
+    const deptId = deptObj ? deptObj.id : `dept-${deptCode.toLowerCase()}`;
+
+    // Get subjects for this department
+    let deptSubjects = store.subjects.filter(
+      (s) =>
+        s.departmentId === deptId ||
+        s.departmentId?.toLowerCase().includes(deptCode.toLowerCase()) ||
+        (s as any).departmentCode?.toUpperCase() === deptCode ||
+        !s.departmentId
+    );
+
+    if (semesterNumber && Number(semesterNumber) > 0) {
+      deptSubjects = deptSubjects.filter((s) => s.semesterNumber === Number(semesterNumber));
+    }
+
+    if (deptSubjects.length === 0) {
+      deptSubjects = ensureDepartmentSubjectsExist(store, deptCode, semesterNumber ? Number(semesterNumber) : undefined);
+    }
+
+    if (deptSubjects.length === 0 || deptTeachers.length === 0) return;
+
+    // Distribute subjects so every teacher gets assigned subjects
+    const numTeachers = deptTeachers.length;
+    const numSubjects = deptSubjects.length;
+
+    // If more teachers than subjects, or vice versa, make sure each teacher gets at least 1 subject
+    deptTeachers.forEach((teacher, tIdx) => {
+      // Primary subject assignment
+      const primarySubject = deptSubjects[tIdx % numSubjects];
+      const subjectsToAssign = [primarySubject];
+
+      // If subjects exceed teachers, assign extra subjects to teachers in round robin
+      if (numSubjects > numTeachers) {
+        for (let sIdx = numTeachers + tIdx; sIdx < numSubjects; sIdx += numTeachers) {
+          if (deptSubjects[sIdx] && !subjectsToAssign.includes(deptSubjects[sIdx])) {
+            subjectsToAssign.push(deptSubjects[sIdx]);
+          }
+        }
+      }
+
+      subjectsToAssign.forEach((subject) => {
+        let semester = store.semesters.find(
+          (s) => s.number === subject.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === 'active'
+        );
+        if (!semester) {
+          semester = store.semesters.find((s) => s.number === subject.semesterNumber && s.status === 'active');
+        }
+        if (!semester) {
+          semester = store.semesters.find((s) => s.number === subject.semesterNumber);
+        }
+        if (!semester) {
+          semester = {
+            id: `sem-${deptCode.toLowerCase()}-${subject.semesterNumber}`,
+            number: subject.semesterNumber,
+            academicYear: store.settings.academicYear || '2026-2027',
+            departmentCode: deptCode,
+            section: 'A',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          };
+          store.semesters.push(semester);
+        }
+
+        const existing = store.teacherSubjectAssignments.find(
+          (a) => a.teacherId === teacher.id && a.subjectId === subject.id && a.semesterId === semester!.id
+        );
+
+        if (!existing) {
+          const assignment: TeacherSubjectAssignment = {
+            id: `tsa-auto-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+            teacherId: teacher.id,
+            subjectId: subject.id,
+            semesterId: semester.id,
+            createdFrom: 'manual',
+            confirmedByAdmin: true,
+          };
+          store.teacherSubjectAssignments.push(assignment);
+          createdAssignments.push({
+            ...assignment,
+            teacherCode: teacher.teacherCode,
+            subjectCode: subject.code,
+            subjectName: subject.name,
+          });
+          assignedCount++;
+        }
+      });
+    });
+  });
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'TEACHER_SUBJECTS_AUTO_ASSIGNED',
+    `Auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members`
+  );
+
+  res.json({
+    success: true,
+    message: `Successfully auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members.`,
+    assignedCount,
+    assignments: createdAssignments,
+  });
+});
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'TEACHER_SUBJECTS_AUTO_ASSIGNED',
+    `Auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members`
+  );
+
+  res.json({
+    success: true,
+    message: `Successfully auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members.`,
+    assignedCount,
+    assignments: createdAssignments,
+  });
 });
 
 app.post('/api/admin/teachers/:id/assign-subject', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
@@ -1018,8 +1505,14 @@ app.post('/api/admin/teachers/import/validate', requireRole('admin'), (req: Auth
       .replace(/[^a-z0-9]+/g, '.');
     let email = (row.email || (cleanSlug ? `${cleanSlug}@campus.edu` : `${teacherCode.toLowerCase()}@campus.edu`)).trim().toLowerCase();
 
-    // Check if this teacher exists
-    const isExisting = store.teachers.some((t) => t.teacherCode.toUpperCase() === teacherCode.toUpperCase());
+    // Check if this teacher exists by teacherCode, email, or exact name
+    const isExisting = store.teachers.some((t) => {
+      if (t.teacherCode.toUpperCase() === teacherCode.toUpperCase()) return true;
+      const u = store.users.find((usr) => usr.id === t.userId);
+      if (u && row.email && u.email.toLowerCase() === email.toLowerCase()) return true;
+      if (u && name && u.name.trim().toLowerCase() === name.trim().toLowerCase()) return true;
+      return false;
+    });
 
     const isValid = errors.length === 0;
     if (isValid) validCount++;
@@ -1033,6 +1526,8 @@ app.post('/api/admin/teachers/import/validate', requireRole('admin'), (req: Auth
       email,
       designation,
       qualification,
+      subjectCode: row.subjectCode ? String(row.subjectCode).trim().toUpperCase() : undefined,
+      subjectName: row.subjectName ? String(row.subjectName).trim() : undefined,
       isValid,
       isExisting,
       errors,
@@ -1055,7 +1550,7 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
 
   let targetRows: any[] = [];
   if (Array.isArray(rows)) {
-    targetRows = rows.filter((r) => r.isValid);
+    targetRows = rows.filter((r) => r.isValid !== false && (r.name || r.teacherCode || r.email));
   }
 
   if (targetRows.length === 0) {
@@ -1066,29 +1561,56 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
   let updatedCount = 0;
 
   targetRows.forEach((row, idx) => {
-    const existingTeacher = store.teachers.find(
-      (t) => t.teacherCode.toUpperCase() === row.teacherCode.toUpperCase()
+    const rawCode = (row.teacherCode || '').trim().toUpperCase();
+    const rawEmail = (row.email || '').trim().toLowerCase();
+    const rawName = (row.name || '').trim();
+
+    // Find existing teacher by teacherCode, email, or name
+    let existingTeacher = store.teachers.find(
+      (t) => t.teacherCode.toUpperCase() === rawCode
     );
 
+    if (!existingTeacher && rawEmail) {
+      const u = store.users.find((usr) => usr.email.toLowerCase() === rawEmail && usr.role === 'teacher');
+      if (u) {
+        existingTeacher = store.teachers.find((t) => t.userId === u.id);
+      }
+    }
+
+    if (!existingTeacher && rawName) {
+      const u = store.users.find((usr) => usr.name.trim().toLowerCase() === rawName.toLowerCase() && usr.role === 'teacher');
+      if (u) {
+        existingTeacher = store.teachers.find((t) => t.userId === u.id);
+      }
+    }
+
+    let currentTeacherId = '';
+
     if (existingTeacher) {
-      existingTeacher.department = row.department;
+      // Whatever code in CSV that should be shown! Update teacherCode to match CSV
+      if (rawCode) {
+        existingTeacher.teacherCode = rawCode;
+      }
+      existingTeacher.department = row.department || existingTeacher.department;
       existingTeacher.designation = row.designation || existingTeacher.designation;
       existingTeacher.qualification = row.qualification || existingTeacher.qualification;
 
-      const user = store.users.find((u) => u.id === existingTeacher.userId);
+      const user = store.users.find((u) => u.id === existingTeacher!.userId);
       if (user) {
-        user.name = row.name;
-        if (row.email) user.email = row.email.toLowerCase();
+        if (rawName) user.name = rawName;
+        if (rawEmail) user.email = rawEmail;
       }
+      currentTeacherId = existingTeacher.id;
       updatedCount++;
     } else {
+      const tCode = rawCode || `T${(Date.now() % 1000).toString().padStart(3, '0')}`;
       const userId = `usr-tea-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
       const teacherId = `tea-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
 
       const newUser: User = {
         id: userId,
-        name: row.name,
-        email: row.email || `${row.teacherCode.toLowerCase()}@campus.edu`,
+        name: rawName,
+        email: rawEmail || `${tCode.toLowerCase()}@campus.edu`,
         role: 'teacher',
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -1097,7 +1619,7 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
       const newTeacher: Teacher = {
         id: teacherId,
         userId,
-        teacherCode: row.teacherCode.toUpperCase(),
+        teacherCode: tCode,
         department: row.department,
         designation: row.designation || 'Assistant Professor',
         qualification: row.qualification || 'M.Tech',
@@ -1105,16 +1627,117 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
 
       store.users.push(newUser);
       store.teachers.push(newTeacher);
+      currentTeacherId = teacherId;
       insertedCount++;
     }
+
+    // Auto-assign subject if subjectCode / subjectName was provided in CSV
+    if ((row.subjectCode || row.subjectName) && currentTeacherId) {
+      const deptCode = normalizeDeptCode(row.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
+      const subCode = (row.subjectCode ? String(row.subjectCode) : `SUB-${Date.now() % 1000}`).trim().toUpperCase();
+      const subName = (row.subjectName ? String(row.subjectName) : subCode).trim();
+
+      let matchedSubject = store.subjects.find((s) => s.code.toUpperCase() === subCode);
+      if (!matchedSubject && subName) {
+        matchedSubject = store.subjects.find((s) => s.name.toLowerCase() === subName.toLowerCase());
+      }
+
+      if (!matchedSubject) {
+        const deptObj = store.departments.find((d) => d.code.toUpperCase() === deptCode);
+        const deptId = deptObj ? deptObj.id : `dept-${deptCode.toLowerCase()}`;
+
+        let semNum = 4;
+        const semMatch = subCode.match(/\b([1-8])\b/) || subName.match(/sem(?:ester)?\s*([1-8])/i);
+        if (semMatch) semNum = parseInt(semMatch[1], 10);
+
+        matchedSubject = {
+          id: `sub-${subCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString(36)}`,
+          code: subCode,
+          name: subName,
+          departmentId: deptId,
+          semesterNumber: semNum,
+          credits: 4,
+        };
+        store.subjects.push(matchedSubject);
+      }
+
+      let targetSemester =
+        store.semesters.find(
+          (s) => s.number === matchedSubject!.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === 'active'
+        ) ||
+        store.semesters.find((s) => s.number === matchedSubject!.semesterNumber) ||
+        store.semesters[0];
+
+      if (!targetSemester) {
+        targetSemester = {
+          id: `sem-${deptCode.toLowerCase()}-${matchedSubject.semesterNumber}`,
+          number: matchedSubject.semesterNumber,
+          academicYear: store.settings.academicYear || '2026-2027',
+          departmentCode: deptCode,
+          section: 'A',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        };
+        store.semesters.push(targetSemester);
+      }
+
+      const hasAssignment = store.teacherSubjectAssignments.some(
+        (a) => a.teacherId === currentTeacherId && a.subjectId === matchedSubject!.id && a.semesterId === targetSemester!.id
+      );
+      if (!hasAssignment) {
+        store.teacherSubjectAssignments.push({
+          id: `tsa-csv-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+          teacherId: currentTeacherId,
+          subjectId: matchedSubject.id,
+          semesterId: targetSemester.id,
+          createdFrom: 'manual',
+          confirmedByAdmin: true,
+        });
+      }
+    }
   });
+
+  // If autoAssign was requested on commit, auto-assign subjects for teachers without any assignment
+  if (req.body.autoAssign) {
+    const unassignedTeachers = store.teachers.filter(
+      (t) => !store.teacherSubjectAssignments.some((a) => a.teacherId === t.id && a.confirmedByAdmin !== false)
+    );
+    unassignedTeachers.forEach((t) => {
+      const deptCode = normalizeDeptCode(t.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
+      const subs = ensureDepartmentSubjectsExist(store, deptCode);
+      if (subs.length > 0) {
+        const sub = subs[0];
+        let sem = store.semesters.find((s) => s.number === sub.semesterNumber && s.departmentCode.toUpperCase() === deptCode);
+        if (!sem) {
+          sem = {
+            id: `sem-${deptCode.toLowerCase()}-${sub.semesterNumber}`,
+            number: sub.semesterNumber,
+            academicYear: store.settings.academicYear || '2026-2027',
+            departmentCode: deptCode,
+            section: 'A',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          };
+          store.semesters.push(sem);
+        }
+        store.teacherSubjectAssignments.push({
+          id: `tsa-auto-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+          teacherId: t.id,
+          subjectId: sub.id,
+          semesterId: sem.id,
+          createdFrom: 'manual',
+          confirmedByAdmin: true,
+        });
+      }
+    });
+  }
 
   db.logAudit(
     req.user!.id,
     req.user!.name,
     'admin',
     'TEACHERS_IMPORT_COMMITTED',
-    `Committed teacher roster: ${insertedCount} added, ${updatedCount} updated`
+    `Committed teacher roster: ${insertedCount} added, ${updatedCount} updated (codes synced from CSV)`
   );
 
   res.json({
@@ -1144,14 +1767,14 @@ app.post('/api/admin/teachers/bulk', requireRole('admin'), (req: AuthenticatedRe
   let nextCodeNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 10;
 
   teachers.forEach((item, idx) => {
-    let { name, email, department, teacherCode, designation, qualification } = item;
+    let { name, email, department, teacherCode, designation, qualification, subjectCode, subjectName } = item;
     name = (name || '').trim();
     if (!name) {
       errors.push(`Row ${idx + 1}: Name is required.`);
       return;
     }
 
-    teacherCode = (teacherCode || `T${(nextCodeNum++).toString().padStart(3, '0')}`).toUpperCase().trim();
+    const rawCode = (teacherCode || `T${(nextCodeNum++).toString().padStart(3, '0')}`).toUpperCase().trim();
     department = normalizeDeptCode(department, validDeptCodes);
 
     const cleanSlug = name
@@ -1159,46 +1782,79 @@ app.post('/api/admin/teachers/bulk', requireRole('admin'), (req: AuthenticatedRe
       .replace(/^(dr\.|prof\.|mr\.|mrs\.|ms\.)\s*/i, '')
       .trim()
       .replace(/[^a-z0-9]+/g, '.');
-    email = (email || `${cleanSlug || teacherCode.toLowerCase()}@campus.edu`).toLowerCase().trim();
+    email = (email || `${cleanSlug || rawCode.toLowerCase()}@campus.edu`).toLowerCase().trim();
 
-    const existingTeacher = store.teachers.find((t) => t.teacherCode.toUpperCase() === teacherCode.toUpperCase());
+    let existingTeacher = store.teachers.find((t) => t.teacherCode.toUpperCase() === rawCode);
+    if (!existingTeacher && email) {
+      const u = store.users.find((usr) => usr.email.toLowerCase() === email && usr.role === 'teacher');
+      if (u) existingTeacher = store.teachers.find((t) => t.userId === u.id);
+    }
+    if (!existingTeacher && name) {
+      const u = store.users.find((usr) => usr.name.trim().toLowerCase() === name.toLowerCase() && usr.role === 'teacher');
+      if (u) existingTeacher = store.teachers.find((t) => t.userId === u.id);
+    }
+
+    let activeTeacherId = '';
+
     if (existingTeacher) {
+      existingTeacher.teacherCode = rawCode;
       existingTeacher.department = department;
       existingTeacher.designation = designation || existingTeacher.designation;
       existingTeacher.qualification = qualification || existingTeacher.qualification;
-      const user = store.users.find((u) => u.id === existingTeacher.userId);
+      const user = store.users.find((u) => u.id === existingTeacher!.userId);
       if (user) {
         user.name = name;
         user.email = email;
       }
+      activeTeacherId = existingTeacher.id;
       updatedCount++;
-      return;
+    } else {
+      const userId = `usr-tea-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+      const teacherId = `tea-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+
+      const newUser: User = {
+        id: userId,
+        name,
+        email,
+        role: 'teacher',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+
+      const newTeacher: Teacher = {
+        id: teacherId,
+        userId,
+        teacherCode: rawCode,
+        department,
+        designation: designation || 'Assistant Professor',
+        qualification: qualification || 'M.Tech',
+      };
+
+      store.users.push(newUser);
+      store.teachers.push(newTeacher);
+      activeTeacherId = teacherId;
+      createdCount++;
     }
 
-    const userId = `usr-tea-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
-    const teacherId = `tea-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
-
-    const newUser: User = {
-      id: userId,
-      name,
-      email,
-      role: 'teacher',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    };
-
-    const newTeacher: Teacher = {
-      id: teacherId,
-      userId,
-      teacherCode: teacherCode.toUpperCase(),
-      department,
-      designation: designation || 'Assistant Professor',
-      qualification: qualification || 'M.Tech',
-    };
-
-    store.users.push(newUser);
-    store.teachers.push(newTeacher);
-    createdCount++;
+    if (subjectCode && activeTeacherId) {
+      const sub = store.subjects.find((s) => s.code.toUpperCase() === String(subjectCode).trim().toUpperCase());
+      if (sub) {
+        const sem = store.semesters.find((s) => s.number === sub.semesterNumber && s.status === 'active') || store.semesters[0];
+        if (sem) {
+          const hasA = store.teacherSubjectAssignments.some((a) => a.teacherId === activeTeacherId && a.subjectId === sub.id && a.semesterId === sem.id);
+          if (!hasA) {
+            store.teacherSubjectAssignments.push({
+              id: `tsa-bulk-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+              teacherId: activeTeacherId,
+              subjectId: sub.id,
+              semesterId: sem.id,
+              createdFrom: 'manual',
+              confirmedByAdmin: true,
+            });
+          }
+        }
+      }
+    }
   });
 
   db.logAudit(
@@ -1706,18 +2362,35 @@ app.post('/api/admin/timetable/:id/confirm', requireRole('admin'), (req: Authent
 
     if (!resolvedTeacherId && row.teacherNameRaw && row.teacherNameRaw.trim().length > 1) {
       const rawName = row.teacherNameRaw.trim();
+      let extractedCode = (row.teacherCode || '').trim().toUpperCase();
+      if (!extractedCode) {
+        const matchCode = rawName.match(/\(([^)]+)\)/);
+        if (matchCode && matchCode[1]) {
+          extractedCode = matchCode[1].trim().toUpperCase();
+        }
+      }
+      const cleanProfName = rawName.replace(/\([^)]+\)/g, '').trim();
+
       const existingTchr = store.teachers.find((t) => {
+        if (extractedCode && t.teacherCode.toUpperCase() === extractedCode) return true;
         const u = store.users.find((usr) => usr.id === t.userId);
-        return u?.name.toLowerCase() === rawName.toLowerCase() || t.teacherCode.toLowerCase() === rawName.toLowerCase();
+        return (
+          u?.name.toLowerCase() === rawName.toLowerCase() ||
+          u?.name.toLowerCase() === cleanProfName.toLowerCase() ||
+          t.teacherCode.toLowerCase() === rawName.toLowerCase()
+        );
       });
 
       if (existingTchr) {
+        if (extractedCode) {
+          existingTchr.teacherCode = extractedCode;
+        }
         resolvedTeacherId = existingTchr.id;
       } else {
         // Auto-Register new professor from timetable
-        const tCode = `T${(nextCodeNum++).toString().padStart(3, '0')}`;
+        const tCode = extractedCode || `T${(nextCodeNum++).toString().padStart(3, '0')}`;
         const newUserId = `usr-${tCode.toLowerCase()}-${Date.now().toString(36)}`;
-        const cleanSlug = rawName
+        const cleanSlug = cleanProfName
           .toLowerCase()
           .replace(/^(dr\.|prof\.|mr\.|mrs\.|ms\.)\s*/i, '')
           .trim()
@@ -1726,7 +2399,7 @@ app.post('/api/admin/timetable/:id/confirm', requireRole('admin'), (req: Authent
 
         const newUser: User = {
           id: newUserId,
-          name: rawName,
+          name: cleanProfName || rawName,
           email: profEmail,
           role: 'teacher',
           status: 'active',

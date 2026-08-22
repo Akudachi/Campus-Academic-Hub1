@@ -18,6 +18,9 @@ import {
   AlertTriangle,
   Edit2,
   Save,
+  Zap,
+  Trash2,
+  Sparkles,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Teacher, User, Subject, TeacherImportRowResult, Department } from '../../types';
@@ -54,6 +57,26 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
   const [selectedTeacherForAssign, setSelectedTeacherForAssign] = useState<(Teacher & { user: User }) | null>(null);
   const [selectedSubjectIdToAssign, setSelectedSubjectIdToAssign] = useState('');
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
+
+  // Auto-Assign Modal State
+  const [isAutoAssignModalOpen, setIsAutoAssignModalOpen] = useState(false);
+  const [autoAssignDept, setAutoAssignDept] = useState('ALL');
+  const [autoAssignSem, setAutoAssignSem] = useState('all');
+  const [autoAssignReplace, setAutoAssignReplace] = useState(false);
+  const [isSubmittingAutoAssign, setIsSubmittingAutoAssign] = useState(false);
+
+  // Edit Teacher Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTeacherForEdit, setSelectedTeacherForEdit] = useState<(Teacher & { user: User }) | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    department: 'CSE',
+    teacherCode: '',
+    designation: 'Assistant Professor',
+    qualification: 'M.Tech',
+  });
+
   const { showToast } = useAuth();
 
   // Individual Form Data
@@ -172,6 +195,73 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
     }
   };
 
+  const handleOpenEditModal = (t: Teacher & { user: User }) => {
+    setSelectedTeacherForEdit(t);
+    setEditFormData({
+      name: t.user?.name || '',
+      email: t.user?.email || '',
+      department: t.department || 'CSE',
+      teacherCode: t.teacherCode || '',
+      designation: t.designation || 'Assistant Professor',
+      qualification: t.qualification || 'M.Tech',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeacherForEdit) return;
+    setIsSubmittingTeacher(true);
+    try {
+      await api.updateTeacher(selectedTeacherForEdit.id, {
+        name: editFormData.name.trim(),
+        email: editFormData.email.trim().toLowerCase(),
+        department: editFormData.department,
+        teacherCode: editFormData.teacherCode.trim().toUpperCase(),
+        designation: editFormData.designation,
+        qualification: editFormData.qualification,
+      });
+      showToast(`Updated faculty ${editFormData.teacherCode.toUpperCase()} (${editFormData.name})`, 'success');
+      setIsEditModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update faculty', 'error');
+    } finally {
+      setIsSubmittingTeacher(false);
+    }
+  };
+
+  const handleDeleteTeacher = async (t: Teacher & { user: User }) => {
+    if (!window.confirm(`Are you sure you want to delete faculty member "${t.user?.name}" (${t.teacherCode})?`)) {
+      return;
+    }
+    try {
+      await api.deleteTeacher(t.id);
+      showToast(`Faculty ${t.teacherCode} deleted.`, 'info');
+      fetchData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete faculty', 'error');
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    setIsSubmittingAutoAssign(true);
+    try {
+      const res = await api.autoAssignTeachers({
+        department: autoAssignDept === 'ALL' ? undefined : autoAssignDept,
+        semesterNumber: autoAssignSem === 'all' ? undefined : Number(autoAssignSem),
+        replaceExisting: autoAssignReplace,
+      });
+      showToast(res.message || `Successfully auto-assigned ${res.assignedCount} subjects.`, 'success');
+      setIsAutoAssignModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      showToast(err.message || 'Auto-assign failed.', 'error');
+    } finally {
+      setIsSubmittingAutoAssign(false);
+    }
+  };
+
   const handleOpenAssignModal = (teacher: Teacher & { user: User }) => {
     setSelectedTeacherForAssign(teacher);
     setSelectedSubjectIdToAssign('');
@@ -278,7 +368,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
     try {
       const res = await api.commitTeacherImport({ rows: validationResults });
       showToast(
-        `Faculty import successful: ${res.insertedCount} new faculty added, ${res.updatedCount} records updated.`,
+        `Faculty import successful: ${res.insertedCount} new faculty added, ${res.updatedCount} records updated with CSV codes.`,
         'success'
       );
       setBulkStep('complete');
@@ -346,9 +436,17 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-xl border border-[#DCE3ED] shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-[#13284A] font-serif">Faculty & Teachers</h2>
-          <p className="text-xs text-[#667085] mt-0.5">Faculty directory and course assignments.</p>
+          <p className="text-xs text-[#667085] mt-0.5">Faculty directory, codes, and course assignments.</p>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+          <button
+            id="open-auto-assign-modal-btn"
+            onClick={() => setIsAutoAssignModalOpen(true)}
+            className="flex-1 sm:flex-none justify-center px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs"
+          >
+            <Zap className="w-4 h-4 text-emerald-200" />
+            <span>Auto-Assign Subjects</span>
+          </button>
           <button
             id="open-add-teacher-modal-btn"
             onClick={handleOpenAddModal}
@@ -484,12 +582,28 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleOpenAssignModal(t)}
-                        className="px-2.5 py-1 text-xs font-semibold rounded-md border border-[#DCE3ED] bg-white text-[#2E6FB0] hover:bg-blue-50 transition-colors shadow-2xs"
-                      >
-                        Assign Subject
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenAssignModal(t)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-md border border-[#DCE3ED] bg-white text-[#2E6FB0] hover:bg-blue-50 transition-colors shadow-2xs"
+                        >
+                          Assign Subject
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditModal(t)}
+                          className="p-1.5 text-xs font-semibold rounded-md border border-[#DCE3ED] bg-white text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                          title="Edit Faculty Details"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-slate-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTeacher(t)}
+                          className="p-1.5 text-xs font-semibold rounded-md border border-[#DCE3ED] bg-white text-rose-600 hover:bg-rose-50 transition-colors shadow-2xs"
+                          title="Delete Faculty Member"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -498,6 +612,195 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
           </div>
         )}
       </div>
+
+      {/* Auto-Assign Subjects Modal */}
+      <Modal
+        isOpen={isAutoAssignModalOpen}
+        onClose={() => setIsAutoAssignModalOpen(false)}
+        title="Auto-Assign Subjects to Faculty"
+        subtitle="Automatically balance and assign semester courses to department faculty members."
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-950 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Automated Course Distribution</p>
+              <p className="text-[11px] text-emerald-800 mt-0.5">
+                Assigns all active subjects evenly across teaching staff according to matching branch/department and semester curriculum.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Target Department</label>
+            <select
+              value={autoAssignDept}
+              onChange={(e) => setAutoAssignDept(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-emerald-600 focus:outline-hidden bg-white font-medium"
+            >
+              <option value="ALL">All Departments (Campus-Wide)</option>
+              {departments.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} - {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Target Semester</label>
+            <select
+              value={autoAssignSem}
+              onChange={(e) => setAutoAssignSem(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-emerald-600 focus:outline-hidden bg-white font-medium"
+            >
+              <option value="all">All Active Semesters</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                <option key={sem} value={String(sem)}>
+                  Semester {sem}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <input
+              type="checkbox"
+              id="replace-existing-check"
+              checked={autoAssignReplace}
+              onChange={(e) => setAutoAssignReplace(e.target.checked)}
+              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+            />
+            <label htmlFor="replace-existing-check" className="text-xs font-medium text-slate-700 cursor-pointer">
+              Replace and rebalance existing course assignments for selected faculty
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsAutoAssignModalOpen(false)}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAutoAssign}
+              disabled={isSubmittingAutoAssign}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
+            >
+              <Zap className="w-4 h-4 text-emerald-200" />
+              {isSubmittingAutoAssign ? 'Assigning...' : 'Auto-Assign Now'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Single Teacher Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Faculty Details"
+        subtitle={`Modify profile and teacher code for ${selectedTeacherForEdit?.user?.name || 'Faculty'}.`}
+        maxWidth="md"
+      >
+        <form onSubmit={handleUpdateTeacher} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Teacher Code (as shown in CSV)</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. T001, ECE01"
+                value={editFormData.teacherCode}
+                onChange={(e) => setEditFormData({ ...editFormData, teacherCode: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2 text-xs font-mono uppercase font-bold rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+              <select
+                value={editFormData.department}
+                onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden bg-white font-medium"
+              >
+                {departments.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code} - {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Faculty Full Name</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Dr. Rajesh Varma"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Official Faculty Email</label>
+            <input
+              type="email"
+              required
+              placeholder="e.g. rajesh.varma@campus.edu"
+              value={editFormData.email}
+              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
+              <input
+                type="text"
+                placeholder="e.g. Associate Professor"
+                value={editFormData.designation}
+                onChange={(e) => setEditFormData({ ...editFormData, designation: e.target.value })}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Qualification</label>
+              <input
+                type="text"
+                placeholder="e.g. Ph.D / M.Tech"
+                value={editFormData.qualification}
+                onChange={(e) => setEditFormData({ ...editFormData, qualification: e.target.value })}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmittingTeacher}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 text-[#5B93D1]" />
+              {isSubmittingTeacher ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Add Single Teacher Modal */}
       <Modal
@@ -696,9 +999,9 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
               <div className="flex items-start gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-[#2E6FB0] shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Columns: Teacher Code, Faculty Name, Department, Email, Designation, Qualification</p>
+                  <p className="font-semibold">Columns: Teacher Code, Faculty Name, Department, Email, Designation, Qualification, Subject Code</p>
                   <p className="text-[11px] text-slate-600 mt-0.5">
-                    Excel (.xlsx, .xls) and CSV supported. Blank codes/emails are auto-generated.
+                    Excel (.xlsx, .xls) and CSV supported. Teacher codes in CSV are strictly preserved and synchronized.
                   </p>
                 </div>
               </div>
@@ -748,248 +1051,234 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
             </div>
 
             <div className="relative flex py-1 items-center">
-              <div className="grow border-t border-slate-200"></div>
-              <span className="shrink mx-3 text-xs text-slate-400 font-semibold uppercase">Or Paste CSV Data</span>
-              <div className="grow border-t border-slate-200"></div>
+              <div className="grow border-t border-[#DCE3ED]"></div>
+              <span className="shrink-0 mx-3 text-[11px] font-semibold text-slate-400">OR PASTE CSV / TEXT</span>
+              <div className="grow border-t border-[#DCE3ED]"></div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">CSV / Tab Data Input</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Paste Faculty Records</label>
               <textarea
-                rows={5}
-                placeholder={`TeacherCode, Name, Department, Email, Designation, Qualification\nT008, Dr. Sanjay Hegde, CSE, sanjay.h@campus.edu, Professor, Ph.D\nT009, Prof. Kavita Rao, ECE, kavita.r@campus.edu, Assistant Professor, M.Tech`}
+                rows={4}
+                placeholder="T001, Dr. Rajesh Varma, CSE, rajesh.varma@campus.edu, Professor, Ph.D, 21CS41&#10;ECE01, Prof. Sunita Rao, ECE, sunita.rao@campus.edu, Associate Professor, M.Tech, 21EC42"
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
-                className="w-full p-3 font-mono text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
+                className="w-full p-2.5 text-xs font-mono rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0] focus:outline-hidden"
               />
             </div>
 
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() =>
-                  setBulkText(
-                    `TeacherCode, Name, Department, Email, Designation, Qualification\nT008, Dr. Sanjay Hegde, CSE, sanjay.h@campus.edu, Professor, Ph.D\nT009, Prof. Kavita Rao, ECE, kavita.r@campus.edu, Assistant Professor, M.Tech\nT010, Dr. Manjunath Swamy, MECH, manjunath.s@campus.edu, Professor, Ph.D\nT011, Prof. Nithya Menon, ISE, nithya.m@campus.edu, Assistant Professor, M.Tech`
-                  )
-                }
-                className="text-xs text-[#2E6FB0] hover:underline"
+                onClick={() => setIsBulkModalOpen(false)}
+                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
               >
-                Fill Sample Data
+                Cancel
               </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsBulkModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isProcessingBulk}
-                  onClick={handleValidateTextImport}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-[#5B93D1]" />
-                  {isProcessingBulk ? 'Validating...' : 'Validate Faculty Records'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleValidateTextImport}
+                disabled={isProcessingBulk}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Layers className="w-4 h-4 text-[#5B93D1]" />
+                {isProcessingBulk ? 'Processing...' : 'Validate & Preview'}
+              </button>
             </div>
           </div>
         )}
 
         {bulkStep === 'validation' && (
           <div className="space-y-4">
-            {/* Validation Summary Bar */}
+            {/* Validation Metrics Banner */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">
-                <span className="text-xs font-semibold text-slate-500">Total Uploaded</span>
-                <p className="text-xl font-bold text-slate-800">{validationResults.length}</p>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-[11px] font-semibold text-slate-500 block">Total Processed</span>
+                <span className="text-lg font-bold text-slate-800">{validationResults.length} rows</span>
               </div>
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
-                <span className="text-xs font-semibold text-emerald-700">Valid Rows</span>
-                <p className="text-xl font-bold text-emerald-800">{validCount}</p>
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <span className="text-[11px] font-semibold text-emerald-700 block">Valid & Ready</span>
+                <span className="text-lg font-bold text-emerald-800">{validCount} rows</span>
               </div>
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-center">
-                <span className="text-xs font-semibold text-rose-700">Need Correction</span>
-                <p className="text-xl font-bold text-rose-800">{invalidCount}</p>
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <span className="text-[11px] font-semibold text-amber-700 block">Warnings / Invalid</span>
+                <span className="text-lg font-bold text-amber-800">{invalidCount} rows</span>
               </div>
             </div>
 
-            {/* Validation Row Inspector */}
-            <div className="border border-[#DCE3ED] rounded-lg overflow-hidden max-h-72 overflow-y-auto">
+            {/* Validation Table with Inline Editing */}
+            <div className="max-h-72 overflow-y-auto border border-[#DCE3ED] rounded-lg">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] sticky top-0">
                   <tr>
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3">Code</th>
-                    <th className="py-2 px-3">Faculty Name</th>
-                    <th className="py-2 px-3">Dept</th>
-                    <th className="py-2 px-3">Designation</th>
-                    <th className="py-2 px-3">Type</th>
-                    <th className="py-2 px-3">Status</th>
-                    <th className="py-2 px-3">Action</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3">Code</th>
+                    <th className="py-2.5 px-3">Name</th>
+                    <th className="py-2.5 px-3">Dept</th>
+                    <th className="py-2.5 px-3">Email</th>
+                    <th className="py-2.5 px-3">Designation</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {validationResults.map((row, idx) => {
-                    const isEditing = editingRowIndex === idx;
-                    return (
-                      <tr key={`val-tea-${row.teacherCode || row.rowNumber || idx}`} className={row.isValid ? 'bg-white' : 'bg-rose-50/40'}>
-                        <td className="py-2 px-3 font-mono text-slate-400">{row.rowNumber}</td>
-                        <td className="py-2 px-3 font-mono font-bold">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editedRowData.teacherCode !== undefined ? editedRowData.teacherCode : row.teacherCode}
-                              onChange={(e) => setEditedRowData({ ...editedRowData, teacherCode: e.target.value })}
-                              className="px-1.5 py-0.5 border rounded text-xs w-20 uppercase"
-                            />
-                          ) : (
-                            row.teacherCode
-                          )}
-                        </td>
-                        <td className="py-2 px-3 font-medium">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editedRowData.name !== undefined ? editedRowData.name : row.name}
-                              onChange={(e) => setEditedRowData({ ...editedRowData, name: e.target.value })}
-                              className="px-1.5 py-0.5 border rounded text-xs w-36"
-                            />
-                          ) : (
-                            row.name
-                          )}
-                        </td>
-                        <td className="py-2 px-3 font-semibold">
-                          {isEditing ? (
-                            <select
-                              value={editedRowData.department !== undefined ? editedRowData.department : row.department}
-                              onChange={(e) => setEditedRowData({ ...editedRowData, department: e.target.value })}
-                              className="px-1 py-0.5 border rounded text-xs"
-                            >
-                              <option value="CSE">CSE</option>
-                              <option value="ECE">ECE</option>
-                              <option value="ISE">ISE</option>
-                              <option value="MECH">MECH</option>
-                              <option value="CIVIL">CIVIL</option>
-                            </select>
-                          ) : (
-                            row.department
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editedRowData.designation !== undefined ? editedRowData.designation : row.designation}
-                              onChange={(e) => setEditedRowData({ ...editedRowData, designation: e.target.value })}
-                              className="px-1.5 py-0.5 border rounded text-xs w-28"
-                            />
-                          ) : (
-                            row.designation
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {row.isExisting ? (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-sky-50 text-sky-700 border border-sky-200">
-                              Update Existing
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              New Faculty
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {row.isValid ? (
-                            <StatusPill status="good" label="Valid" size="sm" />
-                          ) : (
-                            <div className="space-y-0.5">
-                              <StatusPill status="critical" label="Error" size="sm" />
-                              <p className="text-[10px] text-rose-700 font-medium">{row.errors[0]}</p>
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          {isEditing ? (
-                            <button
-                              onClick={() => handleSaveInlineEdit(idx)}
-                              className="p-1 text-emerald-700 hover:bg-emerald-100 rounded"
-                              title="Save inline fix"
-                            >
-                              <Save className="w-3.5 h-3.5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setEditingRowIndex(idx);
-                                setEditedRowData(row);
-                              }}
-                              className="p-1 text-slate-600 hover:bg-slate-200 rounded"
-                              title="Edit row"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {validationResults.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      className={`${
+                        editingRowIndex === idx
+                          ? 'bg-blue-50/50'
+                          : row.isValid
+                          ? 'hover:bg-slate-50/60'
+                          : 'bg-rose-50/40 hover:bg-rose-50/60'
+                      }`}
+                    >
+                      <td className="py-2 px-3">
+                        {row.isValid ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            {row.isExisting ? 'Update' : 'New'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600" title={row.errors?.join(', ')}>
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Error
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 font-mono font-bold text-slate-800">
+                        {editingRowIndex === idx ? (
+                          <input
+                            type="text"
+                            value={editedRowData.teacherCode ?? row.teacherCode}
+                            onChange={(e) => setEditedRowData({ ...editedRowData, teacherCode: e.target.value })}
+                            className="w-20 px-2 py-0.5 text-xs font-mono uppercase font-bold border rounded"
+                          />
+                        ) : (
+                          row.teacherCode
+                        )}
+                      </td>
+                      <td className="py-2 px-3">
+                        {editingRowIndex === idx ? (
+                          <input
+                            type="text"
+                            value={editedRowData.name ?? row.name}
+                            onChange={(e) => setEditedRowData({ ...editedRowData, name: e.target.value })}
+                            className="w-36 px-2 py-0.5 text-xs border rounded font-semibold"
+                          />
+                        ) : (
+                          <div className="font-semibold text-slate-800">{row.name}</div>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 font-semibold text-slate-700">
+                        {editingRowIndex === idx ? (
+                          <select
+                            value={editedRowData.department ?? row.department}
+                            onChange={(e) => setEditedRowData({ ...editedRowData, department: e.target.value })}
+                            className="px-1.5 py-0.5 text-xs border rounded bg-white"
+                          >
+                            {departments.map((d) => (
+                              <option key={d.code} value={d.code}>
+                                {d.code}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          row.department
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-slate-600">
+                        {editingRowIndex === idx ? (
+                          <input
+                            type="email"
+                            value={editedRowData.email ?? row.email}
+                            onChange={(e) => setEditedRowData({ ...editedRowData, email: e.target.value })}
+                            className="w-40 px-2 py-0.5 text-xs border rounded"
+                          />
+                        ) : (
+                          row.email
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-slate-600">
+                        {editingRowIndex === idx ? (
+                          <input
+                            type="text"
+                            value={editedRowData.designation ?? row.designation}
+                            onChange={(e) => setEditedRowData({ ...editedRowData, designation: e.target.value })}
+                            className="w-32 px-2 py-0.5 text-xs border rounded"
+                          />
+                        ) : (
+                          row.designation
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {editingRowIndex === idx ? (
+                          <button
+                            onClick={() => handleSaveInlineEdit(idx)}
+                            className="px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                          >
+                            Save
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingRowIndex(idx);
+                              setEditedRowData({ ...row });
+                            }}
+                            className="text-slate-500 hover:text-[#2E6FB0] p-1"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+            <div className="flex justify-between items-center pt-2">
               <button
                 type="button"
                 onClick={() => setBulkStep('upload')}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:underline"
+                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
               >
-                ← Back to Upload
+                Back to Upload
               </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsBulkModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={validCount === 0 || isProcessingBulk}
-                  onClick={handleCommitBulkImport}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#1E8E5A] text-white hover:bg-[#1E8E5A]/90 transition-colors flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
-                >
-                  <Check className="w-4 h-4" />
-                  {isProcessingBulk ? 'Importing...' : `Commit & Import ${validCount} Faculty`}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleCommitBulkImport}
+                disabled={isProcessingBulk || validCount === 0}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
+              >
+                <Check className="w-4 h-4" />
+                {isProcessingBulk ? 'Importing Roster...' : `Commit Import (${validCount} Faculty)`}
+              </button>
             </div>
           </div>
         )}
 
         {bulkStep === 'complete' && (
-          <div className="py-8 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="py-6 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-            <div>
-              <h4 className="text-lg font-bold text-[#13284A]">Faculty Roster Updated!</h4>
-              <p className="text-xs text-[#667085] mt-1 max-w-md mx-auto">
-                Faculty accounts are synchronized with institutional directories and are ready for course mapping and timetable assignment.
-              </p>
+            <h3 className="text-base font-bold text-slate-800">Faculty Roster Successfully Imported</h3>
+            <p className="text-xs text-slate-600 max-w-md mx-auto">
+              Faculty member profiles and teacher codes have been updated in the campus system and faculty dashboard.
+            </p>
+            <div className="pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkModalOpen(false);
+                  setBulkStep('upload');
+                  setValidationResults([]);
+                }}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90"
+              >
+                Done & Close
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setIsBulkModalOpen(false);
-                setBulkStep('upload');
-              }}
-              className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#13284A] text-white hover:bg-[#13284A]/90"
-            >
-              Done
-            </button>
           </div>
         )}
       </Modal>

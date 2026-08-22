@@ -27,11 +27,18 @@ interface TeacherDashboardProps {
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
   const { user, teacher, showToast } = useAuth();
+  const [activeTeacher, setActiveTeacher] = useState<any>(teacher);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (teacher) {
+      setActiveTeacher(teacher);
+    }
+  }, [teacher]);
 
   const fetchTeacherData = async () => {
     setLoading(true);
@@ -41,6 +48,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         api.getTeacherAttendanceSessions(),
       ]);
       setSubjects(subRes.subjects || []);
+      if (subRes.teacher) {
+        setActiveTeacher(subRes.teacher);
+      }
       setRecentSessions(sessRes.sessions || []);
     } catch (err) {
       console.error(err);
@@ -130,13 +140,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#E0982A] text-slate-950">
-                {teacher?.teacherCode || 'FACULTY'}
+                {activeTeacher?.teacherCode || teacher?.teacherCode || 'FACULTY'}
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white/15 text-white">
-                {teacher?.department || 'CSE'} Department
+                {activeTeacher?.department || teacher?.department || 'CSE'} Department
               </span>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                {teacher?.designation || 'Faculty'}
+                {activeTeacher?.designation || teacher?.designation || 'Faculty'}
               </span>
             </div>
 
