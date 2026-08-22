@@ -24,6 +24,18 @@ import { storageService } from './storageService';
 let currentToken: string | null = localStorage.getItem('cah_token');
 let currentUserId: string | null = localStorage.getItem('cah_user_id');
 
+const RAW_API_URL =
+  ((typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) as string | undefined) || '';
+export const API_BASE_URL = RAW_API_URL.replace(/\/+$/, '');
+
+export function getFullApiUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${API_BASE_URL}${cleanEndpoint}`;
+}
+
 export function setAuthToken(token: string | null, userId?: string | null) {
   currentToken = token;
   currentUserId = userId || token;
@@ -70,16 +82,29 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set('x-user-id', currentUserId);
   }
 
+  const fullUrl = getFullApiUrl(endpoint);
+
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch(fullUrl, {
       ...options,
       headers,
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data: any;
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch {
+      if (!response.ok) {
+        throw new Error(
+          `Server returned HTTP ${response.status} (${response.statusText || 'Not Found'}). Backend URL: ${API_BASE_URL || 'Local Origin'}. Please check if VITE_API_URL is configured correctly.`
+        );
+      }
+      throw new Error(`Unexpected server response (non-JSON): ${responseText.slice(0, 100)}`);
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || `HTTP Error ${response.status}: ${response.statusText}`);
+      throw new Error(data.error || data.message || `HTTP Error ${response.status}: ${response.statusText}`);
     }
 
     // Automatically cache successful GET responses to LocalStorage

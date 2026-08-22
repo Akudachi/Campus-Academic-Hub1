@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WifiOff, Wifi, RefreshCw, Database, CheckCircle2, AlertCircle } from 'lucide-react';
 import { storageService } from '../../lib/storageService';
+import { getFullApiUrl } from '../../lib/api';
 
 interface OfflineBannerProps {
   onRefreshData?: () => void;
@@ -30,7 +31,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ onRefreshData }) =
       if (isSimulated) {
         storageService.setSimulatedOffline(false);
       }
-      const res = await fetch('/api/settings', { method: 'GET', cache: 'no-store' });
+      const res = await fetch(getFullApiUrl('/api/settings'), { method: 'GET', cache: 'no-store' });
       if (res.ok) {
         setIsOnline(true);
         if (onRefreshData) onRefreshData();
