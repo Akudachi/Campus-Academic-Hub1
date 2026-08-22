@@ -79,6 +79,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
     }
   };
 
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+
+  const handleAutoAssignSelf = async () => {
+    setIsAutoAssigning(true);
+    try {
+      const dept = activeTeacher?.department || teacher?.department || 'CSE';
+      const res = await api.autoAssignTeachers({
+        department: dept,
+        replaceExisting: false,
+      });
+      showToast(res.message || `Successfully auto-assigned ${res.assignedCount} subjects!`, 'success');
+      await fetchTeacherData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to auto-assign courses.', 'error');
+    } finally {
+      setIsAutoAssigning(false);
+    }
+  };
+
   // Compute distinct semesters assigned to this faculty
   const assignedSemesters = useMemo(() => {
     const semMap = new Map<number, { semesterNumber: number; department: string; count: number; subjects: any[] }>();
@@ -297,8 +316,29 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         </div>
 
         {filteredSubjects.length === 0 ? (
-          <div className="p-6 text-center bg-white rounded-xl border border-[#DCE3ED] text-xs text-slate-500">
-            No subjects assigned for this semester.
+          <div className="p-6 text-center bg-white rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
+            <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2E6FB0] mx-auto flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-[#13284A] text-sm">No Courses Assigned for this Cohort</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                {subjects.length === 0
+                  ? `Auto-assign core department courses for ${activeTeacher?.teacherCode || teacher?.teacherCode || 'Faculty'} (${activeTeacher?.department || teacher?.department || 'CSE'}) to begin taking attendance, grading, and posting assignments.`
+                  : 'No courses match the selected semester filter.'}
+              </p>
+            </div>
+            {subjects.length === 0 && (
+              <button
+                id="quick-auto-assign-btn"
+                onClick={handleAutoAssignSelf}
+                disabled={isAutoAssigning}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-[#2E6FB0] text-white hover:bg-[#13284A] transition-all inline-flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-98 disabled:opacity-50"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                <span>{isAutoAssigning ? 'Assigning Subjects...' : 'Auto-Assign Department Courses'}</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-2">

@@ -1681,38 +1681,78 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
     }
   });
 
-  // If autoAssign was requested on commit, auto-assign subjects for teachers without any assignment
-  if (req.body.autoAssign) {
-    const unassignedTeachers = store.teachers.filter(
+  // Auto-assign subjects for teachers in batch if autoAssign is true or default
+  let autoAssignedCount = 0;
+  if (req.body.autoAssign !== false) {
+    const targetTeachers = store.teachers.filter(
       (t) => !store.teacherSubjectAssignments.some((a) => a.teacherId === t.id && a.confirmedByAdmin !== false)
     );
-    unassignedTeachers.forEach((t) => {
-      const deptCode = normalizeDeptCode(t.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
-      const subs = ensureDepartmentSubjectsExist(store, deptCode);
-      if (subs.length > 0) {
-        const sub = subs[0];
-        let sem = store.semesters.find((s) => s.number === sub.semesterNumber && s.departmentCode.toUpperCase() === deptCode);
-        if (!sem) {
-          sem = {
-            id: `sem-${deptCode.toLowerCase()}-${sub.semesterNumber}`,
-            number: sub.semesterNumber,
-            academicYear: store.settings.academicYear || '2026-2027',
-            departmentCode: deptCode,
-            section: 'A',
-            status: 'active',
-            createdAt: new Date().toISOString(),
-          };
-          store.semesters.push(sem);
+
+    // Group by department
+    const deptMap = new Map<string, Teacher[]>();
+    targetTeachers.forEach((t) => {
+      const deptKey = normalizeDeptCode(t.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
+      if (!deptMap.has(deptKey)) deptMap.set(deptKey, []);
+      deptMap.get(deptKey)!.push(t);
+    });
+
+    deptMap.forEach((deptTeachers, deptCode) => {
+      const deptSubjects = ensureDepartmentSubjectsExist(store, deptCode);
+      if (deptSubjects.length === 0 || deptTeachers.length === 0) return;
+
+      const numTeachers = deptTeachers.length;
+      const numSubjects = deptSubjects.length;
+
+      deptTeachers.forEach((teacher, tIdx) => {
+        const primarySubject = deptSubjects[tIdx % numSubjects];
+        const subjectsToAssign = [primarySubject];
+
+        if (numSubjects > numTeachers) {
+          for (let sIdx = numTeachers + tIdx; sIdx < numSubjects; sIdx += numTeachers) {
+            if (deptSubjects[sIdx] && !subjectsToAssign.includes(deptSubjects[sIdx])) {
+              subjectsToAssign.push(deptSubjects[sIdx]);
+            }
+          }
         }
-        store.teacherSubjectAssignments.push({
-          id: `tsa-auto-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
-          teacherId: t.id,
-          subjectId: sub.id,
-          semesterId: sem.id,
-          createdFrom: 'manual',
-          confirmedByAdmin: true,
+
+        subjectsToAssign.forEach((subject) => {
+          let semester =
+            store.semesters.find(
+              (s) => s.number === subject.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === 'active'
+            ) ||
+            store.semesters.find((s) => s.number === subject.semesterNumber && s.status === 'active') ||
+            store.semesters.find((s) => s.number === subject.semesterNumber);
+
+          if (!semester) {
+            semester = {
+              id: `sem-${deptCode.toLowerCase()}-${subject.semesterNumber}`,
+              number: subject.semesterNumber,
+              academicYear: store.settings.academicYear || '2026-2027',
+              departmentCode: deptCode,
+              section: 'A',
+              status: 'active',
+              createdAt: new Date().toISOString(),
+            };
+            store.semesters.push(semester);
+          }
+
+          const existing = store.teacherSubjectAssignments.find(
+            (a) => a.teacherId === teacher.id && a.subjectId === subject.id && a.semesterId === semester!.id
+          );
+
+          if (!existing) {
+            store.teacherSubjectAssignments.push({
+              id: `tsa-auto-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+              teacherId: teacher.id,
+              subjectId: subject.id,
+              semesterId: semester.id,
+              createdFrom: 'manual',
+              confirmedByAdmin: true,
+            });
+            autoAssignedCount++;
+          }
         });
-      }
+      });
     });
   }
 
@@ -1721,13 +1761,14 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
     req.user!.name,
     'admin',
     'TEACHERS_IMPORT_COMMITTED',
-    `Committed teacher roster: ${insertedCount} added, ${updatedCount} updated (codes synced from CSV)`
+    `Committed teacher roster: ${insertedCount} added, ${updatedCount} updated (codes synced from CSV), ${autoAssignedCount} subjects assigned`
   );
 
   res.json({
     success: true,
     insertedCount,
     updatedCount,
+    autoAssignedCount,
     totalCommitted: insertedCount + updatedCount,
   });
 });

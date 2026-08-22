@@ -16,6 +16,8 @@ export interface ParsedTeacherRow {
   email?: string;
   designation?: string;
   qualification?: string;
+  subjectCode?: string;
+  subjectName?: string;
 }
 
 export function normalizeDepartmentCode(rawDept: string): string {
@@ -253,11 +255,39 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
   let emailCol = -1;
   let desigCol = -1;
   let qualCol = -1;
+  let subCodeCol = -1;
+  let subNameCol = -1;
 
   for (let i = 0; i < Math.min(5, rawRows.length); i++) {
     const row = rawRows[i].map((c) => String(c).trim().toLowerCase());
-    const foundCode = row.findIndex((c) => c.includes('code') || c.includes('id') || c.includes('teacher id') || c.includes('faculty id'));
-    const foundName = row.findIndex((c) => c.includes('name') || c.includes('faculty') || c.includes('teacher'));
+    
+    // Sl.No detection to avoid false code match
+    const isSlNo = (c: string) => /^(sl\.?\s*no\.?|s\.?\s*no\.?|sr\.?\s*no\.?|serial|#|no\.?)$/i.test(c);
+
+    const foundCode = row.findIndex((c) => 
+      !isSlNo(c) && (
+        c.includes('teacher code') ||
+        c.includes('faculty code') ||
+        c.includes('emp code') ||
+        c.includes('staff code') ||
+        c.includes('tcode') ||
+        c.includes('teacher id') ||
+        c.includes('faculty id') ||
+        c.includes('staff id') ||
+        c.includes('emp id') ||
+        c === 'code' ||
+        c === 'id' ||
+        (c.includes('code') && !c.includes('sub') && !c.includes('course'))
+      )
+    );
+
+    const foundName = row.findIndex((c) => 
+      c.includes('faculty name') ||
+      c.includes('teacher name') ||
+      c.includes('staff name') ||
+      c.includes('professor') ||
+      (c.includes('name') && !c.includes('sub') && !c.includes('course') && !c.includes('dept'))
+    );
 
     if (foundCode !== -1 || (foundName !== -1 && row.length >= 2)) {
       headerIndex = i;
@@ -267,6 +297,8 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
       emailCol = row.findIndex((c) => c.includes('email') || c.includes('mail'));
       desigCol = row.findIndex((c) => c.includes('desig') || c.includes('role') || c.includes('position'));
       qualCol = row.findIndex((c) => c.includes('qual') || c.includes('degree'));
+      subCodeCol = row.findIndex((c) => c.includes('subject code') || c.includes('course code') || c.includes('sub code'));
+      subNameCol = row.findIndex((c) => c.includes('subject name') || c.includes('course name') || c.includes('sub name') || c.includes('subject'));
       break;
     }
   }
@@ -284,21 +316,44 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
     let email = '';
     let designation = 'Assistant Professor';
     let qualification = 'M.Tech';
+    let subjectCode = '';
+    let subjectName = '';
 
     if (headerIndex !== -1) {
-      if (codeCol !== -1 && row[codeCol]) code = String(row[codeCol]).trim().toUpperCase();
-      if (nameCol !== -1 && row[nameCol]) name = String(row[nameCol]).trim();
+      if (codeCol !== -1 && row[codeCol] !== undefined && String(row[codeCol]).trim()) {
+        code = String(row[codeCol]).trim().toUpperCase();
+      }
+      if (nameCol !== -1 && row[nameCol] !== undefined && String(row[nameCol]).trim()) {
+        name = String(row[nameCol]).trim();
+      }
       if (deptCol !== -1 && row[deptCol]) dept = normalizeDepartmentCode(String(row[deptCol]));
       if (emailCol !== -1 && row[emailCol]) email = String(row[emailCol]).trim().toLowerCase();
       if (desigCol !== -1 && row[desigCol]) designation = String(row[desigCol]).trim();
       if (qualCol !== -1 && row[qualCol]) qualification = String(row[qualCol]).trim();
+      if (subCodeCol !== -1 && row[subCodeCol]) subjectCode = String(row[subCodeCol]).trim().toUpperCase();
+      if (subNameCol !== -1 && row[subNameCol]) subjectName = String(row[subNameCol]).trim();
     } else {
-      code = row[0] ? String(row[0]).trim().toUpperCase() : '';
-      name = row[1] ? String(row[1]).trim() : '';
-      dept = row[2] ? normalizeDepartmentCode(String(row[2])) : 'CSE';
-      email = row[3] ? String(row[3]).trim().toLowerCase() : '';
-      designation = row[4] ? String(row[4]).trim() : 'Assistant Professor';
-      qualification = row[5] ? String(row[5]).trim() : 'M.Tech';
+      // No header: Check if row[0] is Sl.No (numeric)
+      const col0 = String(row[0] || '').trim();
+      const col1 = String(row[1] || '').trim();
+      const col2 = String(row[2] || '').trim();
+
+      if (/^\d+$/.test(col0) && col1) {
+        // Col 0 is Serial Number (1, 2, 3...)
+        code = col1.toUpperCase();
+        name = col2 || `Faculty ${col1}`;
+        dept = row[3] ? normalizeDepartmentCode(String(row[3])) : 'CSE';
+        email = row[4] ? String(row[4]).trim().toLowerCase() : '';
+        designation = row[5] ? String(row[5]).trim() : 'Assistant Professor';
+        qualification = row[6] ? String(row[6]).trim() : 'M.Tech';
+      } else {
+        code = col0.toUpperCase();
+        name = col1 || `Faculty ${col0}`;
+        dept = row[2] ? normalizeDepartmentCode(String(row[2])) : 'CSE';
+        email = row[3] ? String(row[3]).trim().toLowerCase() : '';
+        designation = row[4] ? String(row[4]).trim() : 'Assistant Professor';
+        qualification = row[5] ? String(row[5]).trim() : 'M.Tech';
+      }
     }
 
     if (code || name) {
@@ -309,11 +364,41 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
         email: email || '',
         designation: designation || 'Assistant Professor',
         qualification: qualification || 'M.Tech',
+        subjectCode: subjectCode || undefined,
+        subjectName: subjectName || undefined,
       });
     }
   }
 
   return results;
+}
+
+/**
+ * Download sample Excel template for Faculty / Teachers
+ */
+export function downloadTeacherSampleExcel() {
+  const data = [
+    { 'Sl.No': 1, 'Teacher Code': 'T001', 'Faculty Name': 'Dr. Ramesh Kulkarni', Department: 'CSE', Email: 'ramesh.k@campus.edu', Designation: 'Professor & HOD', Qualification: 'Ph.D' },
+    { 'Sl.No': 2, 'Teacher Code': 'T002', 'Faculty Name': 'Prof. Ananya Rao', Department: 'ECE', Email: 'ananya.rao@campus.edu', Designation: 'Associate Professor', Qualification: 'M.Tech' },
+    { 'Sl.No': 3, 'Teacher Code': 'T003', 'Faculty Name': 'Prof. Vignesh Iyer', Department: 'AI-ML', Email: 'vignesh.i@campus.edu', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
+    { 'Sl.No': 4, 'Teacher Code': 'T004', 'Faculty Name': 'Dr. Sunita Patil', Department: 'ISE', Email: 'sunita.p@campus.edu', Designation: 'Associate Professor', Qualification: 'Ph.D' },
+    { 'Sl.No': 5, 'Teacher Code': 'T005', 'Faculty Name': 'Prof. Rajesh Sharma', Department: 'MECH', Email: 'rajesh.s@campus.edu', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 8 },   // Sl.No
+    { wch: 15 },  // Teacher Code
+    { wch: 25 },  // Faculty Name
+    { wch: 14 },  // Department
+    { wch: 25 },  // Email
+    { wch: 22 },  // Designation
+    { wch: 14 },  // Qualification
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Faculty_Template');
+  XLSX.writeFile(wb, 'Faculty_Import_Template.xlsx');
 }
 
 /**
@@ -345,18 +430,4 @@ export function downloadStudentSampleExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Student_List');
   XLSX.writeFile(wb, 'student_enrollment_template.xlsx');
-}
-
-export function downloadTeacherSampleExcel() {
-  const data = [
-    { 'Teacher Code': 'T008', 'Faculty Name': 'Dr. Sanjay Hegde', Department: 'CSE', Email: 'sanjay.h@campus.edu', Designation: 'Professor', Qualification: 'Ph.D' },
-    { 'Teacher Code': 'T009', 'Faculty Name': 'Prof. Kavita Rao', Department: 'ECE', Email: 'kavita.r@campus.edu', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
-    { 'Teacher Code': 'T010', 'Faculty Name': 'Dr. Manjunath Swamy', Department: 'MECH', Email: 'manjunath.s@campus.edu', Designation: 'Associate Professor', Qualification: 'Ph.D' },
-    { 'Teacher Code': 'T011', 'Faculty Name': 'Prof. Nithya Menon', Department: 'ISE', Email: 'nithya.m@campus.edu', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
-  ];
-
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Faculty_Master');
-  XLSX.writeFile(wb, 'faculty_bulk_import_template.xlsx');
 }

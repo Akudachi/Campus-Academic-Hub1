@@ -77,7 +77,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
     qualification: 'M.Tech',
   });
 
-  const { showToast } = useAuth();
+  const { showToast, refreshProfile } = useAuth();
 
   // Individual Form Data
   const [formData, setFormData] = useState({
@@ -188,6 +188,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       showToast(`Faculty ${formData.name} (${formData.teacherCode.toUpperCase()}) added successfully!`, 'success');
       setIsAddModalOpen(false);
       fetchData();
+      await refreshProfile();
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
@@ -224,6 +225,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       showToast(`Updated faculty ${editFormData.teacherCode.toUpperCase()} (${editFormData.name})`, 'success');
       setIsEditModalOpen(false);
       fetchData();
+      await refreshProfile();
     } catch (err: any) {
       showToast(err.message || 'Failed to update faculty', 'error');
     } finally {
@@ -239,6 +241,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       await api.deleteTeacher(t.id);
       showToast(`Faculty ${t.teacherCode} deleted.`, 'info');
       fetchData();
+      await refreshProfile();
     } catch (err: any) {
       showToast(err.message || 'Failed to delete faculty', 'error');
     }
@@ -255,6 +258,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       showToast(res.message || `Successfully auto-assigned ${res.assignedCount} subjects.`, 'success');
       setIsAutoAssignModalOpen(false);
       fetchData();
+      await refreshProfile();
     } catch (err: any) {
       showToast(err.message || 'Auto-assign failed.', 'error');
     } finally {
@@ -366,13 +370,14 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
   const handleCommitBulkImport = async () => {
     setIsProcessingBulk(true);
     try {
-      const res = await api.commitTeacherImport({ rows: validationResults });
+      const res = await api.commitTeacherImport({ rows: validationResults, autoAssign: true });
       showToast(
-        `Faculty import successful: ${res.insertedCount} new faculty added, ${res.updatedCount} records updated with CSV codes.`,
+        `Faculty import successful: ${res.insertedCount} new faculty added, ${res.updatedCount} records updated with CSV codes.${res.autoAssignedCount ? ` ${res.autoAssignedCount} subjects auto-assigned.` : ''}`,
         'success'
       );
       setBulkStep('complete');
       fetchData();
+      await refreshProfile();
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {

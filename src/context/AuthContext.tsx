@@ -39,6 +39,7 @@ interface AuthContextType {
   logout: () => void;
   switchPersona: (targetUserId: string) => Promise<void>;
   refreshNotifications: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,6 +177,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Signed out of campus portal.', 'info');
   };
 
+  const refreshProfile = async () => {
+    try {
+      const meRes = await api.getMe();
+      if (meRes?.user) {
+        setUser(meRes.user);
+        setTeacher(meRes.teacher || null);
+        setStudent(meRes.student || null);
+      }
+      const pRes = await api.getPersonas();
+      setPersonas(pRes.personas || []);
+      await refreshNotifications();
+    } catch (e) {
+      console.warn('Refresh profile error:', e);
+    }
+  };
+
   const role: UserRole = user?.role || 'admin';
 
   return (
@@ -195,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         switchPersona,
         refreshNotifications,
+        refreshProfile,
       }}
     >
       {children}

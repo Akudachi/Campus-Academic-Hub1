@@ -232,8 +232,8 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  commitTeacherImport: (payload: { batchId?: string; rows?: TeacherImportRowResult[] }) =>
-    request<{ success: boolean; insertedCount: number; updatedCount: number; totalCommitted: number }>(
+  commitTeacherImport: (payload: { batchId?: string; rows?: TeacherImportRowResult[]; autoAssign?: boolean }) =>
+    request<{ success: boolean; insertedCount: number; updatedCount: number; totalCommitted: number; autoAssignedCount?: number }>(
       '/api/admin/teachers/import/commit',
       {
         method: 'POST',
