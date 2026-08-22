@@ -2,7 +2,7 @@
 
 A fully native modern Android application for **Campus Academic Hub**, built with **Kotlin**, **Jetpack Compose (Material3)**, **Retrofit**, and **Coroutines Flow (MVVM)**.
 
-Connected with backend API: `https://ais-dev-g3zpe6tqdiq6wtcs3r7bbs-642846774352.asia-southeast1.run.app`
+Connected with backend API: `https://campus-academic-hub1.onrender.com`
 
 ---
 

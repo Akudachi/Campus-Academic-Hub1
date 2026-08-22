@@ -20,8 +20,8 @@ object AuthManager {
     private const val KEY_STUDENT_JSON = "cah_student_json"
     private const val KEY_BASE_URL = "cah_custom_base_url"
 
-    // Default development server address (accessible in Android emulator via 10.0.2.2 or physical device URL)
-    const val DEFAULT_BASE_URL = "https://ais-dev-g3zpe6tqdiq6wtcs3r7bbs-642846774352.asia-southeast1.run.app/"
+    // Default backend server address
+    const val DEFAULT_BASE_URL = "https://campus-academic-hub1.onrender.com/"
 
     private lateinit var prefs: SharedPreferences
     private val gson = Gson()

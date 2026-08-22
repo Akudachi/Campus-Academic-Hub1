@@ -667,13 +667,19 @@ app.post('/api/auth/login', (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    // 2. Admin Key check (e.g. admin@123, admin123, ecedept123456@gmail.com, etc.)
+    // 2. Admin Key check (e.g. adarsh@1808, admin@123, admin123, ecedept123456@gmail.com, etc.)
     const adminKeys = [
+      'adarsh@1808',
+      'adarsh1808',
+      'adarsh@1808#',
+      'adarsh',
+      'admin@1808',
       'admin@123',
       'admin123',
       'admin',
       'ecedept123456@gmail.com',
       'admin@klecet.edu.in',
+      'admin@klecet.edu',
       'ecedept123',
       'klecet2026',
       'password',
@@ -684,13 +690,17 @@ app.post('/api/auth/login', (req: AuthenticatedRequest, res: Response) => {
       role === 'admin' ||
       adminKeys.includes(inputLower) ||
       adminKeys.includes(rawInput) ||
-      (rawInput.includes('@') && (inputLower.includes('admin') || inputLower.includes('ecedept')))
+      inputLower === 'adarsh@1808' ||
+      inputLower === 'adarsh1808' ||
+      (rawInput.includes('@') && (inputLower.includes('admin') || inputLower.includes('ecedept') || inputLower.includes('adarsh')))
     ) {
       user = store.users.find(
         (u) =>
           u.role === 'admin' &&
           (u.email.toLowerCase() === inputLower ||
             u.name.toLowerCase().includes(inputLower) ||
+            inputLower === 'adarsh@1808' ||
+            inputLower === 'adarsh1808' ||
             inputLower === 'admin@123' ||
             inputLower === 'admin123' ||
             inputLower === 'admin')

@@ -222,6 +222,14 @@ function initializeCleanData(): DatabaseStore {
   const users: User[] = [
     {
       id: 'usr-admin-1',
+      name: 'Adarsh Kudachi (Administrator)',
+      email: 'adarshkudachi18@gmail.com',
+      role: 'admin',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'usr-admin-2',
       name: 'Campus Administrator',
       email: 'ecedept123456@gmail.com',
       role: 'admin',
@@ -229,7 +237,7 @@ function initializeCleanData(): DatabaseStore {
       createdAt: new Date().toISOString(),
     },
     {
-      id: 'usr-admin-2',
+      id: 'usr-admin-3',
       name: 'College Administration Desk',
       email: 'admin@klecet.edu.in',
       role: 'admin',
