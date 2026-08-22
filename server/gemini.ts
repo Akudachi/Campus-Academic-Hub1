@@ -76,26 +76,41 @@ export async function extractTimetableData(
       .map((t) => `${t.user?.name || ''} (Code: ${t.teacherCode}, Dept: ${t.department})`)
       .join('\n');
 
-    const promptText = `You are an expert university schedule, timetable, and syllabus extraction engine.
-Analyze the provided timetable document/image (e.g. engineering college schedules, VTU, autonomous institutions, KLE CET, etc.).
+    const promptText = `You are a high-precision academic timetable and syllabus parsing engine specialized in Indian engineering college timetables (such as K.L.E. Society / KLECET, VTU, autonomous institutions, ISO21001 standard format).
 
-Extraction Instructions:
-1. Examine all sections of the document:
-   - Header details: Academic Year, Department (e.g. "DEPT. OF ELECTRONICS & COMMUNICATION ENGG." -> ECE, "COMPUTER SCIENCE" -> CSE), Semester (e.g. "Semester:VII" -> 7, "Semester: 7" -> 7, "Semester: IV" -> 4). Convert Roman numerals (I=1, II=2, III=3, IV=4, V=5, VI=6, VII=7, VIII=8).
-   - Target Department: ${targetDept} (default if not explicitly specified in document).
-   - Target Semester: ${targetSem} (default if not explicitly specified in document).
-   - Bottom Course/Staff Reference Table (e.g. columns: Course Title, Course Abbreviation, Course Code, Staff Name, Staff Initial).
-   - Weekly Grid (Mon-Sat time slots) and Laboratory/Project allocations.
-2. For EVERY unique subject/course listed in the document:
-   - Extract the official Course Code (e.g. BEC701, BEC702, BEC703, 21CS42, 23CS401, 21CS54, etc.).
-   - Extract the full Course / Subject Title (e.g. "Microwave Engineering and Antenna Theory", "Database Management Systems", "Computer Networks and Protocols Lab", etc.).
-   - Extract the designated Faculty / Professor / Staff Name (e.g. "Dr. Sanjay Pujari", "Dr. Ramesh Patil", etc.).
-   - Extract the Semester: ${targetSem} (or header semester if detected).
-   - Extract Department Code: ${targetDept} (or header department if detected).
-   - Estimate appropriate Course Credits (typically 4 for major theory, 3 for electives, 2 for Labs, 4-6 for Major Project).
-3. Return a clean JSON array of objects adhering strictly to the schema.
+TIMETABLE PATTERN RECOGNITION GUIDE:
+The uploaded document follows this exact college timetable structure:
+1. HEADER SECTION:
+   - Institution header: e.g. "K.L.E. Society's KLE College of Engg. & Technology, Chikodi" (KLECET), Form ISO21001, Document #: FMTC0301.
+   - Department: e.g. "DEPT. OF ELECTRONICS & COMMUNICATION ENGG." -> ECE, "COMPUTER SCIENCE & ENGG." -> CSE, "MECHANICAL" -> MECH, "CIVIL" -> CIVIL, "INFORMATION SCIENCE" -> ISE, "ARTIFICIAL INTELLIGENCE" -> AIML.
+   - Semester: e.g. "Semester:VII" -> 7, "Semester: IV" -> 4, "Semester: VI" -> 6. Convert Roman numerals: I=1, II=2, III=3, IV=4, V=5, VI=6, VII=7, VIII=8.
+   - Lecture Hall / Room: e.g. "Lecture Hall No: ECLH22", "LH-301".
+   - Target Department Fallback: ${targetDept} (use if header not detected).
+   - Target Semester Fallback: ${targetSem} (use if header not detected).
 
-Faculty Master Reference:
+2. WEEKLY TIME TABLE GRID:
+   - Days: MON, TUE, WED, THU, FRI, SAT.
+   - Time slots: 09.30-10.30, 10.30-11.30, 11.45-12.45, 12.45-01.45, 02.30-03.30, 03.30-04.30, 04.30-05.15 with TEA BREAK (11.30-11.45) & LUNCH BREAK (01.45-02.30).
+   - Grid cells contain Course Abbreviations (e.g. RC, NCER, WCS, M&A, CNP, MPP-II, M&AL-B1/CNPL-B2).
+
+3. BOTTOM COURSE & FACULTY REFERENCE TABLE (PRIMARY DATA SOURCE):
+   Carefully extract EVERY course from the bottom 5-column reference table:
+   - Column 1: "Course" -> Full Official Course Title (e.g. "Microwave Engineering and Antenna Theory", "Computer Networks and Protocols", "Wireless Communication Systems", "Radar Communication", "Non-conventional energy recourses", "Microwave Engineering and Antenna Theory Lab(IPCC)", "Computer Networks and Protocols Lab(IPCC)", "Major Project Phase-II").
+   - Column 2: "Course Abbr." -> Short code (e.g. M&A, CNP, WCS, RC, NCER, M&A LAB, CNPL LAB, MPP-II).
+   - Column 3: "Course Code" -> Official Subject Code (e.g. BEC701, BEC702, BEC703, BEC714D, BME755D, BECL701, BECL702, BEC786, 21CS42, 23CS401, etc.).
+   - Column 4: "Staff Name" -> Faculty/Professor full name (e.g. "Dr. Sanjay Pujari", "Mr. Mallikarjun Biradar", "Ms. Laxmi R Motagi", "Mr. Prashant A H.", "Mr. Amit Ghantimath", "Mr. Avadhut Ambole").
+   - Column 5: "Staff Initial" -> Staff initials (e.g. SAP, MRB, LRM, PAH, ASG, AVA).
+
+4. EXTRACTION REQUIREMENTS:
+   - Output every single unique subject/course found in the document.
+   - Semester: Extract the exact integer semester (e.g. 7 for VII, 4 for IV).
+   - Subject Code: Official alphanumeric code in uppercase (e.g. BEC701, BECL701, BEC786).
+   - Subject Name: Clean, complete title without abbreviations.
+   - Teacher Name: Full faculty name including title (Dr./Prof./Mr./Ms.).
+   - Department Code: Department abbreviation (e.g. ECE, CSE, AIML, MECH, CIVIL).
+   - Credits: Assign 4 for regular theory, 3 for electives, 2 for Labs/IPCC, 4-6 for Major Projects.
+
+Faculty Master Reference in System:
 ${teacherNames || 'None currently registered'}
 `;
 
