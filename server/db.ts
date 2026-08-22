@@ -108,7 +108,7 @@ function initializeCleanData(): DatabaseStore {
     shortName: 'KLECET',
     campusCode: 'KLECET-2026',
     academicYear: '2026-2027',
-    currentSemesterTerm: 'Even Semester (Semesters 2, 4, 6, 8)',
+    currentSemesterTerm: 'Academic Year 2026-2027',
     semesterTermType: 'even',
     minAttendanceWarning: 75,
     adminContactEmail: 'ecedept123456@gmail.com',
@@ -125,7 +125,7 @@ function initializeCleanData(): DatabaseStore {
           academicYear,
           departmentCode: dept.code,
           section: 'A',
-          status: [2, 4, 6, 8].includes(semNum) ? 'active' : 'setup',
+          status: 'setup',
           createdAt: '2026-01-10T08:00:00Z',
         });
       }

@@ -232,7 +232,7 @@ const MainLayout: React.FC = () => {
       <OfflineBanner />
 
       {/* Main Body */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto overflow-x-auto">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
           <Sidebar activeTab={activeTab} onSelectTab={handleNavigate} />
@@ -257,7 +257,7 @@ const MainLayout: React.FC = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-auto">
                 <Sidebar activeTab={activeTab} onSelectTab={handleNavigate} />
               </div>
             </div>
@@ -265,7 +265,7 @@ const MainLayout: React.FC = () => {
         )}
 
         {/* Content Container - Responsive padding for mobile bottom bar */}
-        <main className="flex-1 px-3 py-4 sm:p-5 lg:p-8 min-w-0 overflow-y-auto pb-28 lg:pb-8 flex flex-col justify-between">
+        <main className="flex-1 px-3 py-4 sm:p-5 lg:p-8 min-w-0 overflow-auto pb-28 lg:pb-8 flex flex-col justify-between">
           <div>{renderContent()}</div>
 
           {/* Institutional Footer & Developer Attribution */}

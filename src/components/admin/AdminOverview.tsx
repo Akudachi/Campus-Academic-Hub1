@@ -107,7 +107,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigate }) => {
   }, []);
 
   return (
-    <div className="space-y-4 max-w-full overflow-x-hidden animate-fade-in pb-4">
+    <div className="space-y-4 max-w-full overflow-x-auto animate-fade-in pb-4">
       {/* Mobile App Style Hero Header */}
       <div className="bg-linear-to-br from-[#13284A] via-[#1E3A63] to-[#2E6FB0] p-4 sm:p-5 rounded-2xl text-white shadow-sm relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">

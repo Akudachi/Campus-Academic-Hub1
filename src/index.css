@@ -10,12 +10,13 @@
 
   html {
     width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+    min-height: 100%;
     -webkit-text-size-adjust: 100%;
     -moz-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    touch-action: pan-y;
+    overflow-x: auto;
+    overflow-y: auto;
+    touch-action: auto;
   }
 
   body {
@@ -23,25 +24,24 @@
     color: #1E293B;
     background-color: #F3F6FB;
     width: 100%;
-    max-width: 100%;
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    overflow-x: hidden;
+    overflow-x: auto;
+    overflow-y: auto;
     -webkit-tap-highlight-color: transparent;
-    touch-action: pan-y;
+    touch-action: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overscroll-behavior-y: none;
   }
 
   #root {
     width: 100%;
-    max-width: 100vw;
     min-height: 100vh;
-    overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    overflow-x: auto;
+    overflow-y: auto;
   }
 
   /* Prevent double tap zoom, text selection loupe zoom, and fast tap lag */
