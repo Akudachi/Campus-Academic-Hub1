@@ -919,6 +919,29 @@ app.post('/api/admin/teachers/:id/assign-subject', requireRole('admin'), (req: A
   res.status(201).json({ success: true, assignment: newAssignment });
 });
 
+app.delete('/api/admin/teachers/:id/assign-subject/:subjectId', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id, subjectId } = req.params;
+  const store = db.getStore();
+  const initialCount = store.teacherSubjectAssignments.length;
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter(
+    (a) => !(a.teacherId === id && a.subjectId === subjectId)
+  );
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'TEACHER_SUBJECT_UNASSIGNED',
+    `Unassigned subject ${subjectId} from teacher ${id}`
+  );
+
+  res.json({
+    success: true,
+    message: 'Subject unassigned from teacher.',
+    removed: initialCount > store.teacherSubjectAssignments.length,
+  });
+});
+
 // Helper for normalizing department aliases
 function normalizeDeptCode(deptStr: string, validCodes: string[]): string {
   const d = (deptStr || '').trim().toUpperCase();
@@ -1993,6 +2016,15 @@ app.post('/api/admin/semesters/:id/complete', requireRole('admin'), (req: Authen
     });
   }
 
+  // Remove teacher subject assignments for completed semester
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter(
+    (a) => a.semesterId !== semester.id
+  );
+  const completedSubjects = store.subjects.filter((s) => s.semesterNumber === semester.number).map((s) => s.id);
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter(
+    (a) => !completedSubjects.includes(a.subjectId)
+  );
+
   db.logAudit(
     req.user!.id,
     req.user!.name,
@@ -2003,7 +2035,7 @@ app.post('/api/admin/semesters/:id/complete', requireRole('admin'), (req: Authen
 
   res.json({
     success: true,
-    message: `Semester ${semester.number} ${semester.departmentCode} archived. You can now setup a new semester.`,
+    message: `Semester ${semester.number} ${semester.departmentCode} archived. Associated teacher subject allocations cleared. You can now setup a new semester.`,
   });
 });
 
@@ -2026,6 +2058,15 @@ app.post('/api/admin/semesters/:id/complete-and-promote', requireRole('admin'), 
 
   // 1. Archive current semester
   currentSemester.status = 'archived';
+
+  // 1.1 Remove teacher assignments for this completed semester
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter(
+    (a) => a.semesterId !== currentSemester.id
+  );
+  const completedSemSubjects = store.subjects.filter((s) => s.semesterNumber === currentSemester.number).map((s) => s.id);
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter(
+    (a) => !completedSemSubjects.includes(a.subjectId)
+  );
 
   // If completing 8th sem or promoting past 8th sem: delete those students and revoke login access
   if (currentSemester.number === 8 || nextSemNum > 8) {
@@ -2123,12 +2164,21 @@ app.post('/api/admin/semesters/:id/complete-and-promote', requireRole('admin'), 
 
   let promotedCount = 0;
   const promotedUserIds: string[] = [];
+  const promotedStudentIds: string[] = [];
 
   eligibleStudents.forEach((st) => {
     st.currentSemester = nextSemNum;
     promotedCount++;
     promotedUserIds.push(st.userId);
+    promotedStudentIds.push(st.id);
   });
+
+  // 3.1 REFRESH STUDENT DASHBOARD DATA: Clear old semester attendance, test marks, and assignment submission statuses for promoted students
+  if (promotedStudentIds.length > 0) {
+    store.attendanceRecords = store.attendanceRecords.filter((r) => !promotedStudentIds.includes(r.studentId));
+    store.testMarks = store.testMarks.filter((m) => !promotedStudentIds.includes(m.studentId));
+    store.assignmentSubmissionStatuses = store.assignmentSubmissionStatuses.filter((sub) => !promotedStudentIds.includes(sub.studentId));
+  }
 
   // 4. Send real system notifications
   if (promotedUserIds.length > 0) {
@@ -2136,7 +2186,7 @@ app.post('/api/admin/semesters/:id/complete-and-promote', requireRole('admin'), 
       promotedUserIds,
       'system',
       `Semester Progression: Promoted to Sem ${nextSemNum}`,
-      `You have been promoted to Semester ${nextSemNum} (${currentSemester.departmentCode}). Welcome to your new term!`,
+      `You have been promoted to Semester ${nextSemNum} (${currentSemester.departmentCode}). Old semester records refreshed. Welcome to your new term!`,
       '/student'
     );
   }
@@ -2146,12 +2196,12 @@ app.post('/api/admin/semesters/:id/complete-and-promote', requireRole('admin'), 
     req.user!.name,
     'admin',
     'SEMESTER_COMPLETED_AND_PROMOTED',
-    `Archived Sem ${currentSemester.number} ${currentSemester.departmentCode} and promoted ${promotedCount} students to Sem ${nextSemNum}`
+    `Archived Sem ${currentSemester.number} ${currentSemester.departmentCode}, removed teacher subject allocations, promoted ${promotedCount} students to Sem ${nextSemNum}, and refreshed their academic data.`
   );
 
   res.json({
     success: true,
-    message: `Completed Semester ${currentSemester.number} and promoted ${promotedCount} students to Semester ${nextSemNum}.`,
+    message: `Completed Semester ${currentSemester.number}, cleared teacher allocations, and promoted ${promotedCount} students to Semester ${nextSemNum} with fresh academic records.`,
     promotedCount,
     archivedSemester: currentSemester,
     nextSemester,
@@ -2385,8 +2435,10 @@ app.get('/api/teacher/subjects', requireRole('teacher', 'admin'), (req: Authenti
     return res.status(403).json({ error: 'No associated teacher profile found.' });
   }
 
+  const archivedSemesterIds = store.semesters.filter((s) => s.status === 'archived').map((s) => s.id);
+
   const assignments = store.teacherSubjectAssignments.filter(
-    (a) => a.teacherId === teacher.id && a.confirmedByAdmin
+    (a) => a.teacherId === teacher.id && a.confirmedByAdmin && !archivedSemesterIds.includes(a.semesterId)
   );
 
   const enriched = assignments.map((a) => {
@@ -2421,6 +2473,36 @@ app.get('/api/teacher/subjects', requireRole('teacher', 'admin'), (req: Authenti
   });
 
   res.json({ subjects: enriched, teacher });
+});
+
+// Delete / Remove Subject from Teacher Dashboard
+app.delete('/api/teacher/subjects/:subjectId', requireRole('teacher', 'admin'), (req: AuthenticatedRequest, res: Response) => {
+  const store = db.getStore();
+  const teacher = req.teacher || (req.user?.role === 'admin' ? store.teachers[0] : null);
+  const { subjectId } = req.params;
+
+  if (!teacher) {
+    return res.status(403).json({ error: 'No associated teacher profile found.' });
+  }
+
+  const initialCount = store.teacherSubjectAssignments.length;
+  store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter(
+    (a) => !(a.teacherId === teacher.id && a.subjectId === subjectId)
+  );
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    req.user!.role,
+    'TEACHER_SUBJECT_REMOVED',
+    `Removed subject ${subjectId} from teacher ${teacher.teacherCode || teacher.id} dashboard.`
+  );
+
+  res.json({
+    success: true,
+    message: 'Subject removed from teacher dashboard.',
+    removed: initialCount > store.teacherSubjectAssignments.length,
+  });
 });
 
 // 3.2 Teacher Attendance Sessions
@@ -3157,8 +3239,16 @@ app.get('/api/student/dashboard', requireRole('student', 'admin', 'teacher'), (r
 
   const user = store.users.find((u) => u.id === student.userId);
 
-  // Overall Attendance
-  const studentRecords = store.attendanceRecords.filter((r) => r.studentId === student.id);
+  // Subjects belonging to student's current semester
+  const currentSemesterSubjects = store.subjects.filter((s) => s.semesterNumber === student.currentSemester);
+  const currentSubjectIds = currentSemesterSubjects.map((s) => s.id);
+
+  // Overall Attendance for current semester
+  const currentSessions = store.attendanceSessions.filter((sess) => currentSubjectIds.includes(sess.subjectId));
+  const currentSessionIds = currentSessions.map((s) => s.id);
+  const studentRecords = store.attendanceRecords.filter(
+    (r) => r.studentId === student.id && (currentSessionIds.length === 0 || currentSessionIds.includes(r.attendanceSessionId))
+  );
   const totalClasses = studentRecords.length;
   const attendedClasses = studentRecords.filter((r) => r.status === 'present').length;
   const overallAttendancePercentage = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 100;
@@ -3166,7 +3256,7 @@ app.get('/api/student/dashboard', requireRole('student', 'admin', 'teacher'), (r
   // Pending assignments (assigned to this semester & student not submitted)
   const semesterAssignments = store.assignments.filter((a) => {
     const subject = store.subjects.find((s) => s.id === a.subjectId);
-    return !subject || subject.semesterNumber === student.currentSemester || a.semesterId === `sem-${student.currentSemester}`;
+    return subject ? subject.semesterNumber === student.currentSemester : a.semesterId === `sem-${student.currentSemester}`;
   });
 
   const studentSubmissions = store.assignmentSubmissionStatuses.filter((s) => s.studentId === student.id);
@@ -3175,8 +3265,11 @@ app.get('/api/student/dashboard', requireRole('student', 'admin', 'teacher'), (r
     return !sub || sub.status === 'not_submitted';
   }).length;
 
-  // Latest published test mark
-  const publishedSheets = store.testMarkSheets.filter((tms) => tms.published);
+  // Latest published test mark for current semester
+  const publishedSheets = store.testMarkSheets.filter((tms) => {
+    const subject = store.subjects.find((s) => s.id === tms.subjectId);
+    return tms.published && (!subject || subject.semesterNumber === student.currentSemester);
+  });
   let latestPublishedTest = undefined;
 
   for (const sheet of publishedSheets) {
@@ -3199,13 +3292,8 @@ app.get('/api/student/dashboard', requireRole('student', 'admin', 'teacher'), (r
   const unreadNoticesCount = store.notices.length;
   const upcomingEventsCount = store.events.length;
 
-  // Subject-wise attendance breakdown: all subjects matching semester OR where sessions/records exist
-  let subjects = store.subjects.filter((s) => s.semesterNumber === student.currentSemester);
-  if (subjects.length === 0) {
-    subjects = store.subjects.slice(0, 5);
-  }
-
-  const subjectSummaries = subjects.map((sub) => {
+  // Subject-wise attendance breakdown: strictly current semester subjects
+  const subjectSummaries = currentSemesterSubjects.map((sub) => {
     const subSessions = store.attendanceSessions.filter((sess) => sess.subjectId === sub.id);
     const subSessionIds = subSessions.map((s) => s.id);
     const subRecords = store.attendanceRecords.filter(
@@ -3260,10 +3348,7 @@ app.get('/api/student/attendance', requireRole('student', 'admin', 'teacher'), (
     return res.status(404).json({ error: 'Student record not found.' });
   }
 
-  let subjects = store.subjects.filter((s) => s.semesterNumber === student.currentSemester);
-  if (subjects.length === 0) {
-    subjects = store.subjects.slice(0, 5);
-  }
+  const subjects = store.subjects.filter((s) => s.semesterNumber === student.currentSemester);
 
   const subjectsBreakdown = subjects.map((sub) => {
     const sessions = store.attendanceSessions.filter((sess) => sess.subjectId === sub.id);
@@ -3328,11 +3413,12 @@ app.get('/api/student/assignments', requireRole('student', 'admin', 'teacher'), 
     return res.status(404).json({ error: 'Student record not found.' });
   }
 
-  // Include assignments for this student's semester or where submission status exists
+  // Include assignments for this student's current semester only
+  const currentSemesterSubjects = store.subjects.filter((s) => s.semesterNumber === student.currentSemester);
+  const currentSubjectIds = currentSemesterSubjects.map((s) => s.id);
+
   const assignments = store.assignments.filter((a) => {
-    const subject = store.subjects.find((s) => s.id === a.subjectId);
-    const hasStatus = store.assignmentSubmissionStatuses.some((s) => s.assignmentId === a.id && s.studentId === student.id);
-    return hasStatus || !subject || subject.semesterNumber === student.currentSemester || a.semesterId === `sem-${student.currentSemester}`;
+    return currentSubjectIds.includes(a.subjectId) || a.semesterId === `sem-${student.currentSemester}`;
   });
 
   const list = assignments.map((a) => {
@@ -3365,7 +3451,7 @@ app.get('/api/student/assignments', requireRole('student', 'admin', 'teacher'), 
   res.json({ assignments: list });
 });
 
-// 4.4 Student Marks (ONLY published test marks)
+// 4.4 Student Marks (ONLY published test marks for current semester)
 app.get('/api/student/marks', requireRole('student', 'admin', 'teacher'), (req: AuthenticatedRequest, res: Response) => {
   const store = db.getStore();
   const student = getStudentFromReq(req);
@@ -3374,8 +3460,11 @@ app.get('/api/student/marks', requireRole('student', 'admin', 'teacher'), (req: 
     return res.status(404).json({ error: 'Student record not found.' });
   }
 
-  // Hard Rule: ONLY published mark sheets are visible to students
-  const publishedSheets = store.testMarkSheets.filter((s) => s.published);
+  const currentSemesterSubjects = store.subjects.filter((s) => s.semesterNumber === student.currentSemester);
+  const currentSubjectIds = currentSemesterSubjects.map((s) => s.id);
+
+  // Hard Rule: ONLY published mark sheets matching current semester subjects
+  const publishedSheets = store.testMarkSheets.filter((s) => s.published && currentSubjectIds.includes(s.subjectId));
 
   const results = publishedSheets.map((sheet) => {
     const subject = store.subjects.find((s) => s.id === sheet.subjectId);

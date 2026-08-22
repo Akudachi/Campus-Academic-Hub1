@@ -180,6 +180,11 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  unassignTeacherSubject: (teacherId: string, subjectId: string) =>
+    request<{ success: boolean; message: string }>(`/api/admin/teachers/${teacherId}/assign-subject/${subjectId}`, {
+      method: 'DELETE',
+    }),
+
   bulkCreateTeachers: (teachers: any[]) =>
     request<{ createdCount: number; errors: string[]; totalProcessed: number; updatedCount?: number }>('/api/admin/teachers/bulk', {
       method: 'POST',
@@ -438,6 +443,11 @@ export const api = {
   // Teacher: Subjects & Attendance
   getTeacherSubjects: () =>
     request<{ subjects: any[]; teacher: Teacher }>('/api/teacher/subjects'),
+
+  deleteTeacherSubject: (subjectId: string) =>
+    request<{ success: boolean; message: string; removed?: boolean }>(`/api/teacher/subjects/${subjectId}`, {
+      method: 'DELETE',
+    }),
 
   getTeacherAttendanceSessions: (subjectId?: string) =>
     request<{ sessions: any[] }>(`/api/teacher/attendance/sessions${subjectId ? `?subjectId=${subjectId}` : ''}`),

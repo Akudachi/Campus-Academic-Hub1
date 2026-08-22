@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Sparkles,
   Megaphone,
+  Trash2,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -25,30 +26,48 @@ interface TeacherDashboardProps {
 }
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
-  const { user, teacher } = useAuth();
+  const { user, teacher, showToast } = useAuth();
   const [subjects, setSubjects] = useState<any[]>([]);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
+  const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
+
+  const fetchTeacherData = async () => {
+    setLoading(true);
+    try {
+      const [subRes, sessRes] = await Promise.all([
+        api.getTeacherSubjects(),
+        api.getTeacherAttendanceSessions(),
+      ]);
+      setSubjects(subRes.subjects || []);
+      setRecentSessions(sessRes.sessions || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [subRes, sessRes] = await Promise.all([
-          api.getTeacherSubjects(),
-          api.getTeacherAttendanceSessions(),
-        ]);
-        setSubjects(subRes.subjects || []);
-        setRecentSessions(sessRes.sessions || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    fetchTeacherData();
   }, []);
+
+  const handleRemoveSubject = async (subjectId: string, subjectName: string) => {
+    if (!window.confirm(`Are you sure you want to remove "${subjectName}" from your assigned courses?`)) {
+      return;
+    }
+    setDeletingSubjectId(subjectId);
+    try {
+      await api.deleteTeacherSubject(subjectId);
+      showToast(`Removed "${subjectName}" from dashboard`, 'info');
+      setSubjects((prev) => prev.filter((s) => (s.id || s.subjectId) !== subjectId));
+    } catch (err: any) {
+      showToast(err.message || 'Failed to remove subject', 'error');
+    } finally {
+      setDeletingSubjectId(null);
+    }
+  };
 
   // Compute distinct semesters assigned to this faculty
   const assignedSemesters = useMemo(() => {
@@ -298,25 +317,37 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                   </span>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5 flex-wrap">
                   <button
-                    onClick={() => onNavigate('attendance')}
-                    className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    onClick={() => handleRemoveSubject(sub.id || sub.subjectId, sub.name || sub.code)}
+                    disabled={deletingSubjectId === (sub.id || sub.subjectId)}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center gap-1 disabled:opacity-50"
+                    title="Remove subject from dashboard"
                   >
-                    Take Attendance
+                    <Trash2 className="w-3 h-3" />
+                    <span>{deletingSubjectId === (sub.id || sub.subjectId) ? 'Removing...' : 'Remove'}</span>
                   </button>
-                  <button
-                    onClick={() => onNavigate('marks')}
-                    className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
-                  >
-                    Enter Marks
-                  </button>
-                  <button
-                    onClick={() => onNavigate('assignments')}
-                    className="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
-                  >
-                    Post Task
-                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => onNavigate('attendance')}
+                      className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    >
+                      Take Attendance
+                    </button>
+                    <button
+                      onClick={() => onNavigate('marks')}
+                      className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
+                    >
+                      Enter Marks
+                    </button>
+                    <button
+                      onClick={() => onNavigate('assignments')}
+                      className="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    >
+                      Post Task
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

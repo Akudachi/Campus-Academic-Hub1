@@ -156,29 +156,29 @@ interface PeriodSlot {
   room: string;
 }
 
-const DEFAULT_SCHEDULE_SLOTS: PeriodSlot[] = [
-  { id: 's1', day: 'Mon', periodNumber: 1, time: '09:00 - 10:00 AM', subjectCode: '21CS42', subjectName: 'Design & Analysis of Algorithms', teacherName: 'Dr. Ramesh Patil', room: 'LH-301' },
-  { id: 's2', day: 'Mon', periodNumber: 2, time: '10:00 - 11:00 AM', subjectCode: '21CS43', subjectName: 'Microcontrollers & Embedded Systems', teacherName: 'Prof. Ananya Rao', room: 'LH-301' },
-  { id: 's3', day: 'Mon', periodNumber: 3, time: '11:15 - 12:15 PM', subjectCode: '21CS44', subjectName: 'Operating Systems', teacherName: 'Dr. Ramesh Patil', room: 'LH-301' },
-  { id: 's4', day: 'Mon', periodNumber: 4, time: '01:00 - 02:00 PM', subjectCode: '21MAT41', subjectName: 'Complex Analysis & Transforms', teacherName: 'Dr. Vinod Kumar', room: 'LH-301' },
-  { id: 's5', day: 'Tue', periodNumber: 1, time: '09:00 - 10:00 AM', subjectCode: '21CS43', subjectName: 'Microcontrollers & Embedded Systems', teacherName: 'Prof. Ananya Rao', room: 'LH-301' },
-  { id: 's6', day: 'Tue', periodNumber: 2, time: '10:00 - 11:00 AM', subjectCode: '21CS42', subjectName: 'Design & Analysis of Algorithms', teacherName: 'Dr. Ramesh Patil', room: 'LH-301' },
-  { id: 's7', day: 'Tue', periodNumber: 3, time: '11:15 - 01:15 PM', subjectCode: '21CSL46', subjectName: 'Algorithms Laboratory', teacherName: 'Dr. Ramesh Patil', room: 'Lab 4' },
-  { id: 's8', day: 'Wed', periodNumber: 1, time: '09:00 - 10:00 AM', subjectCode: '21CS44', subjectName: 'Operating Systems', teacherName: 'Dr. Ramesh Patil', room: 'LH-301' },
-  { id: 's9', day: 'Wed', periodNumber: 2, time: '10:00 - 11:00 AM', subjectCode: '21MAT41', subjectName: 'Complex Analysis & Transforms', teacherName: 'Dr. Vinod Kumar', room: 'LH-301' },
-  { id: 's10', day: 'Wed', periodNumber: 3, time: '11:15 - 12:15 PM', subjectCode: '21CS42', subjectName: 'Design & Analysis of Algorithms', teacherName: 'Dr. Ramesh Patil', room: 'LH-301' },
-  { id: 's11', day: 'Thu', periodNumber: 1, time: '09:00 - 10:00 AM', subjectCode: '21CS43', subjectName: 'Microcontrollers & Embedded Systems', teacherName: 'Prof. Ananya Rao', room: 'LH-301' },
-  { id: 's12', day: 'Thu', periodNumber: 2, time: '10:00 - 11:00 AM', subjectCode: '21CS44', subjectName: 'Operating Systems', teacherName: 'Dr. Ramesh Patil', room: 'LH-301' },
-  { id: 's13', day: 'Fri', periodNumber: 1, time: '09:00 - 10:00 AM', subjectCode: '21MAT41', subjectName: 'Complex Analysis & Transforms', teacherName: 'Dr. Vinod Kumar', room: 'LH-301' },
-  { id: 's14', day: 'Fri', periodNumber: 2, time: '10:00 - 12:00 PM', subjectCode: '21CSL47', subjectName: 'Microcontrollers Laboratory', teacherName: 'Prof. Ananya Rao', room: 'Hardware Lab' },
-];
+const DEFAULT_SCHEDULE_SLOTS: PeriodSlot[] = [];
 
 export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
   const [activeMainTab, setActiveMainTab] = useState<'schedule' | 'scanner'>('schedule');
   const [selectedDay, setSelectedDay] = useState<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat'>('Mon');
   const [selectedDept, setSelectedDept] = useState('CSE');
   const [selectedSem, setSelectedSem] = useState(4);
-  const [scheduleSlots, setScheduleSlots] = useState<PeriodSlot[]>(DEFAULT_SCHEDULE_SLOTS);
+  const [scheduleSlots, setScheduleSlots] = useState<PeriodSlot[]>(() => {
+    const saved = localStorage.getItem('kle_timetable_schedule_slots');
+    return saved ? JSON.parse(saved) : DEFAULT_SCHEDULE_SLOTS;
+  });
+
+  // Modal for adding a period slot manually
+  const [showAddSlotModal, setShowAddSlotModal] = useState(false);
+  const [newSlot, setNewSlot] = useState<Partial<PeriodSlot>>({
+    day: 'Mon',
+    periodNumber: 1,
+    time: '09:00 - 10:00 AM',
+    subjectCode: '',
+    subjectName: '',
+    teacherName: '',
+    room: 'LH-101',
+  });
 
   // Scanner State
   const [fileName, setFileName] = useState('');
@@ -195,6 +195,10 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
   const { showToast } = useAuth();
 
   useEffect(() => {
+    localStorage.setItem('kle_timetable_schedule_slots', JSON.stringify(scheduleSlots));
+  }, [scheduleSlots]);
+
+  useEffect(() => {
     loadTeachers();
   }, []);
 
@@ -205,6 +209,49 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleAddSlot = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSlot.subjectCode || !newSlot.subjectName) {
+      showToast('Please enter subject code and subject name', 'warning');
+      return;
+    }
+    const created: PeriodSlot = {
+      id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      day: (newSlot.day || selectedDay) as any,
+      periodNumber: Number(newSlot.periodNumber) || 1,
+      time: newSlot.time || '09:00 - 10:00 AM',
+      subjectCode: newSlot.subjectCode.trim().toUpperCase(),
+      subjectName: newSlot.subjectName.trim(),
+      teacherName: newSlot.teacherName?.trim() || 'Faculty Member',
+      room: newSlot.room?.trim() || 'LH-101',
+    };
+    setScheduleSlots((prev) => [...prev, created]);
+    setShowAddSlotModal(false);
+    showToast(`Added Period ${created.periodNumber} (${created.subjectCode}) for ${created.day}`, 'success');
+    setNewSlot({
+      day: selectedDay,
+      periodNumber: (Number(newSlot.periodNumber) || 1) + 1,
+      time: '10:00 - 11:00 AM',
+      subjectCode: '',
+      subjectName: '',
+      teacherName: '',
+      room: newSlot.room || 'LH-101',
+    });
+  };
+
+  const handleDeleteSlot = (slotId: string) => {
+    setScheduleSlots((prev) => prev.filter((s) => s.id !== slotId));
+    showToast('Removed period from schedule', 'info');
+  };
+
+  const handleClearDaySchedule = () => {
+    if (!window.confirm(`Are you sure you want to clear all periods scheduled for ${selectedDay}?`)) {
+      return;
+    }
+    setScheduleSlots((prev) => prev.filter((s) => s.day !== selectedDay));
+    showToast(`Cleared ${selectedDay} timetable`, 'info');
   };
 
   const handleFileSelect = (file: File) => {
@@ -385,18 +432,77 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
 
           {/* Periods Timeline List */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between px-1">
+            <div className="flex items-center justify-between px-1 flex-wrap gap-2">
               <span className="text-xs font-bold text-[#13284A] uppercase tracking-wider">
                 {selectedDay} Schedule — {selectedDept} Semester {selectedSem}
               </span>
-              <span className="text-[11px] text-slate-500 font-semibold">{currentDaySlots.length} Periods Scheduled</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-500 font-semibold">{currentDaySlots.length} Periods</span>
+                {currentDaySlots.length > 0 && (
+                  <button
+                    onClick={handleClearDaySchedule}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors"
+                  >
+                    Clear {selectedDay}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setNewSlot({
+                      day: selectedDay,
+                      periodNumber: currentDaySlots.length + 1,
+                      time: `${currentDaySlots.length + 9}:00 - ${currentDaySlots.length + 10}:00 AM`,
+                      subjectCode: '',
+                      subjectName: '',
+                      teacherName: '',
+                      room: 'LH-101',
+                    });
+                    setShowAddSlotModal(true);
+                  }}
+                  className="px-3 py-1 rounded-lg bg-[#13284A] hover:bg-[#2E6FB0] text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Period Slot</span>
+                </button>
+              </div>
             </div>
 
             {currentDaySlots.length === 0 ? (
-              <div className="p-8 text-center bg-white rounded-xl border border-[#DCE3ED] text-xs text-slate-500 space-y-1">
-                <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="font-semibold text-slate-700">No classes scheduled for {selectedDay}.</p>
-                <p className="text-[11px] text-slate-400">Use the AI Scanner to automatically extract full timetable.</p>
+              <div className="p-8 text-center bg-white rounded-xl border border-[#DCE3ED] text-xs text-slate-500 space-y-3">
+                <Calendar className="w-10 h-10 text-slate-300 mx-auto" />
+                <div>
+                  <p className="font-bold text-slate-700 text-sm">No periods scheduled for {selectedDay}.</p>
+                  <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
+                    Create custom periods for your semester timetable or switch to the AI Scanner tab to automatically scan your timetable image.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setNewSlot({
+                        day: selectedDay,
+                        periodNumber: 1,
+                        time: '09:00 - 10:00 AM',
+                        subjectCode: '',
+                        subjectName: '',
+                        teacherName: '',
+                        room: 'LH-101',
+                      });
+                      setShowAddSlotModal(true);
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#2E6FB0] text-white font-bold text-xs hover:bg-[#13284A] transition-colors flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add First Period</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveMainTab('scanner')}
+                    className="px-3.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Use AI Scanner</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
@@ -424,7 +530,7 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                           </span>
                         </div>
                         <h3 className="text-xs font-bold text-[#13284A] mt-0.5">{slot.subjectName}</h3>
-                        <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                        <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                           <span>Faculty: <strong className="text-slate-700">{slot.teacherName}</strong></span>
                           <span>•</span>
                           <span>Room: <strong className="text-slate-700">{slot.room}</strong></span>
@@ -432,10 +538,17 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                    <div className="flex items-center gap-2 self-end sm:self-center">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                         Active Period
                       </span>
+                      <button
+                        onClick={() => handleDeleteSlot(slot.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                        title="Delete this period"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -557,6 +670,127 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Manual Add Period Slot Modal */}
+      {showAddSlotModal && (
+        <Modal
+          isOpen={showAddSlotModal}
+          onClose={() => setShowAddSlotModal(false)}
+          title={`Add Period Slot — ${selectedDept} Semester ${selectedSem}`}
+        >
+          <form onSubmit={handleAddSlot} className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Day of Week</label>
+                <select
+                  value={newSlot.day || selectedDay}
+                  onChange={(e) => setNewSlot({ ...newSlot, day: e.target.value as any })}
+                  className="w-full p-2 border border-slate-300 rounded-lg bg-white font-medium"
+                >
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Period #</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={newSlot.periodNumber || 1}
+                  onChange={(e) => setNewSlot({ ...newSlot, periodNumber: parseInt(e.target.value) || 1 })}
+                  className="w-full p-2 border border-slate-300 rounded-lg font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Time Range</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 09:00 - 10:00 AM"
+                  value={newSlot.time || ''}
+                  onChange={(e) => setNewSlot({ ...newSlot, time: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded-lg font-medium"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                <input
+                  type="text"
+                  placeholder="e.g. LH-301 or Lab 4"
+                  value={newSlot.room || ''}
+                  onChange={(e) => setNewSlot({ ...newSlot, room: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded-lg font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Course Code</label>
+              <input
+                type="text"
+                placeholder="e.g. 21CS42"
+                value={newSlot.subjectCode || ''}
+                onChange={(e) => setNewSlot({ ...newSlot, subjectCode: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-lg font-mono font-bold uppercase"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Course / Subject Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Design & Analysis of Algorithms"
+                value={newSlot.subjectName || ''}
+                onChange={(e) => setNewSlot({ ...newSlot, subjectName: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-lg font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Assigned Faculty / Teacher</label>
+              <input
+                type="text"
+                placeholder="e.g. Dr. Ramesh Patil"
+                value={newSlot.teacherName || ''}
+                onChange={(e) => setNewSlot({ ...newSlot, teacherName: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-lg font-medium"
+                list="teachers-list"
+              />
+              <datalist id="teachers-list">
+                {availableTeachers.map((t) => (
+                  <option key={t.id} value={t.user?.name || t.id} />
+                ))}
+              </datalist>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShowAddSlotModal(false)}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 rounded-lg bg-[#13284A] hover:bg-[#2E6FB0] text-white font-bold transition-colors shadow-2xs"
+              >
+                Save Period
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

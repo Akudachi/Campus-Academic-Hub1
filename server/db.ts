@@ -121,7 +121,7 @@ function initializeCleanData(): DatabaseStore {
     return sems;
   }
 
-  const semesters: Semester[] = buildStandardSemesters(departments, '2026-2027');
+  const semesters: Semester[] = [];
 
   const users: User[] = [
     {
