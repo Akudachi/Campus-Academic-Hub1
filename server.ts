@@ -1340,22 +1340,6 @@ app.post('/api/admin/teachers/auto-assign', requireRole('admin'), (req: Authenti
   });
 });
 
-  db.logAudit(
-    req.user!.id,
-    req.user!.name,
-    'admin',
-    'TEACHER_SUBJECTS_AUTO_ASSIGNED',
-    `Auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members`
-  );
-
-  res.json({
-    success: true,
-    message: `Successfully auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members.`,
-    assignedCount,
-    assignments: createdAssignments,
-  });
-});
-
 app.post('/api/admin/teachers/:id/assign-subject', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { subjectId, semesterId } = req.body;

@@ -103,6 +103,18 @@ function initializeCleanData(): DatabaseStore {
     },
   ];
 
+  const defaultSettings: CampusSettings = {
+    institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
+    shortName: 'KLECET',
+    campusCode: 'KLECET-2026',
+    academicYear: '2026-2027',
+    currentSemesterTerm: 'Even Semester (Semesters 2, 4, 6, 8)',
+    semesterTermType: 'even',
+    minAttendanceWarning: 75,
+    adminContactEmail: 'ecedept123456@gmail.com',
+    systemStatus: 'operational',
+  };
+
   function buildStandardSemesters(departmentsList: Department[], academicYear = '2026-2027'): Semester[] {
     const sems: Semester[] = [];
     departmentsList.forEach((dept) => {
@@ -225,18 +237,6 @@ function initializeCleanData(): DatabaseStore {
       createdAt: new Date().toISOString(),
     },
   ];
-
-  const defaultSettings: CampusSettings = {
-    institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
-    shortName: 'KLECET',
-    campusCode: 'KLECET-2026',
-    academicYear: '2026-2027',
-    currentSemesterTerm: 'Even Semester (Semesters 2, 4, 6, 8)',
-    semesterTermType: 'even',
-    minAttendanceWarning: 75,
-    adminContactEmail: 'ecedept123456@gmail.com',
-    systemStatus: 'operational',
-  };
 
   const initialNotices: Notice[] = [
     {
