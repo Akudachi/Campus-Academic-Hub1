@@ -7,13 +7,23 @@ coverage/
 .env*
 !.env.example
 
-# Android / Gradle
+# Android
 .gradle/
-app/build/
-local.properties
-.idea/
+android/build/
+android/.gradle/
+android/app/build/
+android/local.properties
 *.iml
+.idea/
 captures/
 .externalNativeBuild/
 .cxx/
+
+# iOS
+ios/App/Pods/
+ios/App/build/
+*.xcworkspace
+!ios/App/App.xcworkspace
+xcuserdata/
+DerivedData/
 

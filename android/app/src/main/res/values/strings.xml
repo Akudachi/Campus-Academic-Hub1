@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Campus Academic Hub</string>
+    <string name="title_activity_main">Campus Academic Hub</string>
+    <string name="package_name">com.klecet.campushub</string>
+    <string name="custom_url_scheme">com.klecet.campushub</string>
+</resources>

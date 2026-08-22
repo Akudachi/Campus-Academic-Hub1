@@ -1,0 +1,10 @@
+{
+	"appId": "com.klecet.campushub",
+	"appName": "Campus Academic Hub",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https",
+		"cleartext": true
+	},
+	"packageClassList": []
+}
