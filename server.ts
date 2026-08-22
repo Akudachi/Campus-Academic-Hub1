@@ -3323,17 +3323,36 @@ app.get('/api/student/dashboard', requireRole('student', 'admin', 'teacher'), (r
     };
   });
 
-  const dashboard: StudentDashboardSummary = {
+  // Filtered student notices and events
+  const studentNotices = store.notices.filter(
+    (n) =>
+      n.audienceType === 'everyone' ||
+      (n.audienceType === 'department' && (n.audienceTargetId || '').toUpperCase() === student.department?.toUpperCase()) ||
+      (n.audienceType === 'semester' && String(n.audienceTargetId) === String(student.currentSemester))
+  );
+
+  const dashboard: StudentDashboardSummary & {
+    overallAttendance: number;
+    subjectAttendance: typeof subjectSummaries;
+    recentNotices: typeof studentNotices;
+    upcomingEvents: typeof store.events;
+    publishedMarksCount: number;
+  } = {
     student: { ...student, user },
     overallAttendancePercentage,
+    overallAttendance: overallAttendancePercentage,
     totalClasses,
     attendedClasses,
     pendingAssignmentsCount,
     totalAssignmentsCount: semesterAssignments.length,
     latestPublishedTest,
-    unreadNoticesCount,
+    unreadNoticesCount: studentNotices.length,
     upcomingEventsCount,
     subjectSummaries,
+    subjectAttendance: subjectSummaries,
+    recentNotices: studentNotices.slice(0, 5),
+    upcomingEvents: store.events.slice(0, 5),
+    publishedMarksCount: publishedSheets.length,
   };
 
   res.json(dashboard);

@@ -20,9 +20,11 @@ import {
   Eye,
   AlertCircle,
   HelpCircle,
+  Building2,
+  GraduationCap,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { ExtractedTimetableRow, Teacher, User, Subject } from '../../types';
+import { ExtractedTimetableRow, Teacher, User, Subject, Department, Semester } from '../../types';
 import { Modal } from '../common/Modal';
 import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
@@ -147,6 +149,8 @@ interface TimetableAIViewProps {
 
 interface PeriodSlot {
   id: string;
+  departmentCode: string;
+  semesterNumber: number;
   day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
   periodNumber: number;
   time: string;
@@ -161,8 +165,10 @@ const DEFAULT_SCHEDULE_SLOTS: PeriodSlot[] = [];
 export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
   const [activeMainTab, setActiveMainTab] = useState<'schedule' | 'scanner'>('schedule');
   const [selectedDay, setSelectedDay] = useState<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat'>('Mon');
-  const [selectedDept, setSelectedDept] = useState('CSE');
-  const [selectedSem, setSelectedSem] = useState(4);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [selectedDept, setSelectedDept] = useState<string>('CSE');
+  const [selectedSem, setSelectedSem] = useState<number>(4);
   const [scheduleSlots, setScheduleSlots] = useState<PeriodSlot[]>(() => {
     const saved = localStorage.getItem('kle_timetable_schedule_slots');
     return saved ? JSON.parse(saved) : DEFAULT_SCHEDULE_SLOTS;
@@ -180,7 +186,7 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
     room: 'LH-101',
   });
 
-  // Scanner State
+  // Scanner State (dynamic & defaults to currently selected branch & semester)
   const [fileName, setFileName] = useState('');
   const [imageData, setImageData] = useState<string | null>(null);
   const [targetSemester, setTargetSemester] = useState<number>(4);
@@ -199,16 +205,53 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
   }, [scheduleSlots]);
 
   useEffect(() => {
-    loadTeachers();
+    loadDepartmentsAndTeachers();
   }, []);
 
-  const loadTeachers = async () => {
+  const loadDepartmentsAndTeachers = async () => {
     try {
-      const res = await api.getTeachers();
-      setAvailableTeachers(res.teachers || []);
+      const [deptRes, semRes, teachRes] = await Promise.all([
+        api.getDepartments(),
+        api.getSemesters(),
+        api.getTeachers(),
+      ]);
+
+      const depts = deptRes.departments || [];
+      const sems = semRes.semesters || [];
+      setDepartments(depts);
+      setSemesters(sems);
+      setAvailableTeachers(teachRes.teachers || []);
+
+      if (depts.length > 0) {
+        // If current selected department doesn't exist in live list, reset to first available
+        setSelectedDept((prev) => {
+          const exists = depts.some((d) => d.code.toUpperCase() === prev.toUpperCase());
+          const activeCode = exists ? prev : depts[0].code;
+          setTargetDept(activeCode);
+          return activeCode;
+        });
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load departments or teachers', e);
     }
+  };
+
+  const handleSelectDepartment = (deptCode: string) => {
+    setSelectedDept(deptCode);
+    setTargetDept(deptCode);
+    // Find active semester for this department if available
+    const activeSem = semesters.find(
+      (s) => s.departmentCode.toUpperCase() === deptCode.toUpperCase() && s.status === 'active'
+    );
+    if (activeSem) {
+      setSelectedSem(activeSem.number);
+      setTargetSemester(activeSem.number);
+    }
+  };
+
+  const handleSelectSemester = (semNum: number) => {
+    setSelectedSem(semNum);
+    setTargetSemester(semNum);
   };
 
   const handleAddSlot = (e: React.FormEvent) => {
@@ -219,6 +262,8 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
     }
     const created: PeriodSlot = {
       id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      departmentCode: selectedDept,
+      semesterNumber: selectedSem,
       day: (newSlot.day || selectedDay) as any,
       periodNumber: Number(newSlot.periodNumber) || 1,
       time: newSlot.time || '09:00 - 10:00 AM',
@@ -247,11 +292,20 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
   };
 
   const handleClearDaySchedule = () => {
-    if (!window.confirm(`Are you sure you want to clear all periods scheduled for ${selectedDay}?`)) {
+    if (!window.confirm(`Are you sure you want to clear all periods scheduled for ${selectedDay} in ${selectedDept} Semester ${selectedSem}?`)) {
       return;
     }
-    setScheduleSlots((prev) => prev.filter((s) => s.day !== selectedDay));
-    showToast(`Cleared ${selectedDay} timetable`, 'info');
+    setScheduleSlots((prev) =>
+      prev.filter(
+        (s) =>
+          !(
+            s.day === selectedDay &&
+            (s.departmentCode ? s.departmentCode.toUpperCase() === selectedDept.toUpperCase() : true) &&
+            (s.semesterNumber ? s.semesterNumber === selectedSem : true)
+          )
+      )
+    );
+    showToast(`Cleared ${selectedDay} timetable for ${selectedDept} Sem ${selectedSem}`, 'info');
   };
 
   const handleFileSelect = (file: File) => {
@@ -321,8 +375,14 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
     }
   };
 
+  // Filter slots strictly matching selected day, branch, and semester
   const currentDaySlots = scheduleSlots
-    .filter((slot) => slot.day === selectedDay)
+    .filter(
+      (slot) =>
+        slot.day === selectedDay &&
+        (slot.departmentCode ? slot.departmentCode.toUpperCase() === selectedDept.toUpperCase() : true) &&
+        (slot.semesterNumber ? slot.semesterNumber === selectedSem : true)
+    )
     .sort((a, b) => a.periodNumber - b.periodNumber);
 
   return (
@@ -345,7 +405,10 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
         {/* Tab Switcher */}
         <div className="flex items-center bg-slate-100 p-1 rounded-xl">
           <button
-            onClick={() => setActiveMainTab('schedule')}
+            onClick={() => {
+              setActiveMainTab('schedule');
+              loadDepartmentsAndTeachers();
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               activeMainTab === 'schedule'
                 ? 'bg-white text-[#13284A] shadow-2xs'
@@ -356,7 +419,12 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
             <span>Weekly Schedule</span>
           </button>
           <button
-            onClick={() => setActiveMainTab('scanner')}
+            onClick={() => {
+              setActiveMainTab('scanner');
+              setTargetDept(selectedDept);
+              setTargetSemester(selectedSem);
+              loadDepartmentsAndTeachers();
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               activeMainTab === 'scanner'
                 ? 'bg-[#13284A] text-white shadow-2xs'
@@ -376,32 +444,36 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
           <div className="bg-white p-3 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-2.5">
             {/* Branch & Semester Pills */}
             <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                <span className="font-bold text-slate-400 text-[11px]">Branch:</span>
-                {['CSE', 'ECE', 'ISE', 'MECH', 'CIVIL'].map((dept) => (
-                  <button
-                    key={dept}
-                    onClick={() => setSelectedDept(dept)}
-                    className={`px-2.5 py-1 rounded-md font-bold text-xs transition-colors ${
-                      selectedDept === dept
-                        ? 'bg-[#13284A] text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {dept}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 max-w-full">
+                <span className="font-bold text-slate-400 text-[11px] shrink-0">Branch:</span>
+                {departments.length === 0 ? (
+                  <span className="text-xs text-slate-400 font-medium">No branches created</span>
+                ) : (
+                  departments.map((dept) => (
+                    <button
+                      key={dept.id || dept.code}
+                      onClick={() => handleSelectDepartment(dept.code)}
+                      className={`px-2.5 py-1 rounded-md font-bold text-xs transition-colors shrink-0 ${
+                        selectedDept.toUpperCase() === dept.code.toUpperCase()
+                          ? 'bg-[#13284A] text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {dept.code}
+                    </button>
+                  ))
+                )}
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-400 text-[11px]">Sem:</span>
+                <span className="font-bold text-slate-400 text-[11px] shrink-0">Sem:</span>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
                   <button
                     key={s}
-                    onClick={() => setSelectedSem(s)}
+                    onClick={() => handleSelectSemester(s)}
                     className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition-colors ${
                       selectedSem === s
-                        ? 'bg-[#2E6FB0] text-white'
+                        ? 'bg-[#2E6FB0] text-white shadow-2xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -471,7 +543,7 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
               <div className="p-8 text-center bg-white rounded-xl border border-[#DCE3ED] text-xs text-slate-500 space-y-3">
                 <Calendar className="w-10 h-10 text-slate-300 mx-auto" />
                 <div>
-                  <p className="font-bold text-slate-700 text-sm">No periods scheduled for {selectedDay}.</p>
+                  <p className="font-bold text-slate-700 text-sm">No periods scheduled for {selectedDay} ({selectedDept} Sem {selectedSem}).</p>
                   <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
                     Create custom periods for your semester timetable or switch to the AI Scanner tab to automatically scan your timetable image.
                   </p>
@@ -496,7 +568,11 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                     <span>Add First Period</span>
                   </button>
                   <button
-                    onClick={() => setActiveMainTab('scanner')}
+                    onClick={() => {
+                      setActiveMainTab('scanner');
+                      setTargetDept(selectedDept);
+                      setTargetSemester(selectedSem);
+                    }}
                     className="px-3.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors flex items-center gap-1.5"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -559,21 +635,80 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
       ) : (
         /* AI TIMETABLE SCANNER VIEW */
         <div className="space-y-3 text-xs">
-          {/* Quick Presets & Upload Box */}
-          <div className="bg-white p-4 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
+          {/* Target Branch & Semester Selector Bar */}
+          <div className="bg-white p-3.5 rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
             <div>
               <h2 className="text-xs font-bold text-[#13284A] uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-500" />
                 AI Schedule Scanner & Course Allocation
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Upload a timetable photo, PDF, or select a preset to auto-populate courses and faculty.
+                Select your target academic branch & semester, then upload a timetable photo or syllabus document.
               </p>
             </div>
 
+            {/* Target Branch and Target Semester Pickers */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                  <span>Target Branch / Department:</span>
+                </label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {departments.length === 0 ? (
+                    <span className="text-xs text-slate-400 font-medium">No branches available</span>
+                  ) : (
+                    departments.map((dept) => (
+                      <button
+                        key={dept.id || dept.code}
+                        type="button"
+                        onClick={() => {
+                          setTargetDept(dept.code);
+                          setSelectedDept(dept.code);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          targetDept.toUpperCase() === dept.code.toUpperCase()
+                            ? 'bg-[#13284A] text-white shadow-2xs ring-2 ring-[#13284A]/20'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {dept.code}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-[#2E6FB0]" />
+                  <span>Target Semester:</span>
+                </label>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setTargetSemester(s);
+                        setSelectedSem(s);
+                      }}
+                      className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold transition-all ${
+                        targetSemester === s
+                          ? 'bg-[#2E6FB0] text-white shadow-2xs ring-2 ring-[#2E6FB0]/20'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      Sem {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Presets */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-slate-500 text-[11px]">Demo Presets:</span>
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <span className="font-bold text-slate-500 text-[11px]">Quick Sample Presets:</span>
               <button
                 onClick={() => handlePresetPhoto('kle_ece7')}
                 className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-[11px] text-slate-700 transition-colors"
@@ -584,7 +719,7 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                 onClick={() => handlePresetPhoto('cse4')}
                 className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-[11px] text-slate-700 transition-colors"
               >
-                AIT CSE Sem 4
+                CSE Sem 4 Preset
               </button>
             </div>
 
@@ -604,19 +739,23 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
               <p className="font-bold text-slate-800 text-xs">
                 {fileName ? fileName : 'Click to select Timetable Image / PDF'}
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">Supports PNG, JPG, PDF, or text schedule</p>
+              <p className="text-[11px] text-slate-400 mt-1">Supports PNG, JPG, PDF, or text schedule for {targetDept} Semester {targetSemester}</p>
             </div>
 
             {/* Scan Action */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <span className="text-[11px] text-slate-500">Target: {targetDept} Semester {targetSemester}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-500">
+                  Target Config: <strong className="text-slate-800">{targetDept} Semester {targetSemester}</strong>
+                </span>
+              </div>
               <button
                 onClick={handleStartExtraction}
                 disabled={isProcessing || !imageData}
                 className="px-4 py-2 rounded-lg bg-[#13284A] text-white font-bold text-xs hover:bg-[#2E6FB0] transition-colors flex items-center gap-1.5 disabled:opacity-50 shadow-2xs"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>{isProcessing ? 'Scanning...' : 'Scan & Extract Schedule'}</span>
+                <span>{isProcessing ? 'Scanning...' : `Scan & Extract for ${targetDept} Sem ${targetSemester}`}</span>
               </button>
             </div>
           </div>
@@ -629,7 +768,9 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                   <h3 className="font-bold text-xs text-[#13284A]">
                     Extracted Courses & Faculty ({extractedRows.length})
                   </h3>
-                  <p className="text-[11px] text-slate-500">Review AI extracted subjects and match with professors.</p>
+                  <p className="text-[11px] text-slate-500">
+                    Allocated to {targetDept} Semester {targetSemester}. Review AI extracted subjects and match with professors.
+                  </p>
                 </div>
                 <button
                   onClick={handleCommitSchedule}
@@ -647,6 +788,7 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                     <tr>
                       <th className="p-2.5">Code</th>
                       <th className="p-2.5">Course Title</th>
+                      <th className="p-2.5">Branch / Sem</th>
                       <th className="p-2.5">Professor</th>
                       <th className="p-2.5">Status</th>
                     </tr>
@@ -656,6 +798,7 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
                       <tr key={i} className="hover:bg-slate-50">
                         <td className="p-2.5 font-mono font-bold text-[#13284A]">{r.subjectCode}</td>
                         <td className="p-2.5 font-bold text-slate-800">{r.subjectName}</td>
+                        <td className="p-2.5 font-mono text-slate-600 font-semibold">{r.departmentCode || targetDept} - Sem {r.semester || targetSemester}</td>
                         <td className="p-2.5 text-emerald-700 font-semibold">{r.matchedTeacherName || r.teacherNameRaw}</td>
                         <td className="p-2.5">
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
@@ -795,3 +938,4 @@ export const TimetableAIView: React.FC<TimetableAIViewProps> = ({ onBack }) => {
     </div>
   );
 };
+

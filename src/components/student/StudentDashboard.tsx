@@ -264,7 +264,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               <h2 className="text-xs sm:text-sm font-bold text-[#13284A] uppercase tracking-wider font-heading">
                 Course Attendance
               </h2>
-              <p className="text-[11px] text-[#667085]">Semester 4 registered coursework</p>
+              <p className="text-[11px] text-[#667085]">
+                Semester {data?.student?.currentSemester || student?.currentSemester || student?.semester || 4} registered coursework
+              </p>
             </div>
           </div>
           <button
