@@ -8,12 +8,13 @@ import {
   BookOpen,
   FileCheck2,
   Award,
-  Sparkles,
+  Calendar,
   Layers,
   GraduationCap,
   Settings,
   LogOut,
   Shield,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -29,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
     { id: 'overview', label: 'Admin Dashboard', icon: LayoutDashboard },
     { id: 'teachers', label: 'Teacher Master', icon: UserCheck },
     { id: 'students', label: 'Student Import & Master', icon: Users },
-    { id: 'timetable', label: 'Timetable AI Review', icon: Sparkles, badge: 'AI' },
+    { id: 'timetable', label: 'Subject & Faculty CSV', icon: FileSpreadsheet, badge: 'CSV' },
     { id: 'semesters', label: 'Semester Lifecycle', icon: Layers },
     { id: 'notices-events', label: 'Notices & Events', icon: Megaphone },
     { id: 'reports', label: 'Comprehensive Reports', icon: BarChart3 },

@@ -6,7 +6,7 @@ import {
   Award,
   Users,
   UserCheck,
-  Sparkles,
+  FileSpreadsheet,
   Megaphone,
   Settings,
 } from 'lucide-react';
@@ -38,7 +38,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'teachers', label: 'Faculty', icon: UserCheck },
-    { id: 'timetable', label: 'Timetable', icon: Sparkles, isAi: true },
+    { id: 'timetable', label: 'Subjects', icon: FileSpreadsheet },
     { id: 'notices-events', label: 'Notices', icon: Megaphone, badge: unreadCount },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
