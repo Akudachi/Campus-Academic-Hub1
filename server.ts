@@ -30,14 +30,26 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// CORS Middleware for cross-origin frontend support (e.g. Vercel frontend connecting to Render backend)
+// Dynamic CORS Middleware for cross-origin frontend support (Vercel preview branches, custom domains, mobile apps, etc.)
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id');
-  res.header('Access-Control-Allow-Credentials', 'true');
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, Cache-Control, Pragma, Expires'
+  );
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    return res.status(204).end();
   }
   next();
 });
@@ -755,8 +767,24 @@ app.post('/api/auth/login', (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    // 2. Admin Key check (e.g. adarsh@1808, admin@123, admin123, ecedept123456@gmail.com, etc.)
-    const adminKeys = [
+    // 2. Admin Key check (Supports process.env.ADMIN_ACCESS_KEY, VITE_ADMIN_ACCESS_KEY, or custom key configured in Vercel/Render)
+    const envAdminKeys: string[] = [];
+    const envSources = [
+      process.env.ADMIN_ACCESS_KEY,
+      process.env.ADMIN_KEY,
+      process.env.VITE_ADMIN_ACCESS_KEY,
+      process.env.VITE_ADMIN_KEY,
+      process.env.ADMIN_PASSWORD,
+    ].filter(Boolean) as string[];
+
+    envSources.forEach((val) => {
+      val.split(/[,;|]/).forEach((k) => {
+        const trimmed = k.trim();
+        if (trimmed) envAdminKeys.push(trimmed);
+      });
+    });
+
+    const defaultAdminKeys = [
       'adarsh@1808',
       'adarsh1808',
       'adarsh@1808#',
@@ -774,12 +802,17 @@ app.post('/api/auth/login', (req: AuthenticatedRequest, res: Response) => {
       '123456',
     ];
 
+    const allAdminKeys = [...envAdminKeys, ...defaultAdminKeys];
+    const isMatchedAdminKey = allAdminKeys.some(
+      (k) =>
+        k === rawInput ||
+        k.toLowerCase() === inputLower ||
+        (k.length > 2 && rawInput.toLowerCase() === k.toLowerCase())
+    );
+
     if (
       role === 'admin' ||
-      adminKeys.includes(inputLower) ||
-      adminKeys.includes(rawInput) ||
-      inputLower === 'adarsh@1808' ||
-      inputLower === 'adarsh1808' ||
+      isMatchedAdminKey ||
       (rawInput.includes('@') && (inputLower.includes('admin') || inputLower.includes('ecedept') || inputLower.includes('adarsh')))
     ) {
       user = store.users.find(
@@ -787,11 +820,7 @@ app.post('/api/auth/login', (req: AuthenticatedRequest, res: Response) => {
           u.role === 'admin' &&
           (u.email.toLowerCase() === inputLower ||
             u.name.toLowerCase().includes(inputLower) ||
-            inputLower === 'adarsh@1808' ||
-            inputLower === 'adarsh1808' ||
-            inputLower === 'admin@123' ||
-            inputLower === 'admin123' ||
-            inputLower === 'admin')
+            isMatchedAdminKey)
       );
       if (!user) {
         user = store.users.find((u) => u.role === 'admin');
