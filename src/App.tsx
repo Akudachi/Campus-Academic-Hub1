@@ -85,29 +85,16 @@ const MainLayout: React.FC = () => {
     setIsMobileMenuOpen(false);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl shadow-xl overflow-hidden animate-pulse">
-          <AppLogo className="w-full h-full" withSquircle={true} />
-        </div>
-        <p className="text-sm font-semibold text-[#13284A]">Initializing Campus Academic Hub...</p>
-        <p className="text-xs text-slate-400 font-medium">Developed by Adarsh Kudachi</p>
-      </div>
-    );
-  }
-
-  // Not logged in: Show the 3-Role Institutional Login Page
-  if (!user) {
+  // Not logged in (or loading initial session): Show Institutional Login Page with SplashScreen overlay
+  if (!user && !isLoading) {
     return (
       <div className="min-h-screen bg-[#F0F4FA] antialiased text-slate-800 selection:bg-[#2E6FB0] selection:text-white relative">
         <LoginPage />
 
-        {/* Dynamic SaaS Splash Screen if enabled */}
+        {/* Cinematic Splash Screen */}
         {showSplash && (
           <SplashScreen
-            campusName={campusInfo.institutionName}
-            campusCode={campusInfo.campusCode}
+            brandTitle="KLECET"
             onComplete={() => setShowSplash(false)}
           />
         )}
@@ -268,7 +255,7 @@ const MainLayout: React.FC = () => {
         <main className="flex-1 px-3 py-3 sm:px-5 sm:py-5 lg:p-8 min-w-0 max-w-full overflow-x-hidden overflow-y-auto pb-24 lg:pb-8 flex flex-col justify-between">
           <div>{renderContent()}</div>
 
-          {/* Institutional Footer & Developer Attribution */}
+          {/* Institutional Footer */}
           <footer className="mt-12 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <div className="flex items-center gap-2">
               <AppLogo className="w-5 h-5" withSquircle={true} />
@@ -277,9 +264,8 @@ const MainLayout: React.FC = () => {
               <span className="text-slate-400 hidden sm:inline">{campusInfo.campusCode}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>Developed by <strong className="text-slate-800 font-bold">Adarsh Kudachi</strong></span>
+            <div className="text-[11px] text-slate-400">
+              <span>Academic Operations & Campus ERP Portal</span>
             </div>
           </footer>
         </main>
@@ -349,8 +335,7 @@ const MainLayout: React.FC = () => {
       {/* Dynamic SaaS Splash Screen - Plays on app boot */}
       {showSplash && (
         <SplashScreen
-          campusName={campusInfo.institutionName}
-          campusCode={campusInfo.campusCode}
+          brandTitle="KLECET"
           onComplete={() => setShowSplash(false)}
         />
       )}

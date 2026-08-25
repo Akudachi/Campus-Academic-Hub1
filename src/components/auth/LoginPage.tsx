@@ -206,14 +206,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </div>
 
         {/* Footer Note */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200/80 text-center text-xs text-slate-500 space-y-2">
-          <p className="font-semibold text-slate-700">{campusInfo.institutionName}</p>
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-600 font-medium pt-0.5">
+        <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-200/80 text-center space-y-1.5">
+          <p className="font-semibold text-xs text-slate-700">{campusInfo.institutionName}</p>
+          <div className="flex items-center justify-center gap-1 text-[10.5px] text-slate-500 font-normal">
             <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>Developed by <strong className="text-slate-800 font-bold">Adarsh Kudachi</strong></span>
+            <span>Developed by <strong className="text-slate-700 font-medium">Adarsh Kudachi</strong></span>
           </div>
-          <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
-            <Lock className="w-3 h-3 text-slate-400 inline" />
+          <p className="text-[9.5px] text-slate-400 flex items-center justify-center gap-1">
+            <Lock className="w-2.5 h-2.5 text-slate-400 inline" />
             <span>Authorized Institutional Access Only</span>
           </p>
         </div>

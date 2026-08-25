@@ -635,10 +635,6 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
                 <p className="text-xs text-slate-500 mt-0.5">
                   Official Academic Operations & ERP Platform • {settings.campusCode}
                 </p>
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-slate-700">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Developed by <strong className="font-bold text-[#13284A]">Adarsh Kudachi</strong></span>
-                </div>
               </div>
             </div>
 

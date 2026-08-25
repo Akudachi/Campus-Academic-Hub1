@@ -255,11 +255,6 @@ export const MobileAppDrawer: React.FC<MobileAppDrawerProps> = ({
               <LogOut className="w-4 h-4" />
               Sign Out from Account
             </button>
-
-            <div className="text-center pt-1 pb-1 text-[11px] text-slate-500 font-medium flex items-center justify-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              <span>Developed by <strong className="text-slate-700 font-semibold">Adarsh Kudachi</strong></span>
-            </div>
           </div>
         </div>
       </div>

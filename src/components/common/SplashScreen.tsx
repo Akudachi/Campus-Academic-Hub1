@@ -1,150 +1,348 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
-import { AppLogo } from './AppLogo';
+import { Sparkles } from 'lucide-react';
 
 interface SplashScreenProps {
   onComplete?: () => void;
-  campusName?: string;
-  campusCode?: string;
+  brandTitle?: string;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
-  campusName = "K.L.E. Society's KLE College of Engineering and Technology",
-  campusCode = 'KLECET-2026',
+  brandTitle = 'KLECET',
 }) => {
-  const [progress, setProgress] = useState(15);
-  const [stageText, setStageText] = useState('Initializing Institutional Workspace...');
-  const [isClosing, setIsClosing] = useState(false);
+  // Timeline Stages:
+  // 0–1s: 'ambient' - KLECET Deep Institutional Navy (#0D1E3A / #13284A) with ambient blue/gold aura
+  // 1–2s: 'line-sweep' - Sapphire & Sky Azure luminous beam sweeps through center
+  // 2–3s: 'logo-assembly' - Official KLECET Logo (Squircle, node stems, 3 peripheral nodes, center golden disk, graduation cap) forms kinetically
+  // 3–4s: 'revealed' - Clean white typography slides in beneath the logo
+  // 4–5s: 'color-shift-hold' - Wordmark transitions into radiant KLECET gold/sapphire hues + gentle breathing aura
+  // 5s+: 'fade-out' - Buttery smooth cinematic crossfade into the main dashboard
+  const [stage, setStage] = useState<'ambient' | 'line-sweep' | 'logo-assembly' | 'revealed' | 'color-shift-hold' | 'fade-out'>('ambient');
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Stage 1
+    // Stage 1: Line sweep starts at 900ms
     const t1 = setTimeout(() => {
-      setProgress(45);
-      setStageText('Authenticating Academic Services...');
-    }, 280);
+      setStage('line-sweep');
+    }, 900);
 
-    // Stage 2
+    // Stage 2: Logo assembly starts at 1800ms
     const t2 = setTimeout(() => {
-      setProgress(80);
-      setStageText('Loading Faculty & Student Registers...');
-    }, 650);
+      setStage('logo-assembly');
+    }, 1800);
 
-    // Stage 3
+    // Stage 3: App name reveals at 2900ms
     const t3 = setTimeout(() => {
-      setProgress(100);
-      setStageText('System Verified • Ready');
-    }, 1050);
+      setStage('revealed');
+    }, 2900);
 
-    // Auto-dismiss
+    // Stage 4: Text color shifts to vibrant brand colors + breathing glow at 3900ms
     const t4 = setTimeout(() => {
-      handleDismiss();
-    }, 1450);
+      setStage('color-shift-hold');
+    }, 3900);
+
+    // Stage 5: Smooth fade out at 4900ms
+    const t5 = setTimeout(() => {
+      setStage('fade-out');
+    }, 4900);
+
+    // Complete handoff to application at 5400ms
+    const t6 = setTimeout(() => {
+      handleHandoff();
+    }, 5400);
+
+    // Keyboard trigger (Enter, Space, Esc) for instant skip
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        handleHandoff();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
+      clearTimeout(t5);
+      clearTimeout(t6);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
-  const handleDismiss = () => {
-    setIsClosing(true);
+  const handleHandoff = () => {
+    if (isDismissed) return;
+    setIsDismissed(true);
     setTimeout(() => {
       if (onComplete) onComplete();
-    }, 320);
+    }, 350);
   };
+
+  // Subtle floating light particles matched to Dashboard palette (#E59E27, #2E6FB0, #5B93D1, #FFFFFF)
+  const particles = [
+    { top: '34%', left: '40%', size: '3px', delay: '0ms', duration: '2200ms', color: '#E59E27' },
+    { top: '30%', left: '58%', size: '2px', delay: '300ms', duration: '2400ms', color: '#5B93D1' },
+    { top: '48%', left: '34%', size: '3px', delay: '600ms', duration: '2000ms', color: '#2E6FB0' },
+    { top: '54%', left: '64%', size: '2.5px', delay: '150ms', duration: '2500ms', color: '#FCD34D' },
+    { top: '26%', left: '50%', size: '3.5px', delay: '450ms', duration: '2100ms', color: '#FFFFFF' },
+    { top: '42%', left: '70%', size: '2px', delay: '750ms', duration: '2300ms', color: '#5B93D1' },
+    { top: '58%', left: '42%', size: '3px', delay: '900ms', duration: '2600ms', color: '#E59E27' },
+  ];
 
   return (
     <div
       id="app-splash-screen"
-      onClick={handleDismiss}
-      className={`fixed inset-0 z-9999 flex flex-col items-center justify-between p-6 sm:p-10 select-none overflow-hidden cursor-pointer transition-all duration-320 ease-out bg-[#0B1528] ${
-        isClosing
-          ? 'opacity-0 scale-98 pointer-events-none'
-          : 'opacity-100 scale-100'
+      onClick={handleHandoff}
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-between p-6 sm:p-12 select-none overflow-hidden cursor-pointer transition-all duration-700 ease-in-out ${
+        stage === 'fade-out' || isDismissed ? 'opacity-0 pointer-events-none scale-102' : 'opacity-100 scale-100'
       }`}
       style={{
-        background: 'radial-gradient(ellipse at 50% 30%, #13284A 0%, #0B1629 65%, #070E1A 100%)',
+        // Main Dashboard KLECET Navy & Sapphire Color Gradient
+        background: 'radial-gradient(ellipse at 50% 45%, #13284A 0%, #0D1E3A 45%, #081326 100%)',
       }}
     >
-      {/* Background Subtle Accent */}
-      <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+      {/* Volumetric Brand Aura (KLE Sapphire #2E6FB0 & Golden Amber #E59E27) */}
+      <div
+        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] sm:w-[700px] sm:h-[700px] rounded-full pointer-events-none transition-all duration-1000 ${
+          stage === 'ambient'
+            ? 'opacity-25 scale-90'
+            : stage === 'line-sweep'
+            ? 'opacity-55 scale-100'
+            : 'opacity-80 scale-110'
+        }`}
+        style={{
+          background: 'radial-gradient(circle, rgba(46, 111, 176, 0.32) 0%, rgba(91, 147, 209, 0.15) 40%, rgba(229, 158, 39, 0.08) 60%, transparent 75%)',
+          filter: 'blur(60px)',
+        }}
+      />
 
-      {/* Top Header Badge */}
-      <div className="w-full flex items-center justify-between max-w-md relative z-10 animate-fade-in">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-[11px] font-semibold text-slate-300 tracking-wider uppercase font-mono">
-            {campusCode}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDismiss();
-          }}
-          className="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
-        >
-          <span>Skip</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Central Brand Identity */}
-      <div className="relative z-10 flex flex-col items-center text-center max-w-sm space-y-6 animate-fade-in my-auto">
-        {/* Official Logo with Refined Glow */}
-        <div className="relative">
-          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl shadow-2xl overflow-hidden border border-white/20 relative group">
-            <AppLogo className="w-full h-full" withSquircle={true} />
-          </div>
-        </div>
-
-        {/* Institution Titles */}
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2E6FB0]/20 border border-[#2E6FB0]/40 text-[11px] font-bold text-[#8FC4F8] uppercase tracking-wider">
-            <span>Academic Portal</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-heading leading-snug">
-            {campusName}
-          </h1>
-          <p className="text-xs text-blue-200/70 font-medium">
-            Campus Academic Management System
-          </p>
-        </div>
-
-        {/* Streamlined Progress Indicator */}
-        <div className="w-full space-y-2 pt-2">
-          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden backdrop-blur-xs p-[1px] border border-white/10">
+      {/* Floating Luminous Knowledge Particles */}
+      {stage !== 'ambient' && stage !== 'line-sweep' && (
+        <div className="absolute inset-0 pointer-events-none">
+          {particles.map((p, idx) => (
             <div
-              className="h-full rounded-full bg-linear-to-r from-[#2E6FB0] via-[#5B93D1] to-emerald-400 transition-all duration-300 ease-out"
-              style={{ width: `${progress}%` }}
+              key={idx}
+              className="absolute rounded-full"
+              style={{
+                top: p.top,
+                left: p.left,
+                width: p.size,
+                height: p.size,
+                backgroundColor: p.color,
+                boxShadow: `0 0 8px ${p.color}, 0 0 16px ${p.color}`,
+                animation: `floatingParticle ${p.duration} ease-in-out infinite`,
+                animationDelay: p.delay,
+              }}
             />
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-slate-300 font-medium px-1">
-            <span className="truncate max-w-[220px] text-left">{stageText}</span>
-            <span className="font-mono text-slate-400">{progress}%</span>
-          </div>
+          ))}
         </div>
+      )}
+
+      {/* Stage 1 (1–2s): Center Horizontal Luminous Line Sweep with Dashboard Sapphire Hue */}
+      {stage === 'line-sweep' && (
+        <div
+          className="absolute top-1/2 left-1/2 -translate-y-1/2 h-[2.5px] pointer-events-none z-20 overflow-visible"
+          style={{
+            animation: 'lineSweepInitial 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+          }}
+        >
+          <div className="w-full h-full bg-gradient-to-r from-transparent via-[#5B93D1] to-transparent shadow-[0_0_20px_#2E6FB0,0_0_40px_#FFFFFF]" />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full blur-[2px] shadow-[0_0_15px_#FFFFFF,0_0_30px_#5B93D1]" />
+        </div>
+      )}
+
+      {/* Top spacer for balanced vertical framing */}
+      <div className="w-full h-6" />
+
+      {/* Center 9:16 Core Lockup: Official App Logo + Title */}
+      <div
+        className={`relative z-10 flex flex-col items-center justify-center text-center my-auto transition-all duration-700 ${
+          stage === 'color-shift-hold' ? 'animate-breathing-glow' : ''
+        }`}
+      >
+        {/* Official App Logo with Dynamic Kinetic Assembly */}
+        {stage !== 'ambient' && stage !== 'line-sweep' && (
+          <div className="relative w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center">
+            {/* Ambient Backlight Glow behind Logo */}
+            <div
+              className={`absolute inset-0 rounded-3xl blur-2xl transition-opacity duration-700 ${
+                stage === 'revealed' || stage === 'color-shift-hold' ? 'opacity-90' : 'opacity-40'
+              }`}
+              style={{
+                background: 'radial-gradient(circle, rgba(46, 111, 176, 0.45) 0%, rgba(229, 158, 39, 0.25) 50%, transparent 75%)',
+              }}
+            />
+
+            {/* Official KLECET App Logo Vector with Step-by-Step Formation */}
+            <svg
+              viewBox="0 0 512 512"
+              className="w-full h-full select-none overflow-visible filter drop-shadow-[0_16px_36px_rgba(8,19,38,0.7)]"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-label="KLECET Official Logo"
+            >
+              {/* Deep Navy Squircle Background Container (#0D1E3A - Exact App Logo container) */}
+              <rect
+                width="512"
+                height="512"
+                rx="115"
+                fill="#0D1E3A"
+                stroke="rgba(220, 227, 237, 0.3)"
+                strokeWidth="6"
+                style={{
+                  animation: 'appLogoSquircle 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                }}
+              />
+
+              {/* Network Node Connector Stems */}
+              <g
+                stroke="#7D90A8"
+                strokeWidth="18"
+                strokeLinecap="round"
+                strokeDasharray="200"
+                strokeDashoffset="0"
+                style={{
+                  animation: 'nodeStemDraw 0.75s ease-out 0.25s forwards',
+                }}
+              >
+                {/* Top Node Connector */}
+                <line x1="256" y1="256" x2="256" y2="100" />
+                {/* Bottom-Left Node Connector */}
+                <line x1="256" y1="256" x2="120" y2="335" />
+                {/* Bottom-Right Node Connector */}
+                <line x1="256" y1="256" x2="392" y2="335" />
+              </g>
+
+              {/* Top Node (Pure White Beacon) */}
+              <circle
+                cx="256"
+                cy="100"
+                r="35"
+                fill="#FFFFFF"
+                style={{
+                  animation: 'nodeCirclePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s forwards',
+                }}
+              />
+
+              {/* Bottom-Left Node (KLE Royal Blue - #2563EB) */}
+              <circle
+                cx="120"
+                cy="335"
+                r="40"
+                fill="#2563EB"
+                style={{
+                  animation: 'nodeCirclePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s forwards',
+                }}
+              />
+
+              {/* Bottom-Right Node (Sky Azure Blue - #5B93D1) */}
+              <circle
+                cx="392"
+                cy="335"
+                r="40"
+                fill="#5B93D1"
+                style={{
+                  animation: 'nodeCirclePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.65s forwards',
+                }}
+              />
+
+              {/* Center Golden Circle (Brand Amber Sun - #E59E27) */}
+              <circle
+                cx="256"
+                cy="256"
+                r="76"
+                fill="#E59E27"
+                style={{
+                  animation: 'centerAmberBurst 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.75s forwards',
+                }}
+              />
+
+              {/* Graduation Cap / Mortarboard Emblem inside Golden Center */}
+              <g
+                fill="#0D1E3A"
+                style={{
+                  animation: 'capEmblemSnap 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.95s forwards',
+                }}
+              >
+                {/* Diamond Mortarboard Top */}
+                <polygon points="256,214 304,238 256,262 208,238" />
+
+                {/* Skull Cap Lower Band */}
+                <path d="M228 248 v15 c0 15 56 15 56 0 v-15 c-10 6 -46 6 -56 0 Z" />
+
+                {/* Hanging Tassel */}
+                <path
+                  d="M290 246 v32"
+                  stroke="#0D1E3A"
+                  strokeWidth="4.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <circle cx="290" cy="282" r="4.5" />
+              </g>
+            </svg>
+          </div>
+        )}
+
+        {/* Clean, Bold App Title Matched with Dashboard Brand Colors */}
+        {(stage === 'revealed' || stage === 'color-shift-hold') && (
+          <div
+            className="mt-6 flex flex-col items-center select-none"
+            style={{
+              animation: 'titleSlideFadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            }}
+          >
+            {/* Title Wordmark: Shifts from pure white to rich Amber Gold + White gradient */}
+            <div className="flex items-center justify-center gap-1.5 transition-all duration-700">
+              <span
+                className={`text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-[0.14em] uppercase font-sans transition-all duration-700 ${
+                  stage === 'color-shift-hold'
+                    ? 'text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-400 drop-shadow-[0_0_25px_rgba(229,158,39,0.7)]'
+                    : 'text-white drop-shadow-[0_2px_15px_rgba(255,255,255,0.4)]'
+                }`}
+              >
+                {brandTitle}
+              </span>
+              <span
+                className={`text-sm sm:text-base font-bold font-mono tracking-widest px-1.5 py-0.5 rounded transition-all duration-700 ${
+                  stage === 'color-shift-hold'
+                    ? 'bg-[#E59E27]/25 text-[#FCD34D] border border-[#E59E27]/50 shadow-[0_0_12px_rgba(229,158,39,0.5)]'
+                    : 'bg-white/10 text-white/90 border border-white/20'
+                }`}
+              >
+                HUB
+              </span>
+            </div>
+
+            {/* Subtitle Matched to Main Dashboard Header Info */}
+            <p
+              className={`mt-2 text-xs font-semibold tracking-wider transition-colors duration-700 ${
+                stage === 'color-shift-hold' ? 'text-amber-200/90' : 'text-[#93C5FD]'
+              }`}
+            >
+              K.L.E. College of Engineering & Technology
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Bottom Footer Credits & Developer Attribution */}
-      <div className="w-full max-w-md relative z-10 flex flex-col items-center text-center space-y-3 animate-fade-in">
-        {/* Developed by Adarsh Kudachi Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-xs">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-xs font-semibold text-slate-200">
-            Developed by <span className="text-white font-bold tracking-wide">Adarsh Kudachi</span>
+      {/* Developed by Adarsh Kudachi (Bottom Attribution Tag) */}
+      <div
+        className={`w-full max-w-sm relative z-10 flex items-center justify-center transition-all duration-700 ${
+          stage === 'revealed' || stage === 'color-shift-hold'
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 translate-y-3'
+        }`}
+      >
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D1E3A]/70 border border-[#2E6FB0]/30 backdrop-blur-md shadow-md shadow-black/30 transition-all duration-500">
+          <Sparkles className="w-3 h-3 text-[#E59E27] animate-pulse" />
+          <span className="text-[10.5px] font-normal text-slate-300">
+            Developed by{' '}
+            <strong className="text-white font-medium tracking-wide">
+              Adarsh Kudachi
+            </strong>
           </span>
         </div>
-
-        <p className="text-[10px] text-slate-500">
-          Tap anywhere to continue
-        </p>
       </div>
     </div>
   );
