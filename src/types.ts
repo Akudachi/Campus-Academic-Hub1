@@ -279,6 +279,12 @@ export interface TeacherImportRowResult {
   qualification: string;
   subjectCode?: string;
   subjectName?: string;
+  assignedSubjectId?: string;
+  assignedSubjectCode?: string;
+  assignedSubjectName?: string;
+  isAutoAssigned?: boolean;
+  semesterNumber?: number;
+  credits?: number;
   isValid: boolean;
   isExisting?: boolean;
   errors: string[];

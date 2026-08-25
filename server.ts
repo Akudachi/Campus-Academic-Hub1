@@ -1635,6 +1635,37 @@ app.post('/api/admin/teachers/import/validate', requireRole('admin'), (req: Auth
       return false;
     });
 
+    const rawSubCode = row.subjectCode ? String(row.subjectCode).trim().toUpperCase() : '';
+    const rawSubName = row.subjectName ? String(row.subjectName).trim() : '';
+
+    let assignedSubjectId: string | undefined = undefined;
+    let assignedSubjectCode: string | undefined = undefined;
+    let assignedSubjectName: string | undefined = undefined;
+    let isAutoAssigned = false;
+    let semesterNum: number | undefined = undefined;
+    let credits: number | undefined = undefined;
+
+    if (rawSubCode || rawSubName) {
+      let matchedSub = store.subjects.find((s) => rawSubCode && s.code.toUpperCase() === rawSubCode);
+      if (!matchedSub && rawSubName) {
+        matchedSub = store.subjects.find((s) => s.name.toLowerCase() === rawSubName.toLowerCase());
+      }
+
+      if (matchedSub) {
+        assignedSubjectId = matchedSub.id;
+        assignedSubjectCode = matchedSub.code;
+        assignedSubjectName = matchedSub.name;
+        semesterNum = matchedSub.semesterNumber;
+        credits = matchedSub.credits;
+        isAutoAssigned = true;
+      } else if (rawSubCode) {
+        assignedSubjectCode = rawSubCode;
+        assignedSubjectName = rawSubName || rawSubCode;
+        isAutoAssigned = true;
+        credits = 4;
+      }
+    }
+
     const isValid = errors.length === 0;
     if (isValid) validCount++;
     else invalidCount++;
@@ -1647,8 +1678,14 @@ app.post('/api/admin/teachers/import/validate', requireRole('admin'), (req: Auth
       email,
       designation,
       qualification,
-      subjectCode: row.subjectCode ? String(row.subjectCode).trim().toUpperCase() : undefined,
-      subjectName: row.subjectName ? String(row.subjectName).trim() : undefined,
+      subjectCode: rawSubCode || undefined,
+      subjectName: rawSubName || undefined,
+      assignedSubjectId,
+      assignedSubjectCode,
+      assignedSubjectName,
+      isAutoAssigned,
+      semesterNumber: semesterNum,
+      credits,
       isValid,
       isExisting,
       errors,
@@ -1680,11 +1717,14 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
 
   let insertedCount = 0;
   let updatedCount = 0;
+  let autoAssignedCount = 0;
+  let createdSubjectsCount = 0;
 
   targetRows.forEach((row, idx) => {
     const rawCode = (row.teacherCode || '').trim().toUpperCase();
     const rawEmail = (row.email || '').trim().toLowerCase();
     const rawName = (row.name || '').trim();
+    const deptCode = normalizeDeptCode(row.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
 
     // Find existing teacher by teacherCode, email, or name
     let existingTeacher = store.teachers.find(
@@ -1708,11 +1748,10 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
     let currentTeacherId = '';
 
     if (existingTeacher) {
-      // Whatever code in CSV that should be shown! Update teacherCode to match CSV
       if (rawCode) {
         existingTeacher.teacherCode = rawCode;
       }
-      existingTeacher.department = row.department || existingTeacher.department;
+      existingTeacher.department = deptCode;
       existingTeacher.designation = row.designation || existingTeacher.designation;
       existingTeacher.qualification = row.qualification || existingTeacher.qualification;
 
@@ -1741,7 +1780,7 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
         id: teacherId,
         userId,
         teacherCode: tCode,
-        department: row.department,
+        department: deptCode,
         designation: row.designation || 'Assistant Professor',
         qualification: row.qualification || 'M.Tech',
       };
@@ -1752,75 +1791,92 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
       insertedCount++;
     }
 
-    // Auto-assign subject if subjectCode / subjectName was provided in CSV
-    if ((row.subjectCode || row.subjectName) && currentTeacherId) {
-      const deptCode = normalizeDeptCode(row.department || 'CSE', ['CSE', 'ECE', 'AI-ML', 'ISE', 'MECH', 'CIVIL']);
-      const subCode = (row.subjectCode ? String(row.subjectCode) : `SUB-${Date.now() % 1000}`).trim().toUpperCase();
-      const subName = (row.subjectName ? String(row.subjectName) : subCode).trim();
+    // Auto-assign or manually assign subject to this teacher
+    const effectiveSubjectId = row.assignedSubjectId;
+    const subCode = (row.assignedSubjectCode || row.subjectCode ? String(row.assignedSubjectCode || row.subjectCode) : '').trim().toUpperCase();
+    const subName = (row.assignedSubjectName || row.subjectName ? String(row.assignedSubjectName || row.subjectName) : '').trim();
 
-      let matchedSubject = store.subjects.find((s) => s.code.toUpperCase() === subCode);
+    if (currentTeacherId && (effectiveSubjectId || subCode || subName)) {
+      let matchedSubject: Subject | undefined = undefined;
+
+      if (effectiveSubjectId) {
+        matchedSubject = store.subjects.find((s) => s.id === effectiveSubjectId);
+      }
+
+      if (!matchedSubject && subCode) {
+        matchedSubject = store.subjects.find((s) => s.code.toUpperCase() === subCode);
+      }
+
       if (!matchedSubject && subName) {
         matchedSubject = store.subjects.find((s) => s.name.toLowerCase() === subName.toLowerCase());
       }
 
-      if (!matchedSubject) {
+      // If subject was not in master catalog, create it automatically from the uploaded excel data
+      if (!matchedSubject && (subCode || subName)) {
+        const finalCode = subCode || `B${deptCode.slice(0, 2)}${row.semesterNumber || 4}01`;
+        const finalName = subName || finalCode;
         const deptObj = store.departments.find((d) => d.code.toUpperCase() === deptCode);
         const deptId = deptObj ? deptObj.id : `dept-${deptCode.toLowerCase()}`;
 
-        let semNum = 4;
-        const semMatch = subCode.match(/\b([1-8])\b/) || subName.match(/sem(?:ester)?\s*([1-8])/i);
+        let semNum = row.semesterNumber || 4;
+        const semMatch = finalCode.match(/\b([1-8])\b/) || finalName.match(/sem(?:ester)?\s*([1-8])/i);
         if (semMatch) semNum = parseInt(semMatch[1], 10);
 
         matchedSubject = {
-          id: `sub-${subCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString(36)}`,
-          code: subCode,
-          name: subName,
+          id: `sub-${finalCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString(36)}`,
+          code: finalCode,
+          name: finalName,
           departmentId: deptId,
           semesterNumber: semNum,
-          credits: 4,
+          credits: row.credits || 4,
         };
         store.subjects.push(matchedSubject);
+        createdSubjectsCount++;
       }
 
-      let targetSemester =
-        store.semesters.find(
-          (s) => s.number === matchedSubject!.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === 'active'
-        ) ||
-        store.semesters.find((s) => s.number === matchedSubject!.semesterNumber) ||
-        store.semesters[0];
+      if (matchedSubject) {
+        let targetSemester =
+          store.semesters.find(
+            (s) => s.number === matchedSubject!.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === 'active'
+          ) ||
+          store.semesters.find((s) => s.number === matchedSubject!.semesterNumber && s.status === 'active') ||
+          store.semesters.find((s) => s.number === matchedSubject!.semesterNumber) ||
+          store.semesters[0];
 
-      if (!targetSemester) {
-        targetSemester = {
-          id: `sem-${deptCode.toLowerCase()}-${matchedSubject.semesterNumber}`,
-          number: matchedSubject.semesterNumber,
-          academicYear: store.settings.academicYear || '2026-2027',
-          departmentCode: deptCode,
-          section: 'A',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        };
-        store.semesters.push(targetSemester);
-      }
+        if (!targetSemester) {
+          targetSemester = {
+            id: `sem-${deptCode.toLowerCase()}-${matchedSubject.semesterNumber}`,
+            number: matchedSubject.semesterNumber,
+            academicYear: store.settings.academicYear || '2026-2027',
+            departmentCode: deptCode,
+            section: 'A',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          };
+          store.semesters.push(targetSemester);
+        }
 
-      const hasAssignment = store.teacherSubjectAssignments.some(
-        (a) => a.teacherId === currentTeacherId && a.subjectId === matchedSubject!.id && a.semesterId === targetSemester!.id
-      );
-      if (!hasAssignment) {
-        store.teacherSubjectAssignments.push({
-          id: `tsa-csv-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
-          teacherId: currentTeacherId,
-          subjectId: matchedSubject.id,
-          semesterId: targetSemester.id,
-          createdFrom: 'manual',
-          confirmedByAdmin: true,
-        });
+        const hasAssignment = store.teacherSubjectAssignments.some(
+          (a) => a.teacherId === currentTeacherId && a.subjectId === matchedSubject!.id && a.semesterId === targetSemester!.id
+        );
+
+        if (!hasAssignment) {
+          store.teacherSubjectAssignments.push({
+            id: `tsa-import-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+            teacherId: currentTeacherId,
+            subjectId: matchedSubject.id,
+            semesterId: targetSemester.id,
+            createdFrom: 'manual',
+            confirmedByAdmin: true,
+          });
+          autoAssignedCount++;
+        }
       }
     }
   });
 
-  // Auto-assign subjects for teachers in batch if autoAssign is true or default
-  let autoAssignedCount = 0;
-  if (req.body.autoAssign !== false) {
+  // Auto-assign remaining unmapped teachers if requested
+  if (req.body.autoAssign === true) {
     const targetTeachers = store.teachers.filter(
       (t) => !store.teacherSubjectAssignments.some((a) => a.teacherId === t.id && a.confirmedByAdmin !== false)
     );

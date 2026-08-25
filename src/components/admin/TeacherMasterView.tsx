@@ -349,6 +349,36 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
     }
   };
 
+  const handleRowSubjectChange = (rowIndex: number, subjectId: string) => {
+    setValidationResults((prev) => {
+      const updated = [...prev];
+      const targetRow = updated[rowIndex];
+      if (!subjectId) {
+        updated[rowIndex] = {
+          ...targetRow,
+          assignedSubjectId: undefined,
+          assignedSubjectCode: undefined,
+          assignedSubjectName: undefined,
+          isAutoAssigned: false,
+        };
+      } else {
+        const foundSub = subjects.find((s) => s.id === subjectId);
+        if (foundSub) {
+          updated[rowIndex] = {
+            ...targetRow,
+            assignedSubjectId: foundSub.id,
+            assignedSubjectCode: foundSub.code,
+            assignedSubjectName: foundSub.name,
+            semesterNumber: foundSub.semesterNumber,
+            credits: foundSub.credits,
+            isAutoAssigned: false,
+          };
+        }
+      }
+      return updated;
+    });
+  };
+
   const handleSaveInlineEdit = (index: number) => {
     const updated = [...validationResults];
     const currentRow = updated[index];
@@ -358,6 +388,21 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
     const newEmail = (editedRowData.email || currentRow.email).toLowerCase().trim();
     const newDesig = (editedRowData.designation || currentRow.designation).trim();
     const newQual = (editedRowData.qualification || currentRow.qualification).trim();
+
+    let newSubId = editedRowData.assignedSubjectId !== undefined ? editedRowData.assignedSubjectId : currentRow.assignedSubjectId;
+    let newSubCode = currentRow.assignedSubjectCode;
+    let newSubName = currentRow.assignedSubjectName;
+
+    if (newSubId) {
+      const foundSub = subjects.find((s) => s.id === newSubId);
+      if (foundSub) {
+        newSubCode = foundSub.code;
+        newSubName = foundSub.name;
+      }
+    } else if (newSubId === '') {
+      newSubCode = undefined;
+      newSubName = undefined;
+    }
 
     const errors: string[] = [];
     if (!newName || newName.length < 2) errors.push('Faculty name is required.');
@@ -371,6 +416,9 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       email: newEmail,
       designation: newDesig,
       qualification: newQual,
+      assignedSubjectId: newSubId || undefined,
+      assignedSubjectCode: newSubCode,
+      assignedSubjectName: newSubName,
       isValid: errors.length === 0,
       errors,
     };
@@ -983,16 +1031,16 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
             </div>
 
             {/* Validation Table with Inline Editing */}
-            <div className="max-h-72 overflow-y-auto border border-[#DCE3ED] rounded-lg">
+            <div className="max-h-80 overflow-y-auto border border-[#DCE3ED] rounded-lg">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] sticky top-0">
+                <thead className="bg-[#F8FAFC] border-b border-[#DCE3ED] text-[#667085] sticky top-0 z-10">
                   <tr>
                     <th className="py-2.5 px-3">Status</th>
                     <th className="py-2.5 px-3">Code</th>
                     <th className="py-2.5 px-3">Name</th>
                     <th className="py-2.5 px-3">Dept</th>
                     <th className="py-2.5 px-3">Email</th>
-                    <th className="py-2.5 px-3">Designation</th>
+                    <th className="py-2.5 px-3">Subject Assignment</th>
                     <th className="py-2.5 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1039,7 +1087,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
                             type="text"
                             value={editedRowData.name ?? row.name}
                             onChange={(e) => setEditedRowData({ ...editedRowData, name: e.target.value })}
-                            className="w-36 px-2 py-0.5 text-xs border rounded font-semibold"
+                            className="w-32 px-2 py-0.5 text-xs border rounded font-semibold"
                           />
                         ) : (
                           <div className="font-semibold text-slate-800">{row.name}</div>
@@ -1068,22 +1116,65 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
                             type="email"
                             value={editedRowData.email ?? row.email}
                             onChange={(e) => setEditedRowData({ ...editedRowData, email: e.target.value })}
-                            className="w-40 px-2 py-0.5 text-xs border rounded"
+                            className="w-32 px-2 py-0.5 text-xs border rounded"
                           />
                         ) : (
                           row.email
                         )}
                       </td>
-                      <td className="py-2 px-3 text-slate-600">
+                      <td className="py-2 px-3 min-w-[200px]">
                         {editingRowIndex === idx ? (
-                          <input
-                            type="text"
-                            value={editedRowData.designation ?? row.designation}
-                            onChange={(e) => setEditedRowData({ ...editedRowData, designation: e.target.value })}
-                            className="w-32 px-2 py-0.5 text-xs border rounded"
-                          />
+                          <select
+                            value={editedRowData.assignedSubjectId !== undefined ? editedRowData.assignedSubjectId : (row.assignedSubjectId || '')}
+                            onChange={(e) => setEditedRowData({ ...editedRowData, assignedSubjectId: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border rounded bg-white font-medium"
+                          >
+                            <option value="">-- No Subject (Manual Assignment) --</option>
+                            {subjects.map((sub) => (
+                              <option key={sub.id} value={sub.id}>
+                                [{sub.code}] {sub.name} (Sem {sub.semesterNumber})
+                              </option>
+                            ))}
+                          </select>
                         ) : (
-                          row.designation
+                          <div>
+                            {row.assignedSubjectCode || row.subjectCode ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <BookOpen className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>[{row.assignedSubjectCode || row.subjectCode}] {row.assignedSubjectName || row.subjectName || ''}</span>
+                                  <span className="text-[9px] bg-emerald-200/70 text-emerald-900 px-1 rounded uppercase ml-0.5">
+                                    {row.isAutoAssigned ? 'Auto' : 'Selected'}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingRowIndex(idx);
+                                    setEditedRowData({ ...row });
+                                  }}
+                                  className="text-[10px] text-[#2E6FB0] underline hover:text-[#13284A]"
+                                >
+                                  Change
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <select
+                                  value={row.assignedSubjectId || ''}
+                                  onChange={(e) => handleRowSubjectChange(idx, e.target.value)}
+                                  className="w-full text-[11px] py-1 px-1.5 rounded border border-amber-300 bg-amber-50/40 text-slate-700 font-medium focus:ring-1 focus:ring-amber-500"
+                                >
+                                  <option value="">⚡ Not in Excel (Assign Manually...)</option>
+                                  {subjects.map((sub) => (
+                                    <option key={sub.id} value={sub.id}>
+                                      [{sub.code}] {sub.name} (Sem {sub.semesterNumber})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="py-2 px-3 text-right">

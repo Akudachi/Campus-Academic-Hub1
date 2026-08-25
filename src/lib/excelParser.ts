@@ -297,8 +297,8 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
       emailCol = row.findIndex((c) => c.includes('email') || c.includes('mail'));
       desigCol = row.findIndex((c) => c.includes('desig') || c.includes('role') || c.includes('position'));
       qualCol = row.findIndex((c) => c.includes('qual') || c.includes('degree'));
-      subCodeCol = row.findIndex((c) => c.includes('subject code') || c.includes('course code') || c.includes('sub code'));
-      subNameCol = row.findIndex((c) => c.includes('subject name') || c.includes('course name') || c.includes('sub name') || c.includes('subject'));
+      subCodeCol = row.findIndex((c) => c.includes('subject code') || c.includes('course code') || c.includes('sub code') || c.includes('paper code') || c === 'code' && foundCode !== row.indexOf(c));
+      subNameCol = row.findIndex((c) => c.includes('subject title') || c.includes('subject name') || c.includes('course title') || c.includes('course name') || c.includes('sub name') || c === 'subject' || c === 'course');
       break;
     }
   }
@@ -333,19 +333,31 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
       if (subCodeCol !== -1 && row[subCodeCol]) subjectCode = String(row[subCodeCol]).trim().toUpperCase();
       if (subNameCol !== -1 && row[subNameCol]) subjectName = String(row[subNameCol]).trim();
     } else {
-      // No header: Check if row[0] is Sl.No (numeric)
+      // Positional check for columns: Sl.No, Teacher Code, Teacher Name, Subject Code, Subject Name, Dept...
       const col0 = String(row[0] || '').trim();
       const col1 = String(row[1] || '').trim();
       const col2 = String(row[2] || '').trim();
+      const col3 = String(row[3] || '').trim();
+      const col4 = String(row[4] || '').trim();
 
       if (/^\d+$/.test(col0) && col1) {
         // Col 0 is Serial Number (1, 2, 3...)
         code = col1.toUpperCase();
         name = col2 || `Faculty ${col1}`;
-        dept = row[3] ? normalizeDepartmentCode(String(row[3])) : 'CSE';
-        email = row[4] ? String(row[4]).trim().toLowerCase() : '';
-        designation = row[5] ? String(row[5]).trim() : 'Assistant Professor';
-        qualification = row[6] ? String(row[6]).trim() : 'M.Tech';
+        if (col3 && /^[A-Z0-9]{4,10}$/i.test(col3)) {
+          // [Sl, Code, Name, SubjectCode, SubjectName, Dept, Email...]
+          subjectCode = col3.toUpperCase();
+          subjectName = col4;
+          dept = row[5] ? normalizeDepartmentCode(String(row[5])) : 'CSE';
+          email = row[6] ? String(row[6]).trim().toLowerCase() : '';
+          designation = row[7] ? String(row[7]).trim() : 'Assistant Professor';
+          qualification = row[8] ? String(row[8]).trim() : 'M.Tech';
+        } else {
+          dept = row[3] ? normalizeDepartmentCode(String(row[3])) : 'CSE';
+          email = row[4] ? String(row[4]).trim().toLowerCase() : '';
+          designation = row[5] ? String(row[5]).trim() : 'Assistant Professor';
+          qualification = row[6] ? String(row[6]).trim() : 'M.Tech';
+        }
       } else {
         code = col0.toUpperCase();
         name = col1 || `Faculty ${col0}`;
@@ -374,31 +386,173 @@ function parseTeacherRawRows(rawRows: any[][]): ParsedTeacherRow[] {
 }
 
 /**
- * Download sample Excel template for Faculty / Teachers
+ * Download sample Excel template for Faculty / Teachers with Subject Assignment columns
  */
 export function downloadTeacherSampleExcel() {
   const data = [
-    { 'Sl.No': 1, 'Teacher Code': 'T001', 'Faculty Name': 'Dr. Ramesh Kulkarni', Department: 'CSE', Email: 'ramesh.k@campus.edu', Designation: 'Professor & HOD', Qualification: 'Ph.D' },
-    { 'Sl.No': 2, 'Teacher Code': 'T002', 'Faculty Name': 'Prof. Ananya Rao', Department: 'ECE', Email: 'ananya.rao@campus.edu', Designation: 'Associate Professor', Qualification: 'M.Tech' },
-    { 'Sl.No': 3, 'Teacher Code': 'T003', 'Faculty Name': 'Prof. Vignesh Iyer', Department: 'AI-ML', Email: 'vignesh.i@campus.edu', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
-    { 'Sl.No': 4, 'Teacher Code': 'T004', 'Faculty Name': 'Dr. Sunita Patil', Department: 'ISE', Email: 'sunita.p@campus.edu', Designation: 'Associate Professor', Qualification: 'Ph.D' },
-    { 'Sl.No': 5, 'Teacher Code': 'T005', 'Faculty Name': 'Prof. Rajesh Sharma', Department: 'MECH', Email: 'rajesh.s@campus.edu', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
+    { 'Sl.No': 1, 'Teacher Code': 'T001', 'Faculty Name': 'Dr. Sanjay Pujari', Department: 'ECE', Email: 'sanjay.pujari@campus.edu', 'Subject Code': 'BEC701', 'Subject Title': 'Microwave Engineering and Antenna Theory', Designation: 'Professor & HOD', Qualification: 'Ph.D' },
+    { 'Sl.No': 2, 'Teacher Code': 'T002', 'Faculty Name': 'Mr. Mallikarjun Biradar', Department: 'ECE', Email: 'mallikarjun.b@campus.edu', 'Subject Code': 'BEC702', 'Subject Title': 'Computer Networks and Protocols', Designation: 'Associate Professor', Qualification: 'M.Tech' },
+    { 'Sl.No': 3, 'Teacher Code': 'T003', 'Faculty Name': 'Ms. Laxmi R Motagi', Department: 'ECE', Email: 'laxmi.m@campus.edu', 'Subject Code': 'BEC703', 'Subject Title': 'Wireless Communication Systems', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
+    { 'Sl.No': 4, 'Teacher Code': 'T004', 'Faculty Name': 'Mr. Prashant A H.', Department: 'ECE', Email: 'prashant.ah@campus.edu', 'Subject Code': 'BEC714D', 'Subject Title': 'Radar Communication', Designation: 'Assistant Professor', Qualification: 'M.Tech' },
+    { 'Sl.No': 5, 'Teacher Code': 'T005', 'Faculty Name': 'Dr. Ramesh Kulkarni', Department: 'CSE', Email: 'ramesh.k@campus.edu', 'Subject Code': 'BCS701', 'Subject Title': 'Cloud Computing and Virtualization', Designation: 'Professor & HOD', Qualification: 'Ph.D' },
   ];
 
   const ws = XLSX.utils.json_to_sheet(data);
   ws['!cols'] = [
     { wch: 8 },   // Sl.No
-    { wch: 15 },  // Teacher Code
+    { wch: 14 },  // Teacher Code
     { wch: 25 },  // Faculty Name
     { wch: 14 },  // Department
-    { wch: 25 },  // Email
+    { wch: 26 },  // Email
+    { wch: 15 },  // Subject Code
+    { wch: 38 },  // Subject Title
     { wch: 22 },  // Designation
     { wch: 14 },  // Qualification
   ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Faculty_Template');
-  XLSX.writeFile(wb, 'Faculty_Import_Template.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'Faculty_Roster');
+  XLSX.writeFile(wb, 'Faculty_Subject_Import_Template.xlsx');
+}
+
+/**
+ * Download sample Excel template for Subject & Faculty Allocation
+ */
+export function downloadSubjectAllocationSampleExcel(deptCode: string = 'ECE', semNum: number = 7) {
+  const data = [
+    { 'Sl No': 1, 'Teacher Code': 'T001', 'Teacher Name': 'Dr. Sanjay Pujari', 'Subject Code': 'BEC701', 'Subject Title': 'Microwave Engineering and Antenna Theory', Credit: 4, Department: deptCode, Semester: semNum },
+    { 'Sl No': 2, 'Teacher Code': 'T002', 'Teacher Name': 'Mr. Mallikarjun Biradar', 'Subject Code': 'BEC702', 'Subject Title': 'Computer Networks and Protocols', Credit: 4, Department: deptCode, Semester: semNum },
+    { 'Sl No': 3, 'Teacher Code': 'T003', 'Teacher Name': 'Ms. Laxmi R Motagi', 'Subject Code': 'BEC703', 'Subject Title': 'Wireless Communication Systems', Credit: 4, Department: deptCode, Semester: semNum },
+    { 'Sl No': 4, 'Teacher Code': 'T004', 'Teacher Name': 'Mr. Prashant A H.', 'Subject Code': 'BEC714D', 'Subject Title': 'Radar Communication', Credit: 3, Department: deptCode, Semester: semNum },
+    { 'Sl No': 5, 'Teacher Code': 'T005', 'Teacher Name': 'Mr. Amit Ghantimath', 'Subject Code': 'BME755D', 'Subject Title': 'Non-conventional energy resources', Credit: 3, Department: deptCode, Semester: semNum },
+    { 'Sl No': 6, 'Teacher Code': 'T006', 'Teacher Name': 'Mr. Avadhut Ambole', 'Subject Code': 'BECL701', 'Subject Title': 'Microwave Engineering Lab(IPCC)', Credit: 2, Department: deptCode, Semester: semNum },
+    { 'Sl No': 7, 'Teacher Code': 'T002', 'Teacher Name': 'Mr. Mallikarjun Biradar', 'Subject Code': 'BECL702', 'Subject Title': 'Computer Networks and Protocols Lab', Credit: 2, Department: deptCode, Semester: semNum },
+    { 'Sl No': 8, 'Teacher Code': 'T002', 'Teacher Name': 'Mr. Mallikarjun Biradar', 'Subject Code': 'BEC786', 'Subject Title': 'Major Project Phase-II', Credit: 6, Department: deptCode, Semester: semNum },
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 8 },   // Sl No
+    { wch: 14 },  // Teacher Code
+    { wch: 25 },  // Teacher Name
+    { wch: 15 },  // Subject Code
+    { wch: 40 },  // Subject Title
+    { wch: 8 },   // Credit
+    { wch: 14 },  // Department
+    { wch: 10 },  // Semester
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Subject_Faculty');
+  XLSX.writeFile(wb, `Subject_Faculty_Allocation_${deptCode}_Sem${semNum}.xlsx`);
+}
+
+/**
+ * Universal Parser for Subject-Faculty Excel or CSV files
+ */
+export async function parseSubjectAllocationFile(file: File): Promise<any[]> {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  if (extension === 'xlsx' || extension === 'xls') {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array' });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, defval: '' });
+    return parseSubjectAllocationRawRows(rawRows);
+  } else {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const rawRows = lines.map((line) => {
+      let inQuote = false;
+      let curr = '';
+      const cells: string[] = [];
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"' || ch === "'") inQuote = !inQuote;
+        else if ((ch === ',' || ch === '\t') && !inQuote) {
+          cells.push(curr.trim());
+          curr = '';
+        } else curr += ch;
+      }
+      cells.push(curr.trim());
+      return cells;
+    });
+    return parseSubjectAllocationRawRows(rawRows);
+  }
+}
+
+export function parseSubjectAllocationRawRows(rawRows: any[][]): any[] {
+  if (!rawRows || rawRows.length === 0) return [];
+
+  let headerIdx = -1;
+  let slNoIdx = -1;
+  let tCodeIdx = -1;
+  let tNameIdx = -1;
+  let sCodeIdx = -1;
+  let sNameIdx = -1;
+  let creditIdx = -1;
+  let deptIdx = -1;
+  let semIdx = -1;
+
+  for (let i = 0; i < Math.min(5, rawRows.length); i++) {
+    const row = rawRows[i].map((c) => String(c || '').toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+    if (row.some((c) => ['teachercode', 'teachername', 'subjectcode', 'subjecttitle', 'coursename', 'credit'].includes(c))) {
+      headerIdx = i;
+      row.forEach((h, idx) => {
+        if (['slno', 'sno', 'serialno', 'srno', 'sl', 'no'].includes(h)) slNoIdx = idx;
+        else if (['teachercode', 'staffcode', 'facultycode', 'tcode', 'teacherid'].includes(h)) tCodeIdx = idx;
+        else if (['teachername', 'staffname', 'facultyname', 'facultymember', 'teacher', 'faculty', 'professor'].includes(h)) tNameIdx = idx;
+        else if (['subjectcode', 'coursecode', 'subcode', 'scode', 'papercode'].includes(h)) sCodeIdx = idx;
+        else if (['subjecttitle', 'subjectname', 'coursetitle', 'coursename', 'subject', 'course'].includes(h)) sNameIdx = idx;
+        else if (['credit', 'credits', 'cr'].includes(h)) creditIdx = idx;
+        else if (['department', 'dept', 'branch'].includes(h)) deptIdx = idx;
+        else if (['semester', 'sem'].includes(h)) semIdx = idx;
+      });
+      break;
+    }
+  }
+
+  const startRow = headerIdx !== -1 ? headerIdx + 1 : 0;
+  const results: any[] = [];
+
+  for (let i = startRow; i < rawRows.length; i++) {
+    const row = rawRows[i];
+    if (!row || row.length < 2 || row.every((c: any) => !c || String(c).trim() === '')) continue;
+
+    let slNo = slNoIdx !== -1 && row[slNoIdx] ? parseInt(String(row[slNoIdx]), 10) : results.length + 1;
+    let tCode = tCodeIdx !== -1 ? String(row[tCodeIdx] || '').trim() : '';
+    let tName = tNameIdx !== -1 ? String(row[tNameIdx] || '').trim() : '';
+    let sCode = sCodeIdx !== -1 ? String(row[sCodeIdx] || '').trim() : '';
+    let sName = sNameIdx !== -1 ? String(row[sNameIdx] || '').trim() : '';
+    let creditVal = creditIdx !== -1 ? parseInt(String(row[creditIdx]), 10) : 4;
+    let deptVal = deptIdx !== -1 && row[deptIdx] ? String(row[deptIdx]).trim() : '';
+    let semVal = semIdx !== -1 && row[semIdx] ? parseInt(String(row[semIdx]), 10) : 0;
+
+    // Positional fallback
+    if (row.length >= 5) {
+      if (!tCode && row[1]) tCode = String(row[1]).trim();
+      if (!tName && row[2]) tName = String(row[2]).trim();
+      if (!sCode && row[3]) sCode = String(row[3]).trim();
+      if (!sName && row[4]) sName = String(row[4]).trim();
+      if (isNaN(creditVal) && row[5]) creditVal = parseInt(String(row[5]), 10) || 4;
+    }
+
+    if (tName || tCode || sName || sCode) {
+      results.push({
+        slNo: isNaN(slNo) ? results.length + 1 : slNo,
+        teacherCode: tCode.toUpperCase(),
+        teacherName: tName,
+        subjectCode: sCode.toUpperCase(),
+        subjectName: sName,
+        credits: isNaN(creditVal) || creditVal <= 0 ? 4 : creditVal,
+        departmentCode: (deptVal || 'ECE').toUpperCase(),
+        semesterNumber: isNaN(semVal) || semVal <= 0 ? 7 : semVal,
+      });
+    }
+  }
+
+  return results;
 }
 
 /**
