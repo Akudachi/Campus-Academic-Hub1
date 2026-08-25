@@ -845,28 +845,16 @@ class DatabaseService {
     return { success: true, message: 'Campus database restored successfully and persisted to Supabase and storage.' };
   }
 
-  // Bi-Directional Synchronizer between Client and Server/Supabase
+  // Authoritative Synchronizer: Server sends authoritative state to client
   public syncWithClient(clientSnapshot?: Partial<DatabaseStore>, clientLastModified?: number): {
     store: DatabaseStore;
     lastModified: number;
     actionTaken: 'restored_from_client' | 'client_updated_from_server' | 'in_sync';
   } {
-    const serverHasData = (this.store.students?.length || 0) > 0 || (this.store.teachers?.length || 0) > 0;
-    const clientHasData = !!clientSnapshot && ((clientSnapshot.students?.length || 0) > 0 || (clientSnapshot.teachers?.length || 0) > 0);
-
-    if (clientHasData && (!serverHasData || (clientLastModified && clientLastModified > this.lastModified))) {
-      this.restoreData(clientSnapshot!);
-      return {
-        store: this.store,
-        lastModified: this.lastModified,
-        actionTaken: 'restored_from_client',
-      };
-    }
-
     return {
       store: this.store,
       lastModified: this.lastModified,
-      actionTaken: serverHasData ? 'client_updated_from_server' : 'in_sync',
+      actionTaken: 'client_updated_from_server',
     };
   }
 

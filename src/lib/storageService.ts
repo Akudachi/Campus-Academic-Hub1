@@ -12,7 +12,7 @@ export interface CacheMetadata<T> {
   version: string;
 }
 
-const CACHE_PREFIX = 'cah_offline_cache_v1_';
+const CACHE_PREFIX = 'cah_offline_cache_v3_';
 const SIMULATED_OFFLINE_KEY = 'cah_simulated_offline';
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days default persistence for offline viewing
 
@@ -24,6 +24,15 @@ class LocalStorageService {
     // Read persisted simulated offline flag if present
     if (typeof window !== 'undefined') {
       this.simulatedOffline = localStorage.getItem(SIMULATED_OFFLINE_KEY) === 'true';
+
+      // Purge old v1/v2 caches on startup
+      try {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.startsWith('cah_offline_cache_v1_') || k.startsWith('cah_offline_cache_v2_') || k === 'cah_full_database_snapshot_v2') {
+            localStorage.removeItem(k);
+          }
+        });
+      } catch {}
 
       window.addEventListener('online', this.handleOnlineStateChange);
       window.addEventListener('offline', this.handleOnlineStateChange);
@@ -190,7 +199,7 @@ class LocalStorageService {
         timestamp: Date.now(),
         version: '2.0',
       };
-      localStorage.setItem('cah_full_database_snapshot_v2', JSON.stringify(payload));
+      localStorage.setItem('cah_full_database_snapshot_v3', JSON.stringify(payload));
     } catch (e) {
       console.warn('[LocalStorageService] Failed to persist full DB snapshot:', e);
     }
@@ -202,7 +211,7 @@ class LocalStorageService {
   public getDatabaseSnapshot(): { snapshot: any; timestamp: number } | null {
     if (typeof localStorage === 'undefined') return null;
     try {
-      const raw = localStorage.getItem('cah_full_database_snapshot_v2');
+      const raw = localStorage.getItem('cah_full_database_snapshot_v3');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (parsed && parsed.snapshot && typeof parsed.snapshot === 'object') {
@@ -224,6 +233,7 @@ class LocalStorageService {
   public clearDatabaseSnapshot(): void {
     if (typeof localStorage === 'undefined') return;
     try {
+      localStorage.removeItem('cah_full_database_snapshot_v3');
       localStorage.removeItem('cah_full_database_snapshot_v2');
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith(CACHE_PREFIX) || key.startsWith('cah_')) {
