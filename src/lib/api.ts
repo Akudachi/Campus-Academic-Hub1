@@ -17,6 +17,7 @@ import {
   StudentDashboardSummary,
   CampusSettings,
   SystemStatusInfo,
+  SupabaseStatusInfo,
   Department,
 } from '../types';
 import { storageService } from './storageService';
@@ -658,15 +659,64 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getSystemStatus: () => request<{ status: SystemStatusInfo }>('/api/admin/system/status'),
+
+  // Bi-Directional Database Sync & Persistence Engine
+  syncDatabaseState: async (): Promise<{
+    success: boolean;
+    actionTaken: 'restored_from_client' | 'client_updated_from_server' | 'in_sync';
+    lastModified: number;
+  }> => {
+    try {
+      const local = storageService.getDatabaseSnapshot();
+      const res = await request<{
+        success: boolean;
+        actionTaken: 'restored_from_client' | 'client_updated_from_server' | 'in_sync';
+        lastModified: number;
+        store?: any;
+      }>('/api/db/sync', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientSnapshot: local?.snapshot,
+          clientLastModified: local?.timestamp,
+        }),
+      });
+
+      if (res?.store) {
+        storageService.saveDatabaseSnapshot(res.store);
+      }
+      return {
+        success: res?.success || true,
+        actionTaken: res?.actionTaken || 'in_sync',
+        lastModified: res?.lastModified || Date.now(),
+      };
+    } catch (err) {
+      console.warn('[Sync] Auto-sync encountered error, relying on local snapshot cache:', err);
+      return { success: false, actionTaken: 'in_sync', lastModified: Date.now() };
+    }
+  },
+
+  exportDatabaseBackup: (): string => {
+    return getFullApiUrl('/api/db/export');
+  },
+
   restoreDatabase: (data: any) =>
-    request<{ success: boolean; message: string }>('/api/admin/restore', {
+    request<{ success: boolean; message: string }>('/api/db/restore', {
       method: 'POST',
-      body: JSON.stringify({ data }),
+      body: JSON.stringify(data),
     }),
   resetDatabase: () =>
     request<{ success: boolean; message: string }>('/api/admin/reset', {
       method: 'POST',
     }),
+  // Supabase Cloud Persistence & Status
+  getSupabaseStatus: () =>
+    request<{ success: boolean; status: SupabaseStatusInfo }>('/api/admin/supabase/status'),
+  triggerSupabaseSync: (action: 'push' | 'pull' = 'push') =>
+    request<{ success: boolean; message: string; status: SupabaseStatusInfo }>('/api/admin/supabase/sync', {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    }),
+
   loadSampleDataset: () =>
     request<{ success: boolean; message: string }>('/api/admin/load-demo', {
       method: 'POST',

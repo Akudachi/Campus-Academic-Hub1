@@ -341,6 +341,28 @@ export interface CampusSettings {
   systemStatus: 'ready' | 'operational';
 }
 
+export interface SupabaseStatusInfo {
+  configured: boolean;
+  connected: boolean;
+  provider: 'supabase_postgres' | 'supabase_rest' | 'local_fallback';
+  databaseHost: string;
+  lastSyncTime: string | null;
+  status: 'connected' | 'syncing' | 'error' | 'local_only';
+  records: {
+    students: number;
+    teachers: number;
+    departments: number;
+    semesters: number;
+    subjects: number;
+    attendanceSessions: number;
+    attendanceRecords: number;
+    testMarks: number;
+    assignments: number;
+    notices: number;
+  };
+  error?: string;
+}
+
 export interface SystemStatusInfo {
   serverTime: string;
   uptimeSeconds: number;

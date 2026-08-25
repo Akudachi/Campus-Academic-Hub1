@@ -118,12 +118,100 @@ function rejectStudentMutations(req: AuthenticatedRequest, res: Response, next: 
 
 app.use('/api', rejectStudentMutations);
 
+// Auto-persist all database mutations to disk immediately upon completion
+app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    res.on('finish', () => {
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        db.persist();
+      }
+    });
+  }
+  next();
+});
+
 // ==========================================
-// 1. AUTH & ME ENDPOINTS
+// 1. AUTH, SYNC & SYSTEM ENDPOINTS
 // ==========================================
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Smart Database Synchronizer (Dual LocalStorage + Server Disk Sync)
+app.post('/api/db/sync', (req: Request, res: Response) => {
+  try {
+    const { clientSnapshot, clientLastModified } = req.body || {};
+    const result = db.syncWithClient(clientSnapshot, clientLastModified);
+    res.json({
+      success: true,
+      actionTaken: result.actionTaken,
+      lastModified: result.lastModified,
+      store: result.store,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Sync failed.' });
+  }
+});
+
+app.get('/api/db/sync-status', (req: Request, res: Response) => {
+  const store = db.getStore();
+  res.json({
+    lastModified: db.getLastModified(),
+    supabase: db.getSupabaseStatus(),
+    stats: {
+      studentsCount: store.students?.length || 0,
+      teachersCount: store.teachers?.length || 0,
+      attendanceCount: store.attendanceSessions?.length || 0,
+      assignmentsCount: store.assignments?.length || 0,
+      marksCount: store.testMarkSheets?.length || 0,
+      noticesCount: store.notices?.length || 0,
+    },
+  });
+});
+
+// Supabase Status & Cloud Sync Endpoints
+app.get('/api/admin/supabase/status', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const status = db.getSupabaseStatus();
+  res.json({ success: true, status });
+});
+
+app.post('/api/admin/supabase/sync', requireRole('admin'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const action = req.body?.action || 'push';
+    if (action === 'pull') {
+      const result = await db.pullFromSupabase();
+      return res.json({ success: result.success, message: result.message, status: db.getSupabaseStatus() });
+    } else {
+      const success = await db.persistToSupabase();
+      return res.json({
+        success,
+        message: success
+          ? 'Campus database successfully pushed and persisted to Supabase PostgreSQL!'
+          : 'Failed to push to Supabase. Check credentials or connection.',
+        status: db.getSupabaseStatus(),
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Supabase sync failed' });
+  }
+});
+
+app.get('/api/db/export', (req: Request, res: Response) => {
+  const store = db.getStore();
+  const filename = `kle_campus_database_${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(store, null, 2));
+});
+
+app.post('/api/db/restore', (req: Request, res: Response) => {
+  try {
+    const result = db.restoreData(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to restore database.' });
+  }
 });
 
 // Public / General Campus Settings

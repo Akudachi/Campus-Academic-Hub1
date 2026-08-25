@@ -156,7 +156,7 @@ class LocalStorageService {
 
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(CACHE_PREFIX)) {
+      if (k && (k.startsWith(CACHE_PREFIX) || k === 'cah_full_database_snapshot_v2')) {
         totalEntries++;
         const val = localStorage.getItem(k) || '';
         sizeBytes += k.length + val.length;
@@ -164,6 +164,9 @@ class LocalStorageService {
           const parsed = JSON.parse(val);
           if (parsed.cachedAt && (!latestTimestamp || parsed.cachedAt > latestTimestamp)) {
             latestTimestamp = parsed.cachedAt;
+          }
+          if (parsed.timestamp && (!latestTimestamp || parsed.timestamp > latestTimestamp)) {
+            latestTimestamp = parsed.timestamp;
           }
         } catch {}
       }
@@ -174,6 +177,45 @@ class LocalStorageService {
       lastUpdated: latestTimestamp,
       approximateSizeBytes: sizeBytes * 2, // UTF-16 approximation
     };
+  }
+
+  /**
+   * Save complete database snapshot to localStorage for disaster-recovery and restart persistence
+   */
+  public saveDatabaseSnapshot(snapshot: any): void {
+    if (typeof localStorage === 'undefined' || !snapshot) return;
+    try {
+      const payload = {
+        snapshot,
+        timestamp: Date.now(),
+        version: '2.0',
+      };
+      localStorage.setItem('cah_full_database_snapshot_v2', JSON.stringify(payload));
+    } catch (e) {
+      console.warn('[LocalStorageService] Failed to persist full DB snapshot:', e);
+    }
+  }
+
+  /**
+   * Get locally persisted full database snapshot
+   */
+  public getDatabaseSnapshot(): { snapshot: any; timestamp: number } | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('cah_full_database_snapshot_v2');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.snapshot && typeof parsed.snapshot === 'object') {
+        return {
+          snapshot: parsed.snapshot,
+          timestamp: parsed.timestamp || 0,
+        };
+      }
+      return null;
+    } catch (e) {
+      console.warn('[LocalStorageService] Failed to read DB snapshot:', e);
+      return null;
+    }
   }
 
   /**

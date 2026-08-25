@@ -77,6 +77,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
+      // 0. Auto-sync database state between browser storage and server
+      try {
+        await api.syncDatabaseState();
+      } catch (syncErr) {
+        console.warn('[AuthContext] Sync check:', syncErr);
+      }
+
       // 1. Fetch available personas for directory / quick switcher
       try {
         const pRes = await api.getPersonas();
