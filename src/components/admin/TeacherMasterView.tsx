@@ -58,13 +58,6 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
   const [selectedSubjectIdToAssign, setSelectedSubjectIdToAssign] = useState('');
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
 
-  // Auto-Assign Modal State
-  const [isAutoAssignModalOpen, setIsAutoAssignModalOpen] = useState(false);
-  const [autoAssignDept, setAutoAssignDept] = useState('ALL');
-  const [autoAssignSem, setAutoAssignSem] = useState('all');
-  const [autoAssignReplace, setAutoAssignReplace] = useState(false);
-  const [isSubmittingAutoAssign, setIsSubmittingAutoAssign] = useState(false);
-
   // Edit Teacher Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTeacherForEdit, setSelectedTeacherForEdit] = useState<(Teacher & { user: User }) | null>(null);
@@ -247,25 +240,6 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
     }
   };
 
-  const handleAutoAssign = async () => {
-    setIsSubmittingAutoAssign(true);
-    try {
-      const res = await api.autoAssignTeachers({
-        department: autoAssignDept === 'ALL' ? undefined : autoAssignDept,
-        semesterNumber: autoAssignSem === 'all' ? undefined : Number(autoAssignSem),
-        replaceExisting: autoAssignReplace,
-      });
-      showToast(res.message || `Successfully auto-assigned ${res.assignedCount} subjects.`, 'success');
-      setIsAutoAssignModalOpen(false);
-      fetchData();
-      await refreshProfile();
-    } catch (err: any) {
-      showToast(err.message || 'Auto-assign failed.', 'error');
-    } finally {
-      setIsSubmittingAutoAssign(false);
-    }
-  };
-
   const handleOpenAssignModal = (teacher: Teacher & { user: User }) => {
     setSelectedTeacherForAssign(teacher);
     setSelectedSubjectIdToAssign('');
@@ -445,14 +419,6 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
         </div>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
           <button
-            id="open-auto-assign-modal-btn"
-            onClick={() => setIsAutoAssignModalOpen(true)}
-            className="flex-1 sm:flex-none justify-center px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs"
-          >
-            <Zap className="w-4 h-4 text-emerald-200" />
-            <span>Auto-Assign Subjects</span>
-          </button>
-          <button
             id="open-add-teacher-modal-btn"
             onClick={handleOpenAddModal}
             className="flex-1 sm:flex-none justify-center px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] bg-white text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-xs"
@@ -617,91 +583,6 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
           </div>
         )}
       </div>
-
-      {/* Auto-Assign Subjects Modal */}
-      <Modal
-        isOpen={isAutoAssignModalOpen}
-        onClose={() => setIsAutoAssignModalOpen(false)}
-        title="Auto-Assign Subjects to Faculty"
-        subtitle="Automatically balance and assign semester courses to department faculty members."
-        maxWidth="md"
-      >
-        <div className="space-y-4 text-xs">
-          <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-950 flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Automated Course Distribution</p>
-              <p className="text-[11px] text-emerald-800 mt-0.5">
-                Assigns all active subjects evenly across teaching staff according to matching branch/department and semester curriculum.
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Target Department</label>
-            <select
-              value={autoAssignDept}
-              onChange={(e) => setAutoAssignDept(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-emerald-600 focus:outline-hidden bg-white font-medium"
-            >
-              <option value="ALL">All Departments (Campus-Wide)</option>
-              {departments.map((d) => (
-                <option key={d.code} value={d.code}>
-                  {d.code} - {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Target Semester</label>
-            <select
-              value={autoAssignSem}
-              onChange={(e) => setAutoAssignSem(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-emerald-600 focus:outline-hidden bg-white font-medium"
-            >
-              <option value="all">All Active Semesters</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                <option key={sem} value={String(sem)}>
-                  Semester {sem}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-            <input
-              type="checkbox"
-              id="replace-existing-check"
-              checked={autoAssignReplace}
-              onChange={(e) => setAutoAssignReplace(e.target.checked)}
-              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-            />
-            <label htmlFor="replace-existing-check" className="text-xs font-medium text-slate-700 cursor-pointer">
-              Replace and rebalance existing course assignments for selected faculty
-            </label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setIsAutoAssignModalOpen(false)}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#DCE3ED] hover:bg-slate-50 text-slate-600"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleAutoAssign}
-              disabled={isSubmittingAutoAssign}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
-            >
-              <Zap className="w-4 h-4 text-emerald-200" />
-              {isSubmittingAutoAssign ? 'Assigning...' : 'Auto-Assign Now'}
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Edit Single Teacher Modal */}
       <Modal

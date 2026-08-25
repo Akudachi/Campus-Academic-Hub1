@@ -283,22 +283,15 @@ export const AttendanceTakingView: React.FC<AttendanceTakingViewProps> = ({ onBa
 
       {subjects.length === 0 ? (
         <div className="p-8 text-center bg-white rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
-          <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2E6FB0] mx-auto flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 mx-auto flex items-center justify-center">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
             <h4 className="font-bold text-[#13284A] text-sm">No Courses Assigned Yet</h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-              Auto-assign department courses for your profile ({teacher?.teacherCode || 'Faculty'}, {teacher?.department || 'CSE'}) to begin taking class attendance.
+              You do not have any subjects assigned yet. Please contact the administrator or department head to allocate your courses.
             </p>
           </div>
-          <button
-            onClick={handleAutoAssign}
-            disabled={isAutoAssigning}
-            className="px-4 py-2 text-xs font-bold rounded-xl bg-[#2E6FB0] text-white hover:bg-[#13284A] transition-all inline-flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-98 disabled:opacity-50"
-          >
-            <span>{isAutoAssigning ? 'Auto-Assigning...' : 'Auto-Assign Department Courses Now'}</span>
-          </button>
         </div>
       ) : (
         <>

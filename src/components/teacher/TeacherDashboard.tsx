@@ -317,28 +317,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
 
         {filteredSubjects.length === 0 ? (
           <div className="p-6 text-center bg-white rounded-xl border border-[#DCE3ED] shadow-2xs space-y-3">
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2E6FB0] mx-auto flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 mx-auto flex items-center justify-center">
+              <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-[#13284A] text-sm">No Courses Assigned for this Cohort</h4>
+              <h4 className="font-bold text-[#13284A] text-sm">No Courses Assigned</h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
                 {subjects.length === 0
-                  ? `Auto-assign core department courses for ${activeTeacher?.teacherCode || teacher?.teacherCode || 'Faculty'} (${activeTeacher?.department || teacher?.department || 'CSE'}) to begin taking attendance, grading, and posting assignments.`
+                  ? 'No subjects currently assigned to your faculty profile. The administrator will allocate your classes.'
                   : 'No courses match the selected semester filter.'}
               </p>
             </div>
-            {subjects.length === 0 && (
-              <button
-                id="quick-auto-assign-btn"
-                onClick={handleAutoAssignSelf}
-                disabled={isAutoAssigning}
-                className="px-4 py-2 text-xs font-bold rounded-xl bg-[#2E6FB0] text-white hover:bg-[#13284A] transition-all inline-flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-98 disabled:opacity-50"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-300" />
-                <span>{isAutoAssigning ? 'Assigning Subjects...' : 'Auto-Assign Department Courses'}</span>
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-2">
