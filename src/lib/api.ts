@@ -422,10 +422,16 @@ export const api = {
     audienceType: 'everyone' | 'department' | 'semester';
     audienceTargetId?: string | null;
     priority?: 'normal' | 'urgent';
+    date?: string;
   }) =>
     request<{ notice: Notice; notifiedStudentsCount: number }>('/api/admin/notices', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  deleteNotice: (id: string) =>
+    request<{ success: boolean; message: string; deletedNotice?: Notice }>(`/api/admin/notices/${id}`, {
+      method: 'DELETE',
     }),
 
   createEvent: (payload: {
@@ -439,6 +445,11 @@ export const api = {
     request<{ event: Event }>('/api/admin/events', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  deleteEvent: (id: string) =>
+    request<{ success: boolean; message: string; deletedEvent?: Event }>(`/api/admin/events/${id}`, {
+      method: 'DELETE',
     }),
 
   // Admin: Reports

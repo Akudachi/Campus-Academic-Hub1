@@ -3006,12 +3006,15 @@ app.post('/api/admin/semesters/:id/complete-and-promote', requireRole('admin'), 
 
 // 2.5 Admin Notices & Events
 app.post('/api/admin/notices', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
-  const { title, body, audienceType, audienceTargetId, priority } = req.body;
+  const { title, body, audienceType, audienceTargetId, priority, date } = req.body;
   const store = db.getStore();
 
   if (!title || !body || !audienceType) {
     return res.status(400).json({ error: 'Title, body, and audienceType are required.' });
   }
+
+  const nowIso = new Date().toISOString();
+  const noticeDate = date ? (date.includes('T') ? date : `${date}T09:00:00.000Z`) : nowIso;
 
   const newNotice: Notice = {
     id: `not-${Date.now()}`,
@@ -3022,10 +3025,13 @@ app.post('/api/admin/notices', requireRole('admin'), (req: AuthenticatedRequest,
     audienceType,
     audienceTargetId: audienceTargetId || null,
     priority: priority || 'normal',
-    createdAt: new Date().toISOString(),
+    date: date || nowIso.split('T')[0],
+    publishedAt: noticeDate,
+    createdAt: nowIso,
   };
 
   store.notices.unshift(newNotice);
+  db.persist();
 
   // Generate real server-side notifications for matching students
   let targetStudentUserIds: string[] = [];
@@ -3049,9 +3055,37 @@ app.post('/api/admin/notices', requireRole('admin'), (req: AuthenticatedRequest,
     '/student/notices'
   );
 
-  db.logAudit(req.user!.id, req.user!.name, 'admin', 'NOTICE_PUBLISHED', `Published notice "${title}" to ${audienceType}`);
+  db.logAudit(req.user!.id, req.user!.name, 'admin', 'NOTICE_PUBLISHED', `Published notice "${title}" to ${audienceType} on date ${newNotice.date}`);
 
   res.status(201).json({ notice: newNotice, notifiedStudentsCount: targetStudentUserIds.length });
+});
+
+// Admin: Delete Notice / Circular
+app.delete('/api/admin/notices/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const store = db.getStore();
+  const index = store.notices.findIndex((n) => n.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Circular / Notice not found.' });
+  }
+
+  const [removedNotice] = store.notices.splice(index, 1);
+  db.persist();
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'NOTICE_DELETED',
+    `Deleted circular notice "${removedNotice.title}" (ID: ${removedNotice.id})`
+  );
+
+  res.json({
+    success: true,
+    message: `Circular "${removedNotice.title}" deleted successfully.`,
+    deletedNotice: removedNotice,
+  });
 });
 
 app.post('/api/admin/events', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
@@ -3062,19 +3096,21 @@ app.post('/api/admin/events', requireRole('admin'), (req: AuthenticatedRequest, 
     return res.status(400).json({ error: 'Title, description, date, and venue are required.' });
   }
 
+  const nowIso = new Date().toISOString();
   const newEvent: Event = {
     id: `evt-${Date.now()}`,
     title,
     description,
-    date,
+    date: date || nowIso.split('T')[0],
     venue,
     posterImageUrl: posterImageUrl || 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=800&q=80',
     createdBy: req.user!.id,
     organizer: organizer || 'Campus Academic Hub',
-    createdAt: new Date().toISOString(),
+    createdAt: nowIso,
   };
 
   store.events.unshift(newEvent);
+  db.persist();
 
   // Notify all students
   const allStudentUserIds = store.students.map((s) => s.userId);
@@ -3082,13 +3118,41 @@ app.post('/api/admin/events', requireRole('admin'), (req: AuthenticatedRequest, 
     allStudentUserIds,
     'event',
     `Upcoming Campus Event: ${title}`,
-    `Scheduled for ${date} at ${venue}`,
+    `Scheduled for ${newEvent.date} at ${venue}`,
     '/student/events'
   );
 
-  db.logAudit(req.user!.id, req.user!.name, 'admin', 'EVENT_PUBLISHED', `Published event "${title}" on ${date}`);
+  db.logAudit(req.user!.id, req.user!.name, 'admin', 'EVENT_PUBLISHED', `Published event "${title}" on ${newEvent.date}`);
 
   res.status(201).json({ event: newEvent });
+});
+
+// Admin: Delete Campus Event
+app.delete('/api/admin/events/:id', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const store = db.getStore();
+  const index = store.events.findIndex((e) => e.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Campus Event not found.' });
+  }
+
+  const [removedEvent] = store.events.splice(index, 1);
+  db.persist();
+
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'EVENT_DELETED',
+    `Deleted campus event "${removedEvent.title}" (ID: ${removedEvent.id})`
+  );
+
+  res.json({
+    success: true,
+    message: `Event "${removedEvent.title}" deleted successfully.`,
+    deletedEvent: removedEvent,
+  });
 });
 
 // 2.6 Admin Reports (Attendance, Assignments, Marks with CSV export)

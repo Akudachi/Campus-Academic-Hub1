@@ -113,7 +113,7 @@ export const StudentNoticesEventsView: React.FC<StudentNoticesEventsViewProps> =
                     </span>
                   </div>
                   <span className="text-xs text-[#667085]">
-                    {new Date(n.publishedAt).toLocaleDateString('en-US', {
+                    {new Date(n.date || n.publishedAt || n.createdAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',

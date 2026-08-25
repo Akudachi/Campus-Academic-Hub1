@@ -187,6 +187,8 @@ export interface Notice {
   audienceType: NoticeAudienceType;
   audienceTargetId?: string | null; // e.g. dept code or semester number
   priority?: 'normal' | 'urgent';
+  date?: string;
+  publishedAt?: string;
   createdAt: string;
 }
 
