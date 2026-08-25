@@ -142,15 +142,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 border border-white/30 backdrop-blur-md flex items-center justify-center text-white text-xl sm:text-2xl font-black font-display shadow-md shrink-0 ring-2 ring-white/20">
-                {(data?.student?.name || user?.name || 'S').charAt(0)}
+                {(data?.student?.user?.name || data?.student?.name || user?.name || 'S').charAt(0)}
               </div>
 
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight font-display text-white truncate">
-                  {data?.student?.name || user?.name || 'Student'}
+                  {data?.student?.user?.name || data?.student?.name || user?.name || 'Student'}
                 </h1>
                 <p className="text-xs text-slate-200 font-medium mt-0.5">
-                  Semester {data?.student?.currentSemester || student?.semester || 4} • Section {data?.student?.section || 'A'}
+                  Semester {data?.student?.currentSemester || student?.currentSemester || 4} • Section {data?.student?.section || 'A'}
                 </p>
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">
@@ -265,7 +265,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                 Course Attendance
               </h2>
               <p className="text-[11px] text-[#667085]">
-                Semester {data?.student?.currentSemester || student?.currentSemester || student?.semester || 4} registered coursework
+                Semester {data?.student?.currentSemester || student?.currentSemester || 4} registered coursework
               </p>
             </div>
           </div>

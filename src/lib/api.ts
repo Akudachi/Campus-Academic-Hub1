@@ -57,9 +57,22 @@ export function getCurrentUserId(): string | null {
   return currentUserId;
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+// In-flight GET request deduplication cache
+const inFlightRequests = new Map<string, Promise<any>>();
+
+interface ExtendedRequestInit extends RequestInit {
+  timeoutMs?: number;
+}
+
+async function request<T>(endpoint: string, options: ExtendedRequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
   const cacheKey = `req_${endpoint}_${currentUserId || 'anon'}`;
+
+  // In-flight deduplication: reuse ongoing GET promise if already in-flight
+  if (isGet && inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey) as Promise<T>;
+  }
 
   // If offline and making a GET request, serve cached data if available
   if (!storageService.isOnline()) {
@@ -73,58 +86,89 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
   }
 
-  const headers = new Headers(options.headers || {});
-  headers.set('Content-Type', 'application/json');
+  const executeRequest = async (): Promise<T> => {
+    const headers = new Headers(options.headers || {});
+    headers.set('Content-Type', 'application/json');
 
-  if (currentToken) {
-    headers.set('Authorization', `Bearer ${currentToken}`);
-  }
-  if (currentUserId) {
-    headers.set('x-user-id', currentUserId);
-  }
+    if (currentToken) {
+      headers.set('Authorization', `Bearer ${currentToken}`);
+    }
+    if (currentUserId) {
+      headers.set('x-user-id', currentUserId);
+    }
 
-  const fullUrl = getFullApiUrl(endpoint);
+    const fullUrl = getFullApiUrl(endpoint);
 
-  try {
-    const response = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
+    // Timeout handling using AbortController (default 25s, or longer for heavy AI tasks)
+    const timeoutDuration = options.timeoutMs || (endpoint.includes('/gemini') || endpoint.includes('/timetable') ? 60000 : 25000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
-    const responseText = await response.text();
-    let data: any;
     try {
-      data = responseText ? JSON.parse(responseText) : {};
-    } catch {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        if (!response.ok) {
+          throw new Error(
+            `Server returned HTTP ${response.status} (${response.statusText || 'Not Found'}). Backend URL: ${API_BASE_URL || 'Local Origin'}. Please check if VITE_API_URL is configured correctly.`
+          );
+        }
+        throw new Error(`Unexpected server response (non-JSON): ${responseText.slice(0, 100)}`);
+      }
+
       if (!response.ok) {
-        throw new Error(
-          `Server returned HTTP ${response.status} (${response.statusText || 'Not Found'}). Backend URL: ${API_BASE_URL || 'Local Origin'}. Please check if VITE_API_URL is configured correctly.`
-        );
+        throw new Error(data.error || data.message || `HTTP Error ${response.status}: ${response.statusText}`);
       }
-      throw new Error(`Unexpected server response (non-JSON): ${responseText.slice(0, 100)}`);
-    }
 
-    if (!response.ok) {
-      throw new Error(data.error || data.message || `HTTP Error ${response.status}: ${response.statusText}`);
-    }
+      // Automatically cache successful GET responses to LocalStorage
+      if (isGet) {
+        storageService.save<T>(cacheKey, data);
+      } else {
+        // Mutation occurred: invalidate query caches so next GET fetches fresh state
+        storageService.invalidateQueryCache();
+      }
 
-    // Automatically cache successful GET responses to LocalStorage
-    if (isGet) {
-      storageService.save<T>(cacheKey, data);
-    }
+      return data;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
 
-    return data;
-  } catch (err: any) {
-    // If network error/offline occurs during fetch, gracefully fallback to Local Storage Cache
-    if (isGet) {
-      const cached = storageService.get<T>(cacheKey);
-      if (cached) {
-        console.info(`[Offline Mode] Falling back to cached data for: ${endpoint}`);
-        return cached.data;
+      if (err.name === 'AbortError') {
+        throw new Error('Request timed out. The server took too long to respond.');
+      }
+
+      // If network error/offline occurs during fetch, gracefully fallback to Local Storage Cache
+      if (isGet) {
+        const cached = storageService.get<T>(cacheKey);
+        if (cached) {
+          console.info(`[Offline Mode] Falling back to cached data for: ${endpoint}`);
+          return cached.data;
+        }
+      }
+      throw err;
+    } finally {
+      if (isGet) {
+        inFlightRequests.delete(cacheKey);
       }
     }
-    throw err;
+  };
+
+  if (isGet) {
+    const promise = executeRequest();
+    inFlightRequests.set(cacheKey, promise);
+    return promise;
   }
+
+  return executeRequest();
 }
 
 export const api = {

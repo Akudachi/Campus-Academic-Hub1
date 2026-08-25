@@ -248,6 +248,26 @@ class LocalStorageService {
   }
 
   /**
+   * Invalidate cached query entries (by prefix or all queries)
+   */
+  public invalidateQueryCache(prefix?: string): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const matchKey = prefix ? `${CACHE_PREFIX}req_${prefix}` : `${CACHE_PREFIX}req_`;
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(matchKey)) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('[LocalStorageService] Failed to invalidate query cache:', e);
+    }
+  }
+
+  /**
    * Format human-friendly time elapsed since cache
    */
   public formatTimeAgo(timestamp: number): string {

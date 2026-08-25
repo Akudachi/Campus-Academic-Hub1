@@ -10,6 +10,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { SplashScreen } from './components/common/SplashScreen';
 import { AppLogo } from './components/common/AppLogo';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { api } from './lib/api';
 
 // Admin Components
@@ -253,7 +254,13 @@ const MainLayout: React.FC = () => {
 
         {/* Content Container - Responsive padding for mobile bottom bar */}
         <main className="flex-1 px-3 py-3 sm:px-5 sm:py-5 lg:p-8 min-w-0 max-w-full overflow-x-hidden overflow-y-auto pb-24 lg:pb-8 flex flex-col justify-between">
-          <div>{renderContent()}</div>
+          <ErrorBoundary
+            fallbackTitle="Section Render Error"
+            fallbackSubtitle="An issue occurred while loading this view. Click retry to refresh this view."
+            onReset={() => setActiveTab('overview')}
+          >
+            <div>{renderContent()}</div>
+          </ErrorBoundary>
 
           {/* Institutional Footer */}
           <footer className="mt-12 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
@@ -345,9 +352,14 @@ const MainLayout: React.FC = () => {
 
 export function App() {
   return (
-    <AuthProvider>
-      <MainLayout />
-    </AuthProvider>
+    <ErrorBoundary
+      fallbackTitle="Application Initialisation Error"
+      fallbackSubtitle="An unexpected error occurred during application initialization. Please try reloading the page."
+    >
+      <AuthProvider>
+        <MainLayout />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

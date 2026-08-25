@@ -20,13 +20,6 @@ import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { Department } from '../../types';
 
-const DEFAULT_DEPARTMENTS: Department[] = [
-  { id: 'dept-cse', code: 'CSE', name: 'Computer Science' },
-  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Communication' },
-  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
-  { id: 'dept-mech', code: 'MECH', name: 'Mechanical' },
-];
-
 interface ReportsAdminViewProps {
   onBack?: () => void;
   onNavigate?: (tabId: string) => void;
@@ -34,7 +27,7 @@ interface ReportsAdminViewProps {
 
 export const ReportsAdminView: React.FC<ReportsAdminViewProps> = ({ onBack }) => {
   const [reportType, setReportType] = useState<'attendance' | 'marks' | 'assignments' | 'audit'>('attendance');
-  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useAuth();
 

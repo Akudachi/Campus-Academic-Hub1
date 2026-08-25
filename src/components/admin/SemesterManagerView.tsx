@@ -49,15 +49,6 @@ interface SemesterStudentItem {
   attendancePercentage: number;
 }
 
-const DEFAULT_DEPARTMENTS: Department[] = [
-  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
-  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Comm Eng' },
-  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
-  { id: 'dept-mech', code: 'MECH', name: 'Mechanical Eng' },
-  { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
-  { id: 'dept-aiml', code: 'AI-ML', name: 'Artificial Intelligence' },
-];
-
 interface SemesterManagerViewProps {
   onBack?: () => void;
   onNavigate?: (tabId: string) => void;
@@ -65,7 +56,7 @@ interface SemesterManagerViewProps {
 
 export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack, onNavigate }) => {
   const [semesters, setSemesters] = useState<EnrichedSemester[]>([]);
-  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [settings, setSettings] = useState<CampusSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
@@ -78,9 +69,9 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
   // Create Semester Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newSemNumber, setNewSemNumber] = useState<number>(6);
-  const [newSemDept, setNewSemDept] = useState<string>('CSE');
+  const [newSemDept, setNewSemDept] = useState<string>('');
   const [newSemSection, setNewSemSection] = useState<string>('A');
-  const [newSemAY, setNewSemAY] = useState<string>('2025-2026');
+  const [newSemAY, setNewSemAY] = useState<string>('2026-2027');
   const [newSemStatus, setNewSemStatus] = useState<'setup' | 'active'>('active');
 
   // Delete Confirmation Modal State
@@ -94,7 +85,7 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [targetSemesterNum, setTargetSemesterNum] = useState<number>(7);
-  const [targetAY, setTargetAY] = useState<string>('2025-2026');
+  const [targetAY, setTargetAY] = useState<string>('2026-2027');
   const [autoActivateNext, setAutoActivateNext] = useState<boolean>(true);
 
   const fetchSemesters = async () => {
@@ -102,13 +93,11 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
     try {
       const [semRes, deptRes, settingsRes] = await Promise.all([
         api.getSemesters(),
-        api.getDepartments().catch(() => ({ departments: DEFAULT_DEPARTMENTS })),
+        api.getDepartments().catch(() => ({ departments: [] })),
         api.getCampusSettings().catch(() => ({ settings: null })),
       ]);
       setSemesters(semRes.semesters as EnrichedSemester[]);
-      if (deptRes.departments && deptRes.departments.length > 0) {
-        setDepartments(deptRes.departments);
-      }
+      setDepartments(deptRes.departments || []);
       if (settingsRes.settings) {
         setSettings(settingsRes.settings);
       }

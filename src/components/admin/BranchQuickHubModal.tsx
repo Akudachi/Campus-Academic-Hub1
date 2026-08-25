@@ -46,8 +46,13 @@ export const BranchQuickHubModal: React.FC<BranchQuickHubModalProps> = ({
         api.getStudents().catch(() => ({ students: [] })),
       ]);
 
-      if (deptRes?.departments && deptRes.departments.length > 0) {
+      if (deptRes?.departments) {
         setDepartments(deptRes.departments);
+        if (deptRes.departments.length > 0) {
+          if (!deptRes.departments.some((d: any) => d.code.toUpperCase() === selectedDeptCode.toUpperCase())) {
+            setSelectedDeptCode(deptRes.departments[0].code);
+          }
+        }
       }
       setStudents(studRes?.students || []);
     } catch (err: any) {

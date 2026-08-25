@@ -47,6 +47,9 @@ export interface Student {
   currentSemester: number;
   section: string;
   user?: User;
+  name?: string;
+  email?: string;
+  semester?: number;
 }
 
 export interface Department {
@@ -78,6 +81,7 @@ export interface Subject {
   name: string;
   code: string;
   departmentId: string;
+  departmentCode?: string;
   semesterNumber: number;
   credits?: number;
 }
@@ -305,10 +309,12 @@ export interface AuditLog {
 export interface StudentDashboardSummary {
   student: Student;
   overallAttendancePercentage: number;
+  overallAttendance?: number;
   totalClasses: number;
   attendedClasses: number;
   pendingAssignmentsCount: number;
   totalAssignmentsCount: number;
+  publishedMarksCount?: number;
   latestPublishedTest?: {
     testName: string;
     subjectName: string;
@@ -319,6 +325,18 @@ export interface StudentDashboardSummary {
   };
   unreadNoticesCount: number;
   upcomingEventsCount: number;
+  recentNotices?: Notice[];
+  upcomingEvents?: Event[];
+  subjectAttendance?: {
+    subjectId: string;
+    subjectName: string;
+    subjectCode: string;
+    teacherName: string;
+    totalClasses: number;
+    attendedClasses: number;
+    percentage: number;
+    status: 'good' | 'warning' | 'critical';
+  }[];
   subjectSummaries: {
     subjectId: string;
     subjectName: string;

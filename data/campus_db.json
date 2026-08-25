@@ -4,7 +4,7 @@
     "shortName": "KLECET",
     "campusCode": "KLECET-2026",
     "academicYear": "2026-2027",
-    "currentSemesterTerm": "Academic Year 2026-2027",
+    "currentSemesterTerm": "Even Semester (Semesters 2, 4, 6, 8)",
     "semesterTermType": "even",
     "minAttendanceWarning": 75,
     "adminContactEmail": "ecedept123456@gmail.com",
@@ -14,142 +14,32 @@
     {
       "id": "usr-admin-1",
       "name": "Adarsh Kudachi (Administrator)",
-      "role": "admin",
       "email": "adarshkudachi18@gmail.com",
+      "role": "admin",
       "status": "active",
-      "createdAt": "2026-08-25T00:00:00.000Z"
+      "createdAt": "2026-01-01T00:00:00Z"
     },
     {
       "id": "usr-admin-2",
       "name": "Campus Administrator",
-      "role": "admin",
       "email": "ecedept123456@gmail.com",
+      "role": "admin",
       "status": "active",
-      "createdAt": "2026-08-25T00:00:00.000Z"
+      "createdAt": "2026-01-01T00:00:00Z"
     },
     {
       "id": "usr-admin-3",
       "name": "College Administration Desk",
-      "role": "admin",
       "email": "admin@klecet.edu.in",
+      "role": "admin",
       "status": "active",
-      "createdAt": "2026-08-25T00:00:00.000Z"
+      "createdAt": "2026-01-01T00:00:00Z"
     }
   ],
   "teachers": [],
   "students": [],
-  "departments": [
-    {
-      "id": "dept-ece",
-      "code": "ECE",
-      "name": "Electronics & Communication Engineering",
-      "hodName": "Dr. Halakarnimath",
-      "intakeCapacity": 120,
-      "totalFaculty": 0,
-      "totalStudents": 0,
-      "description": "Excellence in VLSI, Signal Processing, Embedded Systems & Advanced Communications."
-    },
-    {
-      "id": "dept-cse",
-      "code": "CSE",
-      "name": "Computer Science & Engineering",
-      "hodName": "Dr. Viraktamath",
-      "intakeCapacity": 180,
-      "totalFaculty": 0,
-      "totalStudents": 0,
-      "description": "Software Engineering, Cloud Computing, High Performance Algorithms and Distributed Systems."
-    },
-    {
-      "id": "dept-aiml",
-      "code": "AI-ML",
-      "name": "Artificial Intelligence & Machine Learning",
-      "hodName": "Dr. Sheelavantar",
-      "intakeCapacity": 60,
-      "totalFaculty": 0,
-      "totalStudents": 0,
-      "description": "Deep Learning, Neural Networks, Computer Vision, and Advanced Natural Language Systems."
-    },
-    {
-      "id": "dept-ise",
-      "code": "ISE",
-      "name": "Information Science & Engineering",
-      "hodName": "Dr. Hampannavar",
-      "intakeCapacity": 120,
-      "totalFaculty": 0,
-      "totalStudents": 0,
-      "description": "Information Security, Database Architecture, and Big Data Engineering."
-    },
-    {
-      "id": "dept-mech",
-      "code": "MECH",
-      "name": "Mechanical Engineering",
-      "hodName": "Dr. Shivakumar",
-      "intakeCapacity": 60,
-      "totalFaculty": 0,
-      "totalStudents": 0,
-      "description": "Thermal Engineering, Robotics, Advanced Dynamics, and CAD/CAM Metallurgy."
-    },
-    {
-      "id": "dept-civil",
-      "code": "CIVIL",
-      "name": "Civil Engineering",
-      "hodName": "Dr. Kamate",
-      "intakeCapacity": 60,
-      "totalFaculty": 0,
-      "totalStudents": 0,
-      "description": "Structural Mechanics, Geotechnical Analysis, and Sustainable Hydrology."
-    }
-  ],
-  "semesters": [
-    { "id": "sem-ece-1", "number": 1, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "inactive" },
-    { "id": "sem-ece-2", "number": 2, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "active" },
-    { "id": "sem-ece-3", "number": 3, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "inactive" },
-    { "id": "sem-ece-4", "number": 4, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "active" },
-    { "id": "sem-ece-5", "number": 5, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "inactive" },
-    { "id": "sem-ece-6", "number": 6, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "active" },
-    { "id": "sem-ece-7", "number": 7, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "inactive" },
-    { "id": "sem-ece-8", "number": 8, "academicYear": "2026-2027", "departmentCode": "ECE", "section": "A", "status": "active" },
-    { "id": "sem-cse-1", "number": 1, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "inactive" },
-    { "id": "sem-cse-2", "number": 2, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "active" },
-    { "id": "sem-cse-3", "number": 3, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "inactive" },
-    { "id": "sem-cse-4", "number": 4, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "active" },
-    { "id": "sem-cse-5", "number": 5, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "inactive" },
-    { "id": "sem-cse-6", "number": 6, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "active" },
-    { "id": "sem-cse-7", "number": 7, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "inactive" },
-    { "id": "sem-cse-8", "number": 8, "academicYear": "2026-2027", "departmentCode": "CSE", "section": "A", "status": "active" },
-    { "id": "sem-aiml-1", "number": 1, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "inactive" },
-    { "id": "sem-aiml-2", "number": 2, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "active" },
-    { "id": "sem-aiml-3", "number": 3, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "inactive" },
-    { "id": "sem-aiml-4", "number": 4, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "active" },
-    { "id": "sem-aiml-5", "number": 5, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "inactive" },
-    { "id": "sem-aiml-6", "number": 6, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "active" },
-    { "id": "sem-aiml-7", "number": 7, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "inactive" },
-    { "id": "sem-aiml-8", "number": 8, "academicYear": "2026-2027", "departmentCode": "AI-ML", "section": "A", "status": "active" },
-    { "id": "sem-ise-1", "number": 1, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "inactive" },
-    { "id": "sem-ise-2", "number": 2, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "active" },
-    { "id": "sem-ise-3", "number": 3, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "inactive" },
-    { "id": "sem-ise-4", "number": 4, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "active" },
-    { "id": "sem-ise-5", "number": 5, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "inactive" },
-    { "id": "sem-ise-6", "number": 6, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "active" },
-    { "id": "sem-ise-7", "number": 7, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "inactive" },
-    { "id": "sem-ise-8", "number": 8, "academicYear": "2026-2027", "departmentCode": "ISE", "section": "A", "status": "active" },
-    { "id": "sem-mech-1", "number": 1, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "inactive" },
-    { "id": "sem-mech-2", "number": 2, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "active" },
-    { "id": "sem-mech-3", "number": 3, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "inactive" },
-    { "id": "sem-mech-4", "number": 4, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "active" },
-    { "id": "sem-mech-5", "number": 5, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "inactive" },
-    { "id": "sem-mech-6", "number": 6, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "active" },
-    { "id": "sem-mech-7", "number": 7, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "inactive" },
-    { "id": "sem-mech-8", "number": 8, "academicYear": "2026-2027", "departmentCode": "MECH", "section": "A", "status": "active" },
-    { "id": "sem-civil-1", "number": 1, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "inactive" },
-    { "id": "sem-civil-2", "number": 2, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "active" },
-    { "id": "sem-civil-3", "number": 3, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "inactive" },
-    { "id": "sem-civil-4", "number": 4, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "active" },
-    { "id": "sem-civil-5", "number": 5, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "inactive" },
-    { "id": "sem-civil-6", "number": 6, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "active" },
-    { "id": "sem-civil-7", "number": 7, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "inactive" },
-    { "id": "sem-civil-8", "number": 8, "academicYear": "2026-2027", "departmentCode": "CIVIL", "section": "A", "status": "active" }
-  ],
+  "departments": [],
+  "semesters": [],
   "subjects": [],
   "teacherSubjectAssignments": [],
   "attendanceSessions": [],
@@ -163,15 +53,5 @@
   "notifications": [],
   "timetableUploads": [],
   "studentImportBatches": [],
-  "auditLogs": [
-    {
-      "id": "aud-init",
-      "userId": "usr-admin-1",
-      "userName": "Campus Administrator",
-      "userRole": "admin",
-      "action": "DATABASE_WIPED_CLEAN",
-      "details": "Campus database purged to 0 records. Ready for real operational data entry.",
-      "timestamp": "2026-08-25T00:00:00.000Z"
-    }
-  ]
+  "auditLogs": []
 }

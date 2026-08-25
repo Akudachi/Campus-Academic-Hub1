@@ -31,14 +31,6 @@ import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { parseTeacherFile, parseTeacherText, downloadTeacherSampleExcel } from '../../lib/excelParser';
 
-const DEFAULT_DEPARTMENTS: Department[] = [
-  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
-  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Comm Eng' },
-  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
-  { id: 'dept-mech', code: 'MECH', name: 'Mechanical Eng' },
-  { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
-];
-
 interface TeacherMasterViewProps {
   onBack?: () => void;
   onNavigate?: (tabId: string) => void;
@@ -47,7 +39,7 @@ interface TeacherMasterViewProps {
 export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, onNavigate }) => {
   const [teachers, setTeachers] = useState<(Teacher & { user: User; assignedSubjectsCount: number })[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -64,7 +56,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
-    department: 'CSE',
+    department: '',
     teacherCode: '',
     designation: 'Assistant Professor',
     qualification: 'M.Tech',
@@ -76,7 +68,7 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    department: 'CSE',
+    department: '',
     teacherCode: '',
     designation: 'Assistant Professor',
     qualification: 'M.Tech',
@@ -103,13 +95,11 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
       const [teaRes, subRes, deptRes] = await Promise.all([
         api.getTeachers(),
         api.getSubjects(),
-        api.getDepartments().catch(() => ({ departments: DEFAULT_DEPARTMENTS })),
+        api.getDepartments().catch(() => ({ departments: [] })),
       ]);
       setTeachers(teaRes.teachers);
       setSubjects(subRes.subjects);
-      if (deptRes.departments && deptRes.departments.length > 0) {
-        setDepartments(deptRes.departments);
-      }
+      setDepartments(deptRes.departments || []);
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {

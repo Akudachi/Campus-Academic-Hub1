@@ -4141,16 +4141,29 @@ app.post('/api/teacher/marks/sheets/:id/publish', requireRole('teacher', 'admin'
 // 4. STUDENT ENDPOINTS (100% READ ONLY)
 // ==========================================
 
-// Helper to get active student
+// Helper to get active student (Enforces strict student isolation and safe admin/faculty inspection)
 function getStudentFromReq(req: AuthenticatedRequest): Student | null {
   const store = db.getStore();
-  if (req.student) return req.student;
   if (req.user?.role === 'student') {
-    const found = store.students.find((s) => s.userId === req.user?.id || (s as any).email?.toLowerCase() === req.user?.email?.toLowerCase() || s.usn?.toLowerCase() === req.user?.email?.toLowerCase());
+    if (req.student) return req.student;
+    const found = store.students.find(
+      (s) =>
+        s.userId === req.user?.id ||
+        (s as any).email?.toLowerCase() === req.user?.email?.toLowerCase() ||
+        s.usn?.toLowerCase() === req.user?.email?.toLowerCase()
+    );
+    return found || null;
+  }
+
+  // Admin or teacher previewing a specific student or falling back to first student in roster
+  const requestedStudentId = (req.query.studentId || req.headers['x-student-id']) as string | undefined;
+  if (requestedStudentId) {
+    const found = store.students.find(
+      (s) => s.id === requestedStudentId || s.userId === requestedStudentId || s.usn === requestedStudentId
+    );
     if (found) return found;
   }
-  // If admin/teacher is viewing student endpoints for demo, pick first student
-  return store.students[0] || null;
+  return req.student || store.students[0] || null;
 }
 
 // 4.1 Student Dashboard (Live computed summary)

@@ -26,9 +26,10 @@ import { useAuth } from '../../context/AuthContext';
 
 interface DepartmentManagerViewProps {
   onDepartmentChanged?: () => void;
+  onBack?: () => void;
 }
 
-export const DepartmentManagerView: React.FC<DepartmentManagerViewProps> = ({ onDepartmentChanged }) => {
+export const DepartmentManagerView: React.FC<DepartmentManagerViewProps> = ({ onDepartmentChanged, onBack }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -358,7 +359,7 @@ export const DepartmentManagerView: React.FC<DepartmentManagerViewProps> = ({ on
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingDept ? `Edit Branch: ${editingDept.code}` : 'Create New Academic Branch'}
-        maxWidth="max-w-md"
+        maxWidth="md"
       >
         <form onSubmit={handleSaveDepartment} className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
@@ -467,7 +468,7 @@ export const DepartmentManagerView: React.FC<DepartmentManagerViewProps> = ({ on
           setForceDelete(false);
         }}
         title={`Delete Branch: ${deleteTarget?.code}`}
-        maxWidth="max-w-md"
+        maxWidth="md"
       >
         {deleteTarget && (
           <div className="space-y-4">

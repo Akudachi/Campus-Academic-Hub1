@@ -29,15 +29,6 @@ import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { parseStudentFile, parseStudentText, downloadStudentSampleExcel } from '../../lib/excelParser';
 
-const DEFAULT_DEPARTMENTS: Department[] = [
-  { id: 'dept-ece', code: 'ECE', name: 'Electronics & Comm Eng' },
-  { id: 'dept-cse', code: 'CSE', name: 'Computer Science & Eng' },
-  { id: 'dept-aiml', code: 'AI-ML', name: 'Artificial Intelligence & ML' },
-  { id: 'dept-ise', code: 'ISE', name: 'Information Science' },
-  { id: 'dept-mech', code: 'MECH', name: 'Mechanical Eng' },
-  { id: 'dept-civil', code: 'CIVIL', name: 'Civil Eng' },
-];
-
 interface StudentImportViewProps {
   onBack?: () => void;
   onNavigate?: (tabId: string) => void;
@@ -45,7 +36,7 @@ interface StudentImportViewProps {
 
 export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) => {
   const [students, setStudents] = useState<(Student & { user: User })[]>([]);
-  const [departments, setDepartments] = useState<Department[]>(DEFAULT_DEPARTMENTS);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -62,7 +53,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) 
   const { showToast } = useAuth();
 
   // Cohort target for bulk upload
-  const [targetDept, setTargetDept] = useState('CSE');
+  const [targetDept, setTargetDept] = useState('');
   const [targetSem, setTargetSem] = useState(4);
   const [targetSec, setTargetSec] = useState('A');
 
@@ -75,7 +66,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) 
   const [singleStudent, setSingleStudent] = useState({
     usn: '',
     name: '',
-    department: 'CSE',
+    department: '',
     semester: 4,
     section: 'A',
     email: '',
@@ -86,7 +77,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) 
   const [editFormData, setEditFormData] = useState({
     usn: '',
     name: '',
-    department: 'CSE',
+    department: '',
     semester: 4,
     section: 'A',
     email: '',
@@ -108,12 +99,10 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) 
     try {
       const [stuRes, deptRes] = await Promise.all([
         api.getStudents(),
-        api.getDepartments().catch(() => ({ departments: DEFAULT_DEPARTMENTS })),
+        api.getDepartments().catch(() => ({ departments: [] })),
       ]);
       setStudents(stuRes.students);
-      if (deptRes.departments && deptRes.departments.length > 0) {
-        setDepartments(deptRes.departments);
-      }
+      setDepartments(deptRes.departments || []);
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
