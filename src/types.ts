@@ -237,6 +237,20 @@ export interface ExtractedTimetableRow {
   weeklyHours?: number;
 }
 
+export interface SubjectAllocationItem {
+  id?: string;
+  slNo?: number;
+  teacherCode: string;
+  teacherName: string;
+  subjectCode: string;
+  subjectName: string;
+  credits?: number;
+  departmentCode?: string;
+  semesterNumber?: number;
+  status?: 'valid' | 'warning' | 'invalid';
+  errorMessage?: string;
+}
+
 export interface TimetableUpload {
   id: string;
   uploadedFileRef: string;

@@ -391,6 +391,39 @@ export const api = {
       body: JSON.stringify({ confirmedRows }),
     }),
 
+  saveSubjectAllocationsBatch: (payload: {
+    rows: any[];
+    departmentCode: string;
+    semesterNumber: number;
+  }) =>
+    request<{
+      success: boolean;
+      savedCount: number;
+      createdSubjectsCount: number;
+      createdProfessorsCount: number;
+      createdAssignments: number;
+      totalSubjects: number;
+      totalTeachers: number;
+      totalAssignments: number;
+    }>('/api/admin/timetable/allocations/batch-save', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  autoAllocateDepartmentSubjects: (payload: {
+    departmentCode: string;
+    semesterNumber: number;
+  }) =>
+    request<{
+      success: boolean;
+      allocatedCount: number;
+      totalSubjects: number;
+      semesterId: string;
+    }>('/api/admin/timetable/auto-allocate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   // Admin: Semesters
   getSemesters: () => request<{ semesters: (Semester & { name: string; semesterNumber: number; startDate: string; endDate: string; subjectsCount: number; studentsCount: number; teacherAssignmentsCount: number })[] }>('/api/admin/semesters'),
 

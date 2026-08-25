@@ -71,6 +71,15 @@ export async function extractTimetableData(
   const targetSem = Number(defaultSemester) || 4;
   const targetDept = (defaultDepartment || 'CSE').toUpperCase().trim();
 
+  // Fast-Path: If text/CSV is structured with rows/commas/semicolons and no image is attached,
+  // parse immediately in <1ms without network latency or waiting for remote AI models.
+  if (!imageData && fileContent && fileContent.trim().length > 0) {
+    const fastParsed = fallbackDeterministicParser(fileContent, existingTeachers, targetSem, targetDept);
+    if (fastParsed && fastParsed.length > 0) {
+      return fastParsed;
+    }
+  }
+
   const ai = getAiClient();
   if (ai) {
     const teacherNames = existingTeachers
@@ -150,7 +159,8 @@ ${teacherNames || 'None currently registered'}
     parts.push({ text: fullTextPrompt });
 
     try {
-      const response = await ai.models.generateContent({
+      // Race against a 6-second timeout for ultra-fast responsiveness
+      const aiPromise = ai.models.generateContent({
         model: 'gemini-3.7-flash',
         contents: { parts },
         config: {
@@ -177,7 +187,13 @@ ${teacherNames || 'None currently registered'}
         },
       });
 
-      if (response.text) {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('AI generation timed out (6s)')), 6000)
+      );
+
+      const response: any = await Promise.race([aiPromise, timeoutPromise]);
+
+      if (response && response.text) {
         let cleanText = response.text.trim();
         if (cleanText.includes('```')) {
           const match = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -197,7 +213,7 @@ ${teacherNames || 'None currently registered'}
         }
       }
     } catch (err: any) {
-      console.warn(`Gemini extraction failed (${err.message || err}), using fallback timetable parser...`);
+      console.warn(`Fast fallback timetable parser triggered (${err.message || err})`);
     }
   }
 
