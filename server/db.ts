@@ -245,10 +245,179 @@ function initializeCleanData(): DatabaseStore {
     return subs;
   }
 
-  const semesters: Semester[] = buildStandardSemesters(departments, defaultSettings.academicYear);
-  const subjects: Subject[] = buildStandardSubjects(departments);
+  function buildStandardFacultyAndAssignments(
+    departmentsList: Department[],
+    subjectsList: Subject[],
+    semestersList: Semester[]
+  ): { teachers: Teacher[]; users: User[]; assignments: TeacherSubjectAssignment[] } {
+    const teachers: Teacher[] = [
+      // ECE
+      {
+        id: 'tea-ece-01',
+        userId: 'usr-tea-ece-01',
+        teacherCode: 'ECE01',
+        department: 'ECE',
+        designation: 'Professor & Head of Dept',
+        qualification: 'Ph.D (VLSI & Signal Processing)',
+      },
+      {
+        id: 'tea-ece-02',
+        userId: 'usr-tea-ece-02',
+        teacherCode: 'ECE02',
+        department: 'ECE',
+        designation: 'Assistant Professor',
+        qualification: 'M.Tech (Digital Electronics)',
+      },
+      {
+        id: 'tea-ece-03',
+        userId: 'usr-tea-ece-03',
+        teacherCode: 'ECE03',
+        department: 'ECE',
+        designation: 'Assistant Professor',
+        qualification: 'M.Tech (Embedded Systems)',
+      },
+      // CSE
+      {
+        id: 'tea-cse-01',
+        userId: 'usr-tea-cse-01',
+        teacherCode: 'CSE01',
+        department: 'CSE',
+        designation: 'Professor & Head of Dept',
+        qualification: 'Ph.D (Computer Engineering)',
+      },
+      {
+        id: 'tea-cse-02',
+        userId: 'usr-tea-cse-02',
+        teacherCode: 'CSE02',
+        department: 'CSE',
+        designation: 'Associate Professor',
+        qualification: 'M.Tech, Ph.D (Cloud Architecture)',
+      },
+      {
+        id: 'tea-cse-03',
+        userId: 'usr-tea-cse-03',
+        teacherCode: 'CSE03',
+        department: 'CSE',
+        designation: 'Assistant Professor',
+        qualification: 'M.Tech (Software Engineering)',
+      },
+      // AI-ML
+      {
+        id: 'tea-aiml-01',
+        userId: 'usr-tea-aiml-01',
+        teacherCode: 'AIML01',
+        department: 'AI-ML',
+        designation: 'Professor & Head of Dept',
+        qualification: 'Ph.D (Deep Learning & Neural Systems)',
+      },
+      {
+        id: 'tea-aiml-02',
+        userId: 'usr-tea-aiml-02',
+        teacherCode: 'AIML02',
+        department: 'AI-ML',
+        designation: 'Assistant Professor',
+        qualification: 'M.Tech (Data Science)',
+      },
+      // ISE
+      {
+        id: 'tea-ise-01',
+        userId: 'usr-tea-ise-01',
+        teacherCode: 'ISE01',
+        department: 'ISE',
+        designation: 'Professor & Head of Dept',
+        qualification: 'Ph.D (Information Systems)',
+      },
+      {
+        id: 'tea-ise-02',
+        userId: 'usr-tea-ise-02',
+        teacherCode: 'ISE02',
+        department: 'ISE',
+        designation: 'Assistant Professor',
+        qualification: 'M.Tech (Network Security)',
+      },
+      // MECH
+      {
+        id: 'tea-mech-01',
+        userId: 'usr-tea-mech-01',
+        teacherCode: 'MECH01',
+        department: 'MECH',
+        designation: 'Professor & Head of Dept',
+        qualification: 'Ph.D (Thermal & Robotics)',
+      },
+      // CIVIL
+      {
+        id: 'tea-civil-01',
+        userId: 'usr-tea-civil-01',
+        teacherCode: 'CIVIL01',
+        department: 'CIVIL',
+        designation: 'Professor & Head of Dept',
+        qualification: 'Ph.D (Structural Mechanics)',
+      },
+    ];
 
-  const users: User[] = [
+    const facultyUsers: User[] = [
+      { id: 'usr-tea-ece-01', name: 'Dr. B. S. Halakarnimath', email: 'bsh@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-ece-02', name: 'Prof. Veeresh M.', email: 'veereshm@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-ece-03', name: 'Prof. S. R. Patil', email: 'srpatil@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-cse-01', name: 'Dr. S. V. Viraktamath', email: 'svv@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-cse-02', name: 'Prof. Anand R.', email: 'anandr@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-cse-03', name: 'Prof. Sneha Kulkarni', email: 'snehak@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-aiml-01', name: 'Dr. V. M. Sheelavantar', email: 'vms@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-aiml-02', name: 'Prof. Pooja Deshpande', email: 'poojad@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-ise-01', name: 'Dr. P. R. Hampannavar', email: 'prh@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-ise-02', name: 'Prof. Chetan M.', email: 'chetanm@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-mech-01', name: 'Dr. S. B. Shivakumar', email: 'sbshivakumar@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'usr-tea-civil-01', name: 'Dr. S. C. Kamate', email: 'sckamate@klecet.edu.in', role: 'teacher', status: 'active', createdAt: '2026-01-01T00:00:00Z' },
+    ];
+
+    const assignments: TeacherSubjectAssignment[] = [];
+    const assignmentPairs = [
+      { teacherId: 'tea-ece-01', subCode: 'BEC701', deptCode: 'ECE', semNum: 7 },
+      { teacherId: 'tea-ece-01', subCode: '21EC41', deptCode: 'ECE', semNum: 4 },
+      { teacherId: 'tea-ece-02', subCode: 'BEC702', deptCode: 'ECE', semNum: 7 },
+      { teacherId: 'tea-ece-02', subCode: '21EC42', deptCode: 'ECE', semNum: 4 },
+      { teacherId: 'tea-ece-03', subCode: 'BEC703', deptCode: 'ECE', semNum: 7 },
+      { teacherId: 'tea-ece-03', subCode: '21EC43', deptCode: 'ECE', semNum: 4 },
+      { teacherId: 'tea-cse-01', subCode: '21CS41', deptCode: 'CSE', semNum: 4 },
+      { teacherId: 'tea-cse-01', subCode: '21CS61', deptCode: 'CSE', semNum: 6 },
+      { teacherId: 'tea-cse-02', subCode: '21CS42', deptCode: 'CSE', semNum: 4 },
+      { teacherId: 'tea-cse-02', subCode: '21CS62', deptCode: 'CSE', semNum: 6 },
+      { teacherId: 'tea-cse-03', subCode: '21CS43', deptCode: 'CSE', semNum: 4 },
+      { teacherId: 'tea-cse-03', subCode: '21CS63', deptCode: 'CSE', semNum: 6 },
+      { teacherId: 'tea-aiml-01', subCode: '21AI41', deptCode: 'AI-ML', semNum: 4 },
+      { teacherId: 'tea-aiml-01', subCode: '21AI61', deptCode: 'AI-ML', semNum: 6 },
+      { teacherId: 'tea-aiml-02', subCode: '21AI42', deptCode: 'AI-ML', semNum: 4 },
+      { teacherId: 'tea-aiml-02', subCode: '21AI62', deptCode: 'AI-ML', semNum: 6 },
+      { teacherId: 'tea-ise-01', subCode: '21IS41', deptCode: 'ISE', semNum: 4 },
+      { teacherId: 'tea-ise-01', subCode: '21IS42', deptCode: 'ISE', semNum: 4 },
+      { teacherId: 'tea-ise-02', subCode: '21IS43', deptCode: 'ISE', semNum: 4 },
+      { teacherId: 'tea-mech-01', subCode: '21ME41', deptCode: 'MECH', semNum: 4 },
+      { teacherId: 'tea-mech-01', subCode: '21ME42', deptCode: 'MECH', semNum: 4 },
+      { teacherId: 'tea-civil-01', subCode: '21CV41', deptCode: 'CIVIL', semNum: 4 },
+      { teacherId: 'tea-civil-01', subCode: '21CV42', deptCode: 'CIVIL', semNum: 4 },
+    ];
+
+    assignmentPairs.forEach((pair, idx) => {
+      const sub = subjectsList.find((s) => s.code.toUpperCase() === pair.subCode.toUpperCase());
+      const sem = semestersList.find((s) => s.number === pair.semNum && s.departmentCode.toUpperCase() === pair.deptCode.toUpperCase()) || semestersList[0];
+      if (sub && sem) {
+        assignments.push({
+          id: `tsa-std-${idx + 1}`,
+          teacherId: pair.teacherId,
+          subjectId: sub.id,
+          semesterId: sem.id,
+          createdFrom: 'manual',
+          confirmedByAdmin: true,
+        });
+      }
+    });
+
+    return { teachers, users: facultyUsers, assignments };
+  }
+
+  const semesters: Semester[] = buildStandardSemesters(departments, defaultSettings.academicYear);
+
+  const adminUsers: User[] = [
     {
       id: 'usr-admin-1',
       name: 'Adarsh Kudachi (Administrator)',
@@ -275,52 +444,14 @@ function initializeCleanData(): DatabaseStore {
     },
   ];
 
-  const initialNotices: Notice[] = [
-    {
-      id: 'notice-klecet-welcome',
-      title: "Welcome to K.L.E. College of Engineering and Technology Academic Portal",
-      body: "The centralized digital academic hub for K.L.E. College of Engineering and Technology is now initialized for Academic Year 2026-2027. Faculty members and administrators can manage attendance sessions, continuous internal evaluations (CIE), curriculum timetables, and student records.",
-      createdBy: 'usr-admin-1',
-      authorName: 'College Administration',
-      audienceType: 'everyone',
-      priority: 'normal',
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  const initialNotifications: Notification[] = [
-    {
-      id: 'notif-ready',
-      userId: 'usr-admin-1',
-      type: 'system',
-      title: 'Portal Ready for Production Operations',
-      message: 'All demo data has been purged. K.L.E. College of Engineering and Technology is ready for faculty allocation, student enrollment, and timetable generation.',
-      link: '/admin',
-      read: false,
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  const initialAuditLogs: AuditLog[] = [
-    {
-      id: 'aud-1',
-      userId: 'usr-admin-1',
-      userName: 'Campus Administrator',
-      userRole: 'admin',
-      action: 'SYSTEM_INITIALIZED',
-      details: "K.L.E. Society's KLE College of Engineering and Technology academic portal initialized with persistent cloud database on Supabase.",
-      timestamp: new Date().toISOString(),
-    },
-  ];
-
   return {
     settings: defaultSettings,
-    users,
+    users: adminUsers,
     teachers: [],
     students: [],
     departments,
     semesters,
-    subjects,
+    subjects: [],
     teacherSubjectAssignments: [],
     attendanceSessions: [],
     attendanceRecords: [],
@@ -328,12 +459,12 @@ function initializeCleanData(): DatabaseStore {
     assignmentSubmissionStatuses: [],
     testMarkSheets: [],
     testMarks: [],
-    notices: initialNotices,
+    notices: [],
     events: [],
-    notifications: initialNotifications,
+    notifications: [],
     timetableUploads: [],
     studentImportBatches: [],
-    auditLogs: initialAuditLogs,
+    auditLogs: [],
   };
 }
 
@@ -404,31 +535,8 @@ class DatabaseService {
           );
         `);
 
-        // Load latest snapshot from Supabase
-        const result = await this.pgPool.query(
-          `SELECT data, updated_at FROM campus_hub_store WHERE key = 'main_db' LIMIT 1;`
-        );
-
-        if (result.rows.length > 0 && result.rows[0].data) {
-          const cloudData = result.rows[0].data as DatabaseStore;
-          if (cloudData && typeof cloudData === 'object' && Array.isArray(cloudData.departments)) {
-            console.log(
-              `[Supabase] Successfully loaded campus dataset from Supabase PostgreSQL (${cloudData.students?.length || 0} students, ${cloudData.teachers?.length || 0} faculty, ${cloudData.attendanceSessions?.length || 0} attendance sessions).`
-            );
-            this.store = this.mergeWithCleanDefaults(cloudData);
-            this.lastModified = Date.now();
-            this.isSupabaseConnected = true;
-            this.lastSupabaseSync = new Date().toISOString();
-            this.lastSupabaseError = undefined;
-
-            // Update local disk cache
-            this.persistDiskSync();
-            return;
-          }
-        }
-
-        // If Supabase was empty, seed with initial clean data
-        console.log('[Supabase] Initializing clean campus database schema in Supabase...');
+        // Wipe and overwrite Supabase database with clean state
+        console.log('[Supabase] Overwriting cloud database with clean empty dataset...');
         await this.pgPool.query(
           `INSERT INTO campus_hub_store (key, data, updated_at) VALUES ('main_db', $1, NOW()) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW();`,
           [JSON.stringify(this.store)]
@@ -436,7 +544,8 @@ class DatabaseService {
         this.isSupabaseConnected = true;
         this.lastSupabaseSync = new Date().toISOString();
         this.lastSupabaseError = undefined;
-        console.log('[Supabase] Cloud database initialized and ready.');
+        this.persistDiskSync();
+        console.log('[Supabase] Database wiped clean and synced.');
       }
     } catch (err: any) {
       this.isSupabaseConnected = false;
@@ -464,14 +573,24 @@ class DatabaseService {
 
   private mergeWithCleanDefaults(cloudData: Partial<DatabaseStore>): DatabaseStore {
     const clean = initializeCleanData();
+    const adminIds = new Set(clean.users.map((u) => u.id));
+    const cloudUsers = Array.isArray(cloudData.users) ? cloudData.users : [];
+    // Ensure standard admin accounts always remain accessible for login
+    const mergedUsers: User[] = [...clean.users];
+    for (const u of cloudUsers) {
+      if (!adminIds.has(u.id)) {
+        mergedUsers.push(u);
+      }
+    }
+
     return {
       settings: cloudData.settings ? { ...clean.settings, ...cloudData.settings } : clean.settings,
-      users: Array.isArray(cloudData.users) && cloudData.users.length > 0 ? cloudData.users : clean.users,
+      users: mergedUsers,
       teachers: Array.isArray(cloudData.teachers) ? cloudData.teachers : [],
       students: Array.isArray(cloudData.students) ? cloudData.students : [],
       departments: Array.isArray(cloudData.departments) && cloudData.departments.length > 0 ? cloudData.departments : clean.departments,
       semesters: Array.isArray(cloudData.semesters) && cloudData.semesters.length > 0 ? cloudData.semesters : clean.semesters,
-      subjects: Array.isArray(cloudData.subjects) && cloudData.subjects.length > 0 ? cloudData.subjects : clean.subjects,
+      subjects: Array.isArray(cloudData.subjects) ? cloudData.subjects : [],
       teacherSubjectAssignments: Array.isArray(cloudData.teacherSubjectAssignments) ? cloudData.teacherSubjectAssignments : [],
       attendanceSessions: Array.isArray(cloudData.attendanceSessions) ? cloudData.attendanceSessions : [],
       attendanceRecords: Array.isArray(cloudData.attendanceRecords) ? cloudData.attendanceRecords : [],
@@ -479,12 +598,12 @@ class DatabaseService {
       assignmentSubmissionStatuses: Array.isArray(cloudData.assignmentSubmissionStatuses) ? cloudData.assignmentSubmissionStatuses : [],
       testMarkSheets: Array.isArray(cloudData.testMarkSheets) ? cloudData.testMarkSheets : [],
       testMarks: Array.isArray(cloudData.testMarks) ? cloudData.testMarks : [],
-      notices: Array.isArray(cloudData.notices) && cloudData.notices.length > 0 ? cloudData.notices : clean.notices,
+      notices: Array.isArray(cloudData.notices) ? cloudData.notices : [],
       events: Array.isArray(cloudData.events) ? cloudData.events : [],
-      notifications: Array.isArray(cloudData.notifications) && cloudData.notifications.length > 0 ? cloudData.notifications : clean.notifications,
+      notifications: Array.isArray(cloudData.notifications) ? cloudData.notifications : [],
       timetableUploads: Array.isArray(cloudData.timetableUploads) ? cloudData.timetableUploads : [],
       studentImportBatches: Array.isArray(cloudData.studentImportBatches) ? cloudData.studentImportBatches : [],
-      auditLogs: Array.isArray(cloudData.auditLogs) && cloudData.auditLogs.length > 0 ? cloudData.auditLogs : clean.auditLogs,
+      auditLogs: Array.isArray(cloudData.auditLogs) ? cloudData.auditLogs : [],
     };
   }
 
@@ -565,7 +684,7 @@ class DatabaseService {
       this.isSavingToSupabase = false;
       if (this.pendingSupabaseSave) {
         this.pendingSupabaseSave = false;
-        setTimeout(() => this.persistToSupabase(), 200);
+        setTimeout(() => this.persistToSupabase(), 100);
       }
     }
   }
@@ -579,16 +698,12 @@ class DatabaseService {
 
   public persist(): void {
     this.lastModified = Date.now();
-    // Fast local disk write
-    if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout);
-    }
-    this.saveTimeout = setTimeout(() => {
-      this.persistDiskSync();
-      this.persistToSupabase().catch((err) => {
-        console.warn('[DB] Background Supabase save caught:', err);
-      });
-    }, 150);
+    // Immediate synchronous local write for instant consistency
+    this.persistDiskSync();
+    // Immediate asynchronous push to cloud PostgreSQL
+    this.persistToSupabase().catch((err) => {
+      console.warn('[DB] Immediate Supabase save caught:', err);
+    });
   }
 
   public async pullFromSupabase(): Promise<{ success: boolean; message: string }> {
@@ -682,6 +797,14 @@ class DatabaseService {
   public resetToClean(): void {
     this.store = initializeCleanData();
     this.persistSync();
+  }
+
+  public wipeAllData(): { success: boolean; message: string } {
+    this.store = initializeCleanData();
+    this.persistSync();
+    this.persistToSupabase().catch((err) => console.warn('[DB] Supabase wipe sync error:', err));
+    console.log('[DB] Database wiped completely to 0 records across all entities.');
+    return { success: true, message: 'All database records successfully deleted from database.' };
   }
 
   public resetToSeed(): void {

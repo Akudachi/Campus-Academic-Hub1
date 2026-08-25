@@ -219,6 +219,25 @@ class LocalStorageService {
   }
 
   /**
+   * Clear locally persisted full database snapshot and cache
+   */
+  public clearDatabaseSnapshot(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.removeItem('cah_full_database_snapshot_v2');
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(CACHE_PREFIX) || key.startsWith('cah_')) {
+          if (key !== 'cah_token' && key !== 'cah_user_id') {
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[LocalStorageService] Failed to clear DB snapshot:', e);
+    }
+  }
+
+  /**
    * Format human-friendly time elapsed since cache
    */
   public formatTimeAgo(timestamp: number): string {

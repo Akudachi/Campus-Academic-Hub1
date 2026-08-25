@@ -1120,6 +1120,7 @@ app.post('/api/admin/teachers', requireRole('admin'), (req: AuthenticatedRequest
   }
 
   db.logAudit(req.user!.id, req.user!.name, 'admin', 'TEACHER_CREATED', `Created teacher ${name} (${teacherCode})`);
+  db.persist();
 
   res.status(201).json({ teacher: { ...newTeacher, user: newUser } });
 });
@@ -1161,6 +1162,7 @@ app.put('/api/admin/teachers/:id', requireRole('admin'), (req: AuthenticatedRequ
     'TEACHER_UPDATED',
     `Updated faculty ${teacher.teacherCode} (${user?.name || ''})`
   );
+  db.persist();
 
   res.json({ success: true, teacher: { ...teacher, user } });
 });
@@ -1193,6 +1195,7 @@ app.delete('/api/admin/teachers/:id', requireRole('admin'), (req: AuthenticatedR
     'TEACHER_DELETED',
     `Deleted faculty ${teacher.teacherCode}`
   );
+  db.persist();
 
   res.json({ success: true, message: `Faculty ${teacher.teacherCode} deleted successfully.` });
 });
@@ -1236,6 +1239,7 @@ app.post('/api/admin/subjects', requireRole('admin'), (req: AuthenticatedRequest
 
   store.subjects.push(newSubject);
   db.logAudit(req.user!.id, req.user!.name, 'admin', 'SUBJECT_CREATED', `Created subject ${newSubject.name} (${newSubject.code})`);
+  db.persist();
 
   res.status(201).json({ success: true, subject: newSubject });
 });
@@ -1265,6 +1269,7 @@ app.put('/api/admin/subjects/:id', requireRole('admin'), (req: AuthenticatedRequ
   if (credits !== undefined) sub.credits = Number(credits);
 
   db.logAudit(req.user!.id, req.user!.name, 'admin', 'SUBJECT_UPDATED', `Updated subject ${sub.code} (${sub.name})`);
+  db.persist();
 
   res.json({ success: true, subject: sub });
 });
@@ -1282,6 +1287,7 @@ app.delete('/api/admin/subjects/:id', requireRole('admin'), (req: AuthenticatedR
   store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter((a) => a.subjectId !== id);
 
   db.logAudit(req.user!.id, req.user!.name, 'admin', 'SUBJECT_DELETED', `Deleted subject ${removed.code} (${removed.name})`);
+  db.persist();
 
   res.json({ success: true, message: `Subject ${removed.code} deleted successfully.` });
 });
@@ -1429,6 +1435,7 @@ app.post('/api/admin/teachers/auto-assign', requireRole('admin'), (req: Authenti
     'TEACHER_SUBJECTS_AUTO_ASSIGNED',
     `Auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -1463,6 +1470,7 @@ app.post('/api/admin/teachers/:id/assign-subject', requireRole('admin'), (req: A
 
   if (existingAssignment) {
     existingAssignment.confirmedByAdmin = true;
+    db.persist();
     return res.json({ success: true, assignment: existingAssignment, message: 'Subject assignment already active.' });
   }
 
@@ -1484,6 +1492,7 @@ app.post('/api/admin/teachers/:id/assign-subject', requireRole('admin'), (req: A
     'TEACHER_SUBJECT_ASSIGNED',
     `Assigned subject ${subject.code} (${subject.name}) to teacher ${teacher.teacherCode}`
   );
+  db.persist();
 
   res.status(201).json({ success: true, assignment: newAssignment });
 });
@@ -1503,6 +1512,7 @@ app.delete('/api/admin/teachers/:id/assign-subject/:subjectId', requireRole('adm
     'TEACHER_SUBJECT_UNASSIGNED',
     `Unassigned subject ${subjectId} from teacher ${id}`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -1861,6 +1871,7 @@ app.post('/api/admin/teachers/import/commit', requireRole('admin'), (req: Authen
     'TEACHERS_IMPORT_COMMITTED',
     `Committed teacher roster: ${insertedCount} added, ${updatedCount} updated (codes synced from CSV), ${autoAssignedCount} subjects assigned`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -1987,6 +1998,7 @@ app.post('/api/admin/teachers/bulk', requireRole('admin'), (req: AuthenticatedRe
     'TEACHERS_BULK_IMPORT',
     `Bulk processed teachers: ${createdCount} created, ${updatedCount} updated`
   );
+  db.persist();
 
   res.json({
     createdCount,
@@ -2193,6 +2205,7 @@ app.post('/api/admin/students/import/commit', requireRole('admin'), (req: Authen
     'STUDENT_IMPORT_COMMITTED',
     `Processed student import: ${insertedCount} inserted, ${updatedCount} updated`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -2275,6 +2288,7 @@ app.post('/api/admin/students', requireRole('admin'), (req: AuthenticatedRequest
     'STUDENT_CREATED',
     `Enrolled student ${cleanName} (${cleanUsn}) in Sem ${numSemester} ${cleanDept}`
   );
+  db.persist();
 
   res.status(201).json({
     success: true,
@@ -2311,6 +2325,7 @@ app.put('/api/admin/students/:id', requireRole('admin'), (req: AuthenticatedRequ
     'STUDENT_UPDATED',
     `Updated student record ${student.usn} (${user?.name})`
   );
+  db.persist();
 
   res.json({ success: true, student: { ...student, user } });
 });
@@ -2335,6 +2350,7 @@ app.delete('/api/admin/students/:id', requireRole('admin'), (req: AuthenticatedR
     'STUDENT_DELETED',
     `Deleted student record ${removed.usn}`
   );
+  db.persist();
 
   res.json({ success: true, message: `Student ${removed.usn} deleted successfully.` });
 });
@@ -2591,6 +2607,7 @@ app.post('/api/admin/timetable/:id/confirm', requireRole('admin'), (req: Authent
     'TIMETABLE_CONFIRMED',
     `Confirmed timetable: Provisioned ${createdSubjectsCount} subjects, registered ${createdProfessorsCount} professors, linked ${createdAssignments} faculty-subject assignments.`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -2668,6 +2685,7 @@ app.post('/api/admin/semesters', requireRole('admin'), (req: AuthenticatedReques
     'SEMESTER_CREATED',
     `Created Semester ${numSemester} ${cleanDept} Sec ${cleanSec} (${initStatus})`
   );
+  db.persist();
 
   res.status(201).json({ success: true, semester: newSemester });
 });
@@ -2689,6 +2707,7 @@ app.delete('/api/admin/semesters/:id', requireRole('admin'), (req: Authenticated
     'SEMESTER_DELETED',
     `Removed semester cycle ${removed.number} ${removed.departmentCode}`
   );
+  db.persist();
   res.json({ success: true, message: 'Semester cycle removed successfully.' });
 });
 
@@ -2758,6 +2777,7 @@ app.post('/api/admin/semesters/activate', requireRole('admin'), (req: Authentica
     'SEMESTER_ACTIVATED',
     `Activated Semester ${semester.number} ${semester.departmentCode} (Sec ${semester.section})`
   );
+  db.persist();
 
   res.json({ success: true, semester });
 });
@@ -2803,6 +2823,7 @@ app.post('/api/admin/semesters/:id/complete', requireRole('admin'), (req: Authen
       'SEMESTER_8_GRADUATION_DELETED',
       `Completed Semester 8 (${semester.departmentCode || 'All Branches'}). Permanently deleted ${graduatedStudentsCount} graduating students and revoked their login access.`
     );
+    db.persist();
 
     return res.json({
       success: true,
@@ -2828,6 +2849,7 @@ app.post('/api/admin/semesters/:id/complete', requireRole('admin'), (req: Authen
     'SEMESTER_ARCHIVED',
     `Completed and archived Semester ${semester.number} ${semester.departmentCode}`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -2994,6 +3016,7 @@ app.post('/api/admin/semesters/:id/complete-and-promote', requireRole('admin'), 
     'SEMESTER_COMPLETED_AND_PROMOTED',
     `Archived Sem ${currentSemester.number} ${currentSemester.departmentCode}, removed teacher subject allocations, promoted ${promotedCount} students to Sem ${nextSemNum}, and refreshed their academic data.`
   );
+  db.persist();
 
   res.json({
     success: true,
@@ -3153,6 +3176,19 @@ app.delete('/api/admin/events/:id', requireRole('admin'), (req: AuthenticatedReq
     message: `Event "${removedEvent.title}" deleted successfully.`,
     deletedEvent: removedEvent,
   });
+});
+
+// Admin: Wipe everything from database for once
+app.post('/api/admin/wipe-database', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+  const result = db.wipeAllData();
+  db.logAudit(
+    req.user!.id,
+    req.user!.name,
+    'admin',
+    'DATABASE_WIPED',
+    'Purged all records from the database across faculty, students, subjects, attendance, marks, assignments, notices, and events.'
+  );
+  res.json(result);
 });
 
 // 2.6 Admin Reports (Attendance, Assignments, Marks with CSV export)

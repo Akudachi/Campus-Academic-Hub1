@@ -715,10 +715,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  resetDatabase: () =>
-    request<{ success: boolean; message: string }>('/api/admin/reset', {
+  resetDatabase: async () => {
+    storageService.clearDatabaseSnapshot();
+    return request<{ success: boolean; message: string }>('/api/admin/reset', {
       method: 'POST',
-    }),
+    });
+  },
+  wipeDatabase: async () => {
+    storageService.clearDatabaseSnapshot();
+    return request<{ success: boolean; message: string }>('/api/admin/wipe-database', {
+      method: 'POST',
+    });
+  },
   // Supabase Cloud Persistence & Status
   getSupabaseStatus: () =>
     request<{ success: boolean; status: SupabaseStatusInfo }>('/api/admin/supabase/status'),
