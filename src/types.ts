@@ -401,6 +401,7 @@ export interface SupabaseStatusInfo {
     notices: number;
   };
   error?: string;
+  diagnostic?: string;
 }
 
 export interface SystemStatusInfo {

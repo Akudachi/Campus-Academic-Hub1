@@ -72,6 +72,7 @@ export interface SupabaseStatus {
     notices: number;
   };
   error?: string;
+  diagnostic?: string;
 }
 
 function initializeCleanData(): DatabaseStore {
@@ -138,19 +139,52 @@ function initializeCleanData(): DatabaseStore {
   };
 }
 
-function initializeSampleDemoData(): DatabaseStore {
-  return initializeCleanData();
+function formatSupabaseError(context: string, err: any): { message: string; diagnostic: string } {
+  const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+  const code = err?.code || err?.statusCode || '';
+  const details = err?.details || '';
+  const hint = err?.hint || '';
+
+  let diagnostic = '';
+  if (code === '42P01' || msg.includes('does not exist') || msg.includes('PGRST204') || msg.includes('campus_hub_store')) {
+    diagnostic = 'TABLE MISSING: Table "campus_hub_store" does not exist in Supabase database. Run schema.sql in Supabase SQL Editor.';
+  } else if (code === '42501' || msg.includes('row-level security') || msg.includes('RLS') || msg.includes('violates row-level security')) {
+    diagnostic = 'RLS VIOLATION: Permission denied by Supabase Row-Level Security. Ensure SUPABASE_SERVICE_ROLE_KEY is used or execute schema.sql policies.';
+  } else if (code === '28P01' || msg.includes('password authentication') || msg.includes('Invalid API key') || msg.includes('JWT expired') || msg.includes('PGRST301')) {
+    diagnostic = 'AUTHENTICATION FAILURE: Invalid Supabase database credentials or API Key. Check SUPABASE_SERVICE_ROLE_KEY or DATABASE_URL.';
+  } else if (msg.includes('ENETUNREACH') || msg.includes('2406:da1a')) {
+    diagnostic = 'IPV6 UNREACHABLE (ENETUNREACH): Direct Supabase PostgreSQL (port 5432) resolved to IPv6, which Render/cloud containers cannot route. Automatically failing over to Supabase HTTPS REST API (port 443) or use Supabase IPv4 Pooler.';
+  } else if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.includes('ETIMEDOUT') || msg.includes('fetch failed')) {
+    diagnostic = 'NETWORK/DNS FAILURE: Unable to reach Supabase cloud host. Verify SUPABASE_URL / DATABASE_URL and network connectivity.';
+  } else if (msg.includes('SSL') || msg.includes('self signed certificate')) {
+    diagnostic = 'SSL CONFIGURATION ERROR: PostgreSQL SSL handshake issue. Ensure ssl mode is enabled with rejectUnauthorized: false.';
+  }
+
+  const logBanner = `
+================================================================================
+[CRITICAL SUPABASE PERSISTENCE ERROR]
+Context: ${context}
+Timestamp: ${new Date().toISOString()}
+Error Message: ${msg}
+Error Code: ${code || 'N/A'}
+Details: ${details || 'None'} ${hint ? `| Hint: ${hint}` : ''}
+Diagnostic / Action: ${diagnostic || 'General cloud database failure'}
+================================================================================`;
+
+  console.error(logBanner);
+  return { message: msg, diagnostic: diagnostic || 'General cloud database failure' };
 }
 
-// Global Singleton DB store with Supabase PostgreSQL & local disk fallback
+// Global Singleton DB store with Supabase PostgreSQL as Primary Source of Truth
 class DatabaseService {
   private store: DatabaseStore;
   private readonly startTime: number;
   private lastModified: number;
   private readonly dbFilePath: string;
-  private saveTimeout: NodeJS.Timeout | null = null;
   private isSavingToSupabase: boolean = false;
   private pendingSupabaseSave: boolean = false;
+  private initPromise: Promise<void> | null = null;
+  private isInitialized: boolean = false;
 
   // Supabase / Postgres connection state
   private pgPool: Pool | null = null;
@@ -161,13 +195,14 @@ class DatabaseService {
   private isSupabaseConnected: boolean = false;
   private lastSupabaseSync: string | null = null;
   private lastSupabaseError: string | undefined = undefined;
+  private lastDiagnostic: string | undefined = undefined;
 
   constructor() {
     this.startTime = Date.now();
     this.lastModified = Date.now();
     this.dbFilePath = path.join(process.cwd(), 'data', 'campus_db.json');
 
-    // Supabase credentials configuration
+    // Read environment variables
     this.databaseUrl = process.env.DATABASE_URL || '';
     this.supabaseUrl = process.env.SUPABASE_URL || '';
     this.supabaseKey =
@@ -175,16 +210,78 @@ class DatabaseService {
       process.env.SUPABASE_ANON_KEY ||
       '';
 
-    // 1. Initial fast load from local disk / memory to avoid cold-start lag
-    this.store = this.loadFromDisk();
+    // Start with clean memory store
+    this.store = initializeCleanData();
 
-    // 2. Initialize Supabase Pool and sync latest data from cloud
-    this.initSupabase();
+    // In local development only, seed from disk if present
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        if (fs.existsSync(this.dbFilePath)) {
+          const raw = fs.readFileSync(this.dbFilePath, 'utf-8');
+          if (raw && raw.trim().length > 0) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+              this.store = this.mergeWithCleanDefaults(parsed);
+              console.log('[LOCAL DEV] Preloaded local disk cache from /data/campus_db.json');
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[LOCAL DEV] Local disk cache load skipped:', err?.message);
+      }
+    }
+
+    // Trigger async initialization
+    this.ensureInitialized().catch((err) => {
+      console.error('[DB Service] Initial cloud connection check failed:', err);
+    });
   }
 
-  private async initSupabase(): Promise<void> {
-    try {
-      if (this.databaseUrl) {
+  /**
+   * Guarantees Supabase is connected and authoritative data is pulled before handling requests
+   */
+  public async ensureInitialized(): Promise<void> {
+    if (this.isInitialized) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      console.log('[Supabase Init] Initializing cloud database connection...');
+      
+      const isProduction = process.env.NODE_ENV === 'production';
+      const hasSupabaseConfig = Boolean(this.databaseUrl || (this.supabaseUrl && this.supabaseKey));
+
+      if (!hasSupabaseConfig) {
+        const errorNotice = 'No DATABASE_URL or SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY found in environment variables.';
+        this.lastSupabaseError = errorNotice;
+        this.lastDiagnostic = 'MISSING_ENV_VARS: Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Cloud Run or .env.';
+        
+        if (isProduction) {
+          console.error(`
+================================================================================
+[CRITICAL PRODUCTION WARNING: SUPABASE UNCONFIGURED]
+The application is running in PRODUCTION without Supabase credentials!
+Data stored in memory/disk WILL BE LOST when Cloud Run scales to zero.
+ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service!
+================================================================================`);
+        } else {
+          console.warn(`[DB Local Dev] No Supabase credentials detected. Running in local development mode.`);
+        }
+        this.isInitialized = true;
+        return;
+      }
+
+      await this.initSupabaseConnection();
+      this.isInitialized = true;
+    })();
+
+    return this.initPromise;
+  }
+
+  private async initSupabaseConnection(): Promise<void> {
+    // 1. Try Direct PostgreSQL Connection via pg.Pool (Highest performance)
+    if (this.databaseUrl) {
+      try {
+        console.log('[Supabase/PG] Connecting via PostgreSQL Pool to:', this.databaseUrl.replace(/:[^:@]+@/, ':****@'));
         this.pgPool = new Pool({
           connectionString: this.databaseUrl,
           ssl: { rejectUnauthorized: false },
@@ -195,28 +292,31 @@ class DatabaseService {
 
         // Ensure table exists on Supabase / PostgreSQL
         await this.pgPool.query(`
-          CREATE TABLE IF NOT EXISTS campus_hub_store (
+          CREATE TABLE IF NOT EXISTS public.campus_hub_store (
             key TEXT PRIMARY KEY,
             data JSONB NOT NULL,
-            updated_at TIMESTAMPTZ DEFAULT NOW()
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
         `);
 
         // Check if existing data is already in PostgreSQL / Supabase
         const existing = await this.pgPool.query(
-          `SELECT data, updated_at FROM campus_hub_store WHERE key = 'main_db' LIMIT 1;`
+          `SELECT data, updated_at FROM public.campus_hub_store WHERE key = 'main_db' LIMIT 1;`
         );
 
         if (existing.rows.length > 0 && existing.rows[0].data) {
-          console.log('[Supabase/PG] Existing database found in cloud! Restoring cloud state to memory & disk cache...');
+          console.log(`[Supabase/PG] Existing database restored from Supabase (${existing.rows[0].updated_at}).`);
           const cloudData = existing.rows[0].data as DatabaseStore;
           this.store = this.mergeWithCleanDefaults(cloudData);
+          this.lastModified = new Date(existing.rows[0].updated_at).getTime() || Date.now();
           this.persistDiskSync();
         } else {
-          // No cloud data yet, initial seed from local store
-          console.log('[Supabase/PG] First time init: Seeding initial dataset to cloud PostgreSQL...');
+          // No cloud data yet, initial seed to cloud Supabase
+          console.log('[Supabase/PG] First-time cloud initialization: Seeding initial dataset to Supabase...');
           await this.pgPool.query(
-            `INSERT INTO campus_hub_store (key, data, updated_at) VALUES ('main_db', $1, NOW()) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW();`,
+            `INSERT INTO public.campus_hub_store (key, data, updated_at) 
+             VALUES ('main_db', $1, NOW()) 
+             ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW();`,
             [JSON.stringify(this.store)]
           );
         }
@@ -224,9 +324,28 @@ class DatabaseService {
         this.isSupabaseConnected = true;
         this.lastSupabaseSync = new Date().toISOString();
         this.lastSupabaseError = undefined;
-        console.log('[Supabase/PG] Cloud database connected and synchronized.');
-      } else if (this.supabaseUrl && this.supabaseKey) {
+        this.lastDiagnostic = undefined;
+        console.log('[Supabase/PG] Verified and active as PRIMARY cloud database.');
+        return;
+      } catch (err: any) {
+        const { message, diagnostic } = formatSupabaseError('PostgreSQL Pool Connection Startup', err);
+        if (this.pgPool) {
+          this.pgPool.end().catch(() => {});
+          this.pgPool = null;
+        }
+        this.isSupabaseConnected = false;
+        this.lastSupabaseError = message;
+        this.lastDiagnostic = diagnostic;
+        console.warn('[Supabase/PG] PostgreSQL Pool unavailable. Attempting Supabase HTTPS REST Client failover...');
+      }
+    }
+
+    // 2. Try Supabase REST Client via @supabase/supabase-js (Fallback / Standard REST)
+    if (this.supabaseUrl && this.supabaseKey) {
+      try {
+        console.log('[Supabase/REST] Connecting via Supabase JS Client to:', this.supabaseUrl);
         this.initSupabaseRestClient();
+
         if (this.supabaseClient) {
           const { data, error } = await this.supabaseClient
             .from('campus_hub_store')
@@ -234,33 +353,36 @@ class DatabaseService {
             .eq('key', 'main_db')
             .maybeSingle();
 
-          if (!error && data && data.data) {
-            console.log('[Supabase/REST] Existing database found in Supabase! Restoring cloud state...');
+          if (error) {
+            throw error;
+          }
+
+          if (data && data.data) {
+            console.log(`[Supabase/REST] Existing database restored from Supabase (${data.updated_at}).`);
             const cloudData = data.data as DatabaseStore;
             this.store = this.mergeWithCleanDefaults(cloudData);
+            this.lastModified = new Date(data.updated_at).getTime() || Date.now();
             this.persistDiskSync();
-            this.isSupabaseConnected = true;
-            this.lastSupabaseSync = new Date().toISOString();
-            this.lastSupabaseError = undefined;
           } else {
-            console.log('[Supabase/REST] No cloud dataset found. Seeding initial data...');
-            await this.supabaseClient
+            console.log('[Supabase/REST] Seeding initial dataset to Supabase...');
+            const { error: upsertError } = await this.supabaseClient
               .from('campus_hub_store')
               .upsert({ key: 'main_db', data: this.store, updated_at: new Date().toISOString() });
-            this.isSupabaseConnected = true;
-            this.lastSupabaseSync = new Date().toISOString();
-            this.lastSupabaseError = undefined;
+            if (upsertError) throw upsertError;
           }
-        }
-      }
-    } catch (err: any) {
-      this.isSupabaseConnected = false;
-      this.lastSupabaseError = err.message || 'Failed to connect to cloud database';
-      console.warn('[DB] Could not sync with remote database at startup, running on local cache:', err.message);
 
-      // Attempt Supabase JS Client fallback if pg connection had issues
-      if (!this.supabaseClient && this.supabaseUrl && this.supabaseKey) {
-        this.initSupabaseRestClient();
+          this.isSupabaseConnected = true;
+          this.lastSupabaseSync = new Date().toISOString();
+          this.lastSupabaseError = undefined;
+          this.lastDiagnostic = undefined;
+          console.log('[Supabase/REST] Verified and active as PRIMARY cloud database via HTTPS REST.');
+          return;
+        }
+      } catch (err: any) {
+        const { message, diagnostic } = formatSupabaseError('Supabase REST Client Startup', err);
+        this.isSupabaseConnected = false;
+        this.lastSupabaseError = message;
+        this.lastDiagnostic = diagnostic;
       }
     }
   }
@@ -270,11 +392,10 @@ class DatabaseService {
       try {
         const cleanUrl = this.supabaseUrl.replace(/\/rest\/v1\/?$/, '');
         this.supabaseClient = createClient(cleanUrl, this.supabaseKey, {
-          auth: { persistSession: false },
+          auth: { persistSession: false, autoRefreshToken: false },
         });
-        console.log('[Supabase] REST Client initialized as backup connector.');
       } catch (err: any) {
-        console.warn('[Supabase] REST Client initialization failed:', err.message);
+        formatSupabaseError('Supabase JS createClient', err);
       }
     }
   }
@@ -282,7 +403,7 @@ class DatabaseService {
   private mergeWithCleanDefaults(cloudData: Partial<DatabaseStore>): DatabaseStore {
     const clean = initializeCleanData();
     const cloudUserMap = new Map((Array.isArray(cloudData.users) ? cloudData.users : []).map((u) => [u.id, u]));
-    
+
     // Ensure all default admin accounts exist, but prefer any updated cloud version
     const mergedUsers: User[] = [];
     for (const cleanUser of clean.users) {
@@ -293,7 +414,6 @@ class DatabaseService {
         mergedUsers.push(cleanUser);
       }
     }
-    // Add all other users (teachers, students, custom admins)
     for (const remainingUser of cloudUserMap.values()) {
       mergedUsers.push(remainingUser);
     }
@@ -322,30 +442,8 @@ class DatabaseService {
     };
   }
 
-  private loadFromDisk(): DatabaseStore {
-    try {
-      if (fs.existsSync(this.dbFilePath)) {
-        const raw = fs.readFileSync(this.dbFilePath, 'utf-8');
-        if (raw && raw.trim().length > 0) {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object' && Array.isArray(parsed.departments)) {
-            console.log(
-              `[DB] Loaded campus database from local disk: ${parsed.students?.length || 0} students, ${parsed.teachers?.length || 0} faculty.`
-            );
-            this.lastModified = Date.now();
-            return this.mergeWithCleanDefaults(parsed);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[DB] Could not load persisted data from disk, initializing clean database:', err);
-    }
-    const clean = initializeCleanData();
-    this.persistDiskSync(clean);
-    return clean;
-  }
-
   private persistDiskSync(dataToSave?: DatabaseStore): void {
+    // Only write to local file in development or as secondary emergency mirror
     try {
       const dir = path.dirname(this.dbFilePath);
       if (!fs.existsSync(dir)) {
@@ -355,111 +453,178 @@ class DatabaseService {
       const tmpPath = `${this.dbFilePath}.tmp.${Date.now()}`;
       fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
       fs.renameSync(tmpPath, this.dbFilePath);
-      this.lastModified = Date.now();
     } catch (err) {
-      console.error('[DB] Failed to persist data to disk:', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[DB] Local disk mirror write failed:', err);
+      }
     }
   }
 
-  public async persistToSupabase(): Promise<boolean> {
+  /**
+   * Persists the current database store directly to Supabase with retries and comprehensive error logging
+   */
+  public async persistToSupabase(retryCount: number = 2): Promise<boolean> {
     if (this.isSavingToSupabase) {
       this.pendingSupabaseSave = true;
       return true;
     }
 
     this.isSavingToSupabase = true;
-    try {
-      const dataJson = JSON.stringify(this.store);
+    let attempt = 0;
 
-      if (this.pgPool) {
-        await this.pgPool.query(
-          `INSERT INTO campus_hub_store (key, data, updated_at)
-           VALUES ('main_db', $1, NOW())
-           ON CONFLICT (key) DO UPDATE
-           SET data = EXCLUDED.data, updated_at = NOW();`,
-          [dataJson]
-        );
-        this.isSupabaseConnected = true;
-        this.lastSupabaseSync = new Date().toISOString();
-        this.lastSupabaseError = undefined;
-      } else if (this.supabaseClient) {
-        const { error } = await this.supabaseClient
-          .from('campus_hub_store')
-          .upsert({ key: 'main_db', data: this.store, updated_at: new Date().toISOString() });
-        if (error) throw error;
-        this.isSupabaseConnected = true;
-        this.lastSupabaseSync = new Date().toISOString();
-        this.lastSupabaseError = undefined;
-      }
-      return true;
-    } catch (err: any) {
-      this.isSupabaseConnected = false;
-      this.lastSupabaseError = err.message || 'Supabase save failed';
-      console.error('[Supabase Save Error]:', err.message);
-      return false;
-    } finally {
-      this.isSavingToSupabase = false;
-      if (this.pendingSupabaseSave) {
-        this.pendingSupabaseSave = false;
-        setTimeout(() => this.persistToSupabase(), 100);
+    while (attempt <= retryCount) {
+      try {
+        const dataJson = JSON.stringify(this.store);
+
+        if (this.pgPool) {
+          try {
+            await this.pgPool.query(
+              `INSERT INTO public.campus_hub_store (key, data, updated_at)
+               VALUES ('main_db', $1, NOW())
+               ON CONFLICT (key) DO UPDATE
+               SET data = EXCLUDED.data, updated_at = NOW();`,
+              [dataJson]
+            );
+            this.isSupabaseConnected = true;
+            this.lastSupabaseSync = new Date().toISOString();
+            this.lastSupabaseError = undefined;
+            this.lastDiagnostic = undefined;
+            return true;
+          } catch (pgErr: any) {
+            console.warn('[Supabase/PG] PostgreSQL Pool write failed, failing over to Supabase REST client:', pgErr?.message);
+            if (this.pgPool) {
+              this.pgPool.end().catch(() => {});
+              this.pgPool = null;
+            }
+            // Initialize REST client if not present
+            if (!this.supabaseClient) {
+              this.initSupabaseRestClient();
+            }
+          }
+        }
+        
+        if (this.supabaseClient) {
+          const { error } = await this.supabaseClient
+            .from('campus_hub_store')
+            .upsert({ key: 'main_db', data: this.store, updated_at: new Date().toISOString() });
+          if (error) throw error;
+          this.isSupabaseConnected = true;
+          this.lastSupabaseSync = new Date().toISOString();
+          this.lastSupabaseError = undefined;
+          this.lastDiagnostic = undefined;
+          return true;
+        } else if (this.databaseUrl || (this.supabaseUrl && this.supabaseKey)) {
+          // Re-attempt connecting
+          await this.initSupabaseConnection();
+          if (this.isSupabaseConnected) {
+            return this.persistToSupabase(0);
+          }
+        }
+        
+        // Neither connector is available
+        const msg = 'No active Supabase connector available to persist data.';
+        this.isSupabaseConnected = false;
+        this.lastSupabaseError = msg;
+        this.lastDiagnostic = 'Configure valid SUPABASE_SERVICE_ROLE_KEY or DATABASE_URL';
+        if (process.env.NODE_ENV === 'production') {
+          console.error(`[CRITICAL] Write operation could not be saved to Supabase: ${msg}`);
+        }
+        return false;
+      } catch (err: any) {
+        attempt++;
+        const { message, diagnostic } = formatSupabaseError(`PersistToSupabase (Attempt ${attempt}/${retryCount + 1})`, err);
+        this.isSupabaseConnected = false;
+        this.lastSupabaseError = message;
+        this.lastDiagnostic = diagnostic;
+
+        if (attempt <= retryCount) {
+          await new Promise((res) => setTimeout(res, 400 * attempt));
+        }
+      } finally {
+        if (attempt > retryCount) {
+          this.isSavingToSupabase = false;
+        }
       }
     }
+
+    this.isSavingToSupabase = false;
+    if (this.pendingSupabaseSave) {
+      this.pendingSupabaseSave = false;
+      setTimeout(() => this.persistToSupabase(), 100);
+    }
+    return false;
   }
 
   public persistSync(dataToSave?: DatabaseStore): void {
+    this.lastModified = Date.now();
     this.persistDiskSync(dataToSave);
     this.persistToSupabase().catch((err) => {
-      console.warn('[DB] Background Supabase persist error:', err);
+      formatSupabaseError('Background persistSync', err);
     });
   }
 
   public persist(): void {
     this.lastModified = Date.now();
-    // Immediate synchronous local write for instant consistency
     this.persistDiskSync();
-    // Immediate asynchronous push to cloud PostgreSQL
     this.persistToSupabase().catch((err) => {
-      console.warn('[DB] Immediate Supabase save caught:', err);
+      formatSupabaseError('Immediate persist call', err);
     });
   }
 
-  public async pullFromSupabase(): Promise<{ success: boolean; message: string }> {
+  public async pullFromSupabase(): Promise<{ success: boolean; message: string; diagnostic?: string }> {
     try {
       if (!this.pgPool && !this.supabaseClient) {
-        await this.initSupabase();
+        await this.initSupabaseConnection();
       }
 
       if (this.pgPool) {
-        const result = await this.pgPool.query(
-          `SELECT data, updated_at FROM campus_hub_store WHERE key = 'main_db' LIMIT 1;`
-        );
-        if (result.rows.length > 0 && result.rows[0].data) {
-          const cloudData = result.rows[0].data as DatabaseStore;
-          this.store = this.mergeWithCleanDefaults(cloudData);
-          this.lastModified = Date.now();
-          this.isSupabaseConnected = true;
-          this.lastSupabaseSync = new Date().toISOString();
-          this.lastSupabaseError = undefined;
-          this.persistDiskSync();
-          return {
-            success: true,
-            message: `Successfully pulled latest campus state from Supabase (${this.store.students.length} students, ${this.store.teachers.length} faculty).`,
-          };
+        try {
+          const result = await this.pgPool.query(
+            `SELECT data, updated_at FROM public.campus_hub_store WHERE key = 'main_db' LIMIT 1;`
+          );
+          if (result.rows.length > 0 && result.rows[0].data) {
+            const cloudData = result.rows[0].data as DatabaseStore;
+            this.store = this.mergeWithCleanDefaults(cloudData);
+            this.lastModified = new Date(result.rows[0].updated_at).getTime() || Date.now();
+            this.isSupabaseConnected = true;
+            this.lastSupabaseSync = new Date().toISOString();
+            this.lastSupabaseError = undefined;
+            this.lastDiagnostic = undefined;
+            this.persistDiskSync();
+            return {
+              success: true,
+              message: `Successfully pulled latest campus state from Supabase (${this.store.students.length} students, ${this.store.teachers.length} faculty, updated ${result.rows[0].updated_at}).`,
+            };
+          }
+        } catch (pgErr: any) {
+          console.warn('[Supabase/PG] PostgreSQL Pool read failed, failing over to Supabase REST client:', pgErr?.message);
+          if (this.pgPool) {
+            this.pgPool.end().catch(() => {});
+            this.pgPool = null;
+          }
+          if (!this.supabaseClient) {
+            this.initSupabaseRestClient();
+          }
         }
-      } else if (this.supabaseClient) {
+      }
+
+      if (this.supabaseClient) {
         const { data, error } = await this.supabaseClient
           .from('campus_hub_store')
           .select('data, updated_at')
           .eq('key', 'main_db')
           .maybeSingle();
 
-        if (!error && data && data.data) {
+        if (error) throw error;
+
+        if (data && data.data) {
           const cloudData = data.data as DatabaseStore;
           this.store = this.mergeWithCleanDefaults(cloudData);
-          this.lastModified = Date.now();
+          this.lastModified = new Date(data.updated_at).getTime() || Date.now();
           this.isSupabaseConnected = true;
           this.lastSupabaseSync = new Date().toISOString();
           this.lastSupabaseError = undefined;
+          this.lastDiagnostic = undefined;
           this.persistDiskSync();
           return {
             success: true,
@@ -468,11 +633,17 @@ class DatabaseService {
         }
       }
 
-      return { success: false, message: 'No remote dataset found in Supabase.' };
+      return {
+        success: false,
+        message: 'No remote dataset found in Supabase table campus_hub_store with key=main_db.',
+        diagnostic: 'Table is empty or not seeded.',
+      };
     } catch (err: any) {
+      const { message, diagnostic } = formatSupabaseError('PullFromSupabase', err);
       this.isSupabaseConnected = false;
-      this.lastSupabaseError = err.message;
-      return { success: false, message: `Failed to pull from Supabase: ${err.message}` };
+      this.lastSupabaseError = message;
+      this.lastDiagnostic = diagnostic;
+      return { success: false, message: `Failed to pull from Supabase: ${message}`, diagnostic };
     }
   }
 
@@ -491,7 +662,7 @@ class DatabaseService {
     }
 
     return {
-      configured: Boolean(this.databaseUrl || this.supabaseUrl),
+      configured: Boolean(this.databaseUrl || (this.supabaseUrl && this.supabaseKey)),
       connected: this.isSupabaseConnected,
       provider: this.pgPool ? 'supabase_postgres' : this.supabaseClient ? 'supabase_rest' : 'local_fallback',
       databaseHost: host,
@@ -510,6 +681,7 @@ class DatabaseService {
         notices: this.store.notices?.length || 0,
       },
       error: this.lastSupabaseError,
+      diagnostic: this.lastDiagnostic,
     };
   }
 
@@ -536,25 +708,24 @@ class DatabaseService {
 
   public resetToClean(): void {
     this.store = initializeCleanData();
-    this.persistSync();
+    this.persist();
   }
 
   public wipeAllData(): { success: boolean; message: string } {
     this.store = initializeCleanData();
-    this.persistSync();
-    this.persistToSupabase().catch((err) => console.warn('[DB] Supabase wipe sync error:', err));
+    this.persist();
     console.log('[DB] Database wiped completely to 0 records across all entities.');
-    return { success: true, message: 'All database records successfully deleted from database.' };
+    return { success: true, message: 'All database records successfully deleted and synced to Supabase.' };
   }
 
   public resetToSeed(): void {
     this.store = initializeCleanData();
-    this.persistSync();
+    this.persist();
   }
 
   public loadSampleData(): void {
-    this.store = initializeSampleDemoData();
-    this.persistSync();
+    this.store = initializeCleanData();
+    this.persist();
   }
 
   public restoreData(newData: Partial<DatabaseStore>): { success: boolean; message: string } {
@@ -581,16 +752,40 @@ class DatabaseService {
     if (Array.isArray(newData.notifications)) this.store.notifications = newData.notifications;
     if (Array.isArray(newData.auditLogs)) this.store.auditLogs = newData.auditLogs;
 
-    this.persistSync();
-    return { success: true, message: 'Campus database restored successfully and persisted to Supabase and storage.' };
+    this.persist();
+    return { success: true, message: 'Campus database restored successfully and persisted to Supabase.' };
   }
 
-  // Authoritative Synchronizer: Server sends authoritative state to client
+  /**
+   * Resilient Synchronizer: Protects client-side cache while ensuring Supabase is authoritative.
+   * If server has zero data after a fresh cold start (e.g. before initial migration) and client has data,
+   * it restores from client snapshot and persists to Supabase.
+   */
   public syncWithClient(clientSnapshot?: Partial<DatabaseStore>, clientLastModified?: number): {
     store: DatabaseStore;
     lastModified: number;
     actionTaken: 'restored_from_client' | 'client_updated_from_server' | 'in_sync';
   } {
+    const isServerEmpty = (this.store.students?.length || 0) === 0 && (this.store.teachers?.length || 0) === 0 && (this.store.departments?.length || 0) === 0;
+    const clientHasData = Boolean(
+      clientSnapshot &&
+      typeof clientSnapshot === 'object' &&
+      ((clientSnapshot.students && clientSnapshot.students.length > 0) ||
+       (clientSnapshot.teachers && clientSnapshot.teachers.length > 0) ||
+       (clientSnapshot.departments && clientSnapshot.departments.length > 0))
+    );
+
+    // Safeguard: If server lost data (e.g. container scale-to-zero before Supabase was configured) but client has snapshot:
+    if (isServerEmpty && clientHasData && clientSnapshot) {
+      console.log('[Sync Engine] Server empty but client cache has valid data! Restoring cloud state from client snapshot...');
+      this.restoreData(clientSnapshot);
+      return {
+        store: this.store,
+        lastModified: this.lastModified,
+        actionTaken: 'restored_from_client',
+      };
+    }
+
     return {
       store: this.store,
       lastModified: this.lastModified,

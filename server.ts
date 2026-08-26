@@ -58,6 +58,16 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
+// Ensure Supabase state is fully loaded before handling API requests
+app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.ensureInitialized();
+  } catch (err: any) {
+    console.error('[API Middleware] DB initialization check caught error:', err?.message);
+  }
+  next();
+});
+
 // Auth Middleware: extracts user from Authorization header or session simulation
 interface AuthenticatedRequest extends Request {
   user?: User;
@@ -4820,6 +4830,13 @@ app.post('/api/notifications/read-all', (req: AuthenticatedRequest, res: Respons
 // ==========================================
 
 async function startServer() {
+  console.log('[Server Startup] Synchronizing cloud database from Supabase...');
+  try {
+    await db.ensureInitialized();
+  } catch (err: any) {
+    console.error('[Server Startup] Error during Supabase initialization:', err?.message);
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
