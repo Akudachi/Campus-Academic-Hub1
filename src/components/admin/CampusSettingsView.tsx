@@ -20,6 +20,8 @@ import {
   Sparkles,
   ArrowRightLeft,
   Check,
+  Smartphone,
+  Zap,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { CampusSettings, SystemStatusInfo, SupabaseStatusInfo } from '../../types';
@@ -28,6 +30,7 @@ import { BackButton } from '../common/BackButton';
 import { useAuth } from '../../context/AuthContext';
 import { DepartmentManagerView } from './DepartmentManagerView';
 import { AppLogo } from '../common/AppLogo';
+import { MobileSyncHubModal } from '../common/MobileSyncHubModal';
 
 interface CampusSettingsViewProps {
   onBack?: () => void;
@@ -41,6 +44,7 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isSyncHubOpen, setIsSyncHubOpen] = useState(false);
 
   // Settings State
   const [settings, setSettings] = useState<CampusSettings>({
@@ -443,6 +447,36 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
       {/* TAB 3: BACKUP & RESTORE */}
       {activeSubTab === 'backup' && (
         <div className="space-y-3 text-xs">
+          {/* ANDROID APP LINK & REALTIME SYNC CARD */}
+          <div className="bg-indigo-50/70 p-4 rounded-xl border border-indigo-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-indigo-700" />
+                <h2 className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
+                  Android App Link & Real-Time Sync Hub
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold border border-indigo-300">
+                  Capacitor Ready
+                </span>
+              </div>
+              <p className="text-[11px] text-indigo-900">
+                Connect your Android APK directly to this Web App backend for continuous, 2-way real-time data sync across attendance, students, marks, and circulars.
+              </p>
+              <div className="flex items-center gap-3 text-[10px] text-indigo-700 pt-0.5">
+                <span>Sync Interval: <strong>Every 12s + Focus Triggered</strong></span>
+                <span>•</span>
+                <span>Mode: <strong>Bi-Directional Auto-Sync</strong></span>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSyncHubOpen(true)}
+              className="px-4 py-2 rounded-lg bg-indigo-700 text-white font-bold hover:bg-indigo-800 transition-colors flex items-center justify-center gap-1.5 shadow-2xs shrink-0 active:scale-95 cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>Open Mobile Sync Hub</span>
+            </button>
+          </div>
+
           {/* SUPABASE CLOUD PERSISTENCE CARD */}
           <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 shadow-2xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -676,6 +710,12 @@ export const CampusSettingsView: React.FC<CampusSettingsViewProps> = ({ onBack }
           </div>
         </div>
       </Modal>
+
+      {/* MOBILE APP & REALTIME SYNC HUB MODAL */}
+      <MobileSyncHubModal
+        isOpen={isSyncHubOpen}
+        onClose={() => setIsSyncHubOpen(false)}
+      />
     </div>
   );
 };

@@ -25,16 +25,74 @@ import { storageService } from './storageService';
 let currentToken: string | null = localStorage.getItem('cah_token');
 let currentUserId: string | null = localStorage.getItem('cah_user_id');
 
-const RAW_API_URL =
-  ((typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) as string | undefined) || '';
-export const API_BASE_URL = RAW_API_URL.replace(/\/+$/, '');
+export const DEFAULT_PRODUCTION_SERVER_URL = 'https://ais-dev-pddxzxafw552ox4hvqxawi-392829429613.asia-southeast1.run.app';
+
+export function isNativeMobileApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isCapacitor = Boolean(
+    (window as any).Capacitor?.isNativePlatform?.() ||
+    (window as any).Capacitor?.isPluginAvailable?.('App') ||
+    (window as any).Capacitor ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'ionic:' ||
+    window.location.protocol === 'file:' ||
+    window.location.origin.includes('capacitor://') ||
+    window.location.origin.includes('ionic://') ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') && window.location.hostname === 'localhost'
+  );
+  const isLocalhostWebView =
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+    window.location.port !== '3000' &&
+    window.location.port !== '5173';
+  return isCapacitor || isLocalhostWebView;
+}
+
+export function getCustomServerUrl(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem('cah_custom_server_url');
+}
+
+export function setCustomServerUrl(url: string | null): void {
+  if (typeof localStorage === 'undefined') return;
+  if (url && url.trim()) {
+    const cleanUrl = url.trim().replace(/\/+$/, '');
+    localStorage.setItem('cah_custom_server_url', cleanUrl);
+  } else {
+    localStorage.removeItem('cah_custom_server_url');
+  }
+}
+
+export function getApiBaseUrl(): string {
+  // 1. User/Admin explicitly configured custom server endpoint (stored in localStorage)
+  const custom = getCustomServerUrl();
+  if (custom) {
+    return custom.replace(/\/+$/, '');
+  }
+
+  // 2. Build-time environment variable VITE_API_URL if provided
+  const envUrl = ((typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) as string | undefined) || '';
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+
+  // 3. If running inside Native Android/iOS Capacitor WebView, localhost mobile shell, or file protocol
+  if (isNativeMobileApp()) {
+    return DEFAULT_PRODUCTION_SERVER_URL;
+  }
+
+  // 4. Default web browser relative origin
+  return '';
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export function getFullApiUrl(endpoint: string): string {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint;
   }
+  const baseUrl = getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${API_BASE_URL}${cleanEndpoint}`;
+  return `${baseUrl}${cleanEndpoint}`;
 }
 
 export function setAuthToken(token: string | null, userId?: string | null) {
@@ -120,10 +178,10 @@ async function request<T>(endpoint: string, options: ExtendedRequestInit = {}): 
       } catch {
         if (!response.ok) {
           throw new Error(
-            `Server returned HTTP ${response.status} (${response.statusText || 'Not Found'}). Backend URL: ${API_BASE_URL || 'Local Origin'}. Please check if VITE_API_URL is configured correctly.`
+            `Server error (${response.status}: ${response.statusText || 'Unable to connect'}). Please verify network connection.`
           );
         }
-        throw new Error(`Unexpected server response (non-JSON): ${responseText.slice(0, 100)}`);
+        throw new Error(`Unexpected response format from server.`);
       }
 
       if (!response.ok) {
@@ -747,6 +805,21 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getSystemStatus: () => request<{ status: SystemStatusInfo }>('/api/admin/system/status'),
+
+  // Fast database sync status check (used for real-time polling)
+  getSyncStatus: () =>
+    request<{
+      lastModified: number;
+      supabase?: { connected: boolean; host: string };
+      stats?: {
+        studentsCount: number;
+        teachersCount: number;
+        attendanceCount: number;
+        assignmentsCount: number;
+        marksCount: number;
+        noticesCount: number;
+      };
+    }>('/api/db/sync-status'),
 
   // Bi-Directional Database Sync & Persistence Engine
   syncDatabaseState: async (): Promise<{

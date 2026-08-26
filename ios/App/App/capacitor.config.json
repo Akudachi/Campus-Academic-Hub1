@@ -4,7 +4,8 @@
 	"webDir": "dist",
 	"server": {
 		"androidScheme": "https",
-		"cleartext": true
+		"cleartext": true,
+		"url": "https://ais-dev-pddxzxafw552ox4hvqxawi-392829429613.asia-southeast1.run.app"
 	},
 	"packageClassList": []
 }

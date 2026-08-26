@@ -23,175 +23,37 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // server.ts
 var import_express = __toESM(require("express"), 1);
-var import_path = __toESM(require("path"), 1);
+var import_path2 = __toESM(require("path"), 1);
 var import_vite = require("vite");
-var import_dotenv = __toESM(require("dotenv"), 1);
+var import_dotenv2 = __toESM(require("dotenv"), 1);
 
 // server/db.ts
+var import_fs = __toESM(require("fs"), 1);
+var import_path = __toESM(require("path"), 1);
+var import_pg = require("pg");
+var import_supabase_js = require("@supabase/supabase-js");
+var import_dotenv = __toESM(require("dotenv"), 1);
+import_dotenv.default.config();
 function initializeCleanData() {
-  const departments = [
-    {
-      id: "dept-ece",
-      name: "Electronics & Communication Engineering",
-      code: "ECE",
-      headOfDepartment: "Dr. B. S. Halakarnimath",
-      description: "VLSI design, embedded systems, signal processing, IoT, and communication networks.",
-      establishedYear: "2008",
-      createdAt: "2026-01-01T00:00:00Z"
-    },
-    {
-      id: "dept-cse",
-      name: "Computer Science & Engineering",
-      code: "CSE",
-      headOfDepartment: "Dr. S. V. Viraktamath",
-      description: "Core computing, algorithms, cloud systems, and software engineering.",
-      establishedYear: "2008",
-      createdAt: "2026-01-01T00:00:00Z"
-    },
-    {
-      id: "dept-aiml",
-      name: "Artificial Intelligence & Machine Learning",
-      code: "AI-ML",
-      headOfDepartment: "Dr. V. M. Sheelavantar",
-      description: "Deep learning, neural architectures, computer vision, data science, and LLM applications.",
-      establishedYear: "2022",
-      createdAt: "2026-01-01T00:00:00Z"
-    },
-    {
-      id: "dept-ise",
-      name: "Information Science & Engineering",
-      code: "ISE",
-      headOfDepartment: "Dr. P. R. Hampannavar",
-      description: "Information security, database engineering, web architectures, and distributed computing.",
-      establishedYear: "2010",
-      createdAt: "2026-01-01T00:00:00Z"
-    },
-    {
-      id: "dept-mech",
-      name: "Mechanical Engineering",
-      code: "MECH",
-      headOfDepartment: "Dr. S. B. Shivakumar",
-      description: "Robotics, thermal systems, computer-aided manufacturing, and finite element modeling.",
-      establishedYear: "2008",
-      createdAt: "2026-01-01T00:00:00Z"
-    },
-    {
-      id: "dept-civil",
-      name: "Civil Engineering",
-      code: "CIVIL",
-      headOfDepartment: "Dr. S. C. Kamate",
-      description: "Structural mechanics, geotechnical surveying, environmental hydrology, and urban planning.",
-      establishedYear: "2008",
-      createdAt: "2026-01-01T00:00:00Z"
-    }
-  ];
   const defaultSettings = {
     institutionName: "K.L.E. Society's KLE College of Engineering and Technology",
     shortName: "KLECET",
     campusCode: "KLECET-2026",
     academicYear: "2026-2027",
-    currentSemesterTerm: "Academic Year 2026-2027",
+    currentSemesterTerm: "Even Semester (Semesters 2, 4, 6, 8)",
     semesterTermType: "even",
     minAttendanceWarning: 75,
     adminContactEmail: "ecedept123456@gmail.com",
     systemStatus: "operational"
   };
-  function buildStandardSemesters(departmentsList, academicYear = "2026-2027") {
-    const sems = [];
-    departmentsList.forEach((dept) => {
-      for (let semNum = 1; semNum <= 8; semNum++) {
-        sems.push({
-          id: `sem-${dept.code.toLowerCase()}-${semNum}`,
-          number: semNum,
-          academicYear,
-          departmentCode: dept.code,
-          section: "A",
-          status: "setup",
-          createdAt: "2026-01-10T08:00:00Z"
-        });
-      }
-    });
-    return sems;
-  }
-  const semesters = buildStandardSemesters(departments, defaultSettings.academicYear);
-  const subjects = buildStandardSubjects(departments);
-  function buildStandardSubjects(departmentsList) {
-    const subs = [];
-    const eceDept = departmentsList.find((d) => d.code === "ECE");
-    const eceId = eceDept ? eceDept.id : "dept-ece";
-    subs.push(
-      { id: "sub-bec701", code: "BEC701", name: "Microwave Engineering and Antenna Theory", departmentId: eceId, semesterNumber: 7, credits: 4 },
-      { id: "sub-bec702", code: "BEC702", name: "Computer Networks and Protocols", departmentId: eceId, semesterNumber: 7, credits: 4 },
-      { id: "sub-bec703", code: "BEC703", name: "Wireless Communication Systems", departmentId: eceId, semesterNumber: 7, credits: 4 },
-      { id: "sub-bec714d", code: "BEC714D", name: "Radar Communication", departmentId: eceId, semesterNumber: 7, credits: 3 },
-      { id: "sub-bme755d", code: "BME755D", name: "Non-conventional energy resources", departmentId: eceId, semesterNumber: 7, credits: 3 },
-      { id: "sub-becl701", code: "BECL701", name: "Microwave Engineering Lab(IPCC)", departmentId: eceId, semesterNumber: 7, credits: 2 },
-      { id: "sub-becl702", code: "BECL702", name: "Computer Networks Lab(IPCC)", departmentId: eceId, semesterNumber: 7, credits: 2 },
-      { id: "sub-bec786", code: "BEC786", name: "Major Project Phase-II", departmentId: eceId, semesterNumber: 7, credits: 6 },
-      { id: "sub-21ec41", code: "21EC41", name: "Signals and Systems", departmentId: eceId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21ec42", code: "21EC42", name: "Digital Signal Processing", departmentId: eceId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21ec43", code: "21EC43", name: "Microcontrollers & Embedded Systems", departmentId: eceId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21ec44", code: "21EC44", name: "Communication Circuits", departmentId: eceId, semesterNumber: 4, credits: 3 },
-      { id: "sub-21ecl46", code: "21ECL46", name: "DSP & Microcontroller Simulation Lab", departmentId: eceId, semesterNumber: 4, credits: 2 }
-    );
-    const cseDept = departmentsList.find((d) => d.code === "CSE");
-    const cseId = cseDept ? cseDept.id : "dept-cse";
-    subs.push(
-      { id: "sub-21cs41", code: "21CS41", name: "Analysis & Design of Algorithms", departmentId: cseId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21cs42", code: "21CS42", name: "Operating Systems Architecture", departmentId: cseId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21cs43", code: "21CS43", name: "Database Management Systems", departmentId: cseId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21cs44", code: "21CS44", name: "Object Oriented Programming with Java", departmentId: cseId, semesterNumber: 4, credits: 3 },
-      { id: "sub-21cs45", code: "21CS45", name: "Python & Data Engineering", departmentId: cseId, semesterNumber: 4, credits: 3 },
-      { id: "sub-21csl46", code: "21CSL46", name: "Design of Algorithms & DBMS Lab", departmentId: cseId, semesterNumber: 4, credits: 2 },
-      { id: "sub-21cs61", code: "21CS61", name: "Software Engineering & Agile Methodologies", departmentId: cseId, semesterNumber: 6, credits: 4 },
-      { id: "sub-21cs62", code: "21CS62", name: "Computer Networks & Security", departmentId: cseId, semesterNumber: 6, credits: 4 },
-      { id: "sub-21cs63", code: "21CS63", name: "Full Stack Web Applications", departmentId: cseId, semesterNumber: 6, credits: 3 },
-      { id: "sub-21csl66", code: "21CSL66", name: "Web Technology & Cloud Lab", departmentId: cseId, semesterNumber: 6, credits: 2 }
-    );
-    const aimlDept = departmentsList.find((d) => d.code === "AI-ML");
-    const aimlId = aimlDept ? aimlDept.id : "dept-aiml";
-    subs.push(
-      { id: "sub-21ai41", code: "21AI41", name: "Foundations of Data Science", departmentId: aimlId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21ai42", code: "21AI42", name: "Mathematics for Machine Learning", departmentId: aimlId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21ai43", code: "21AI43", name: "Data Structures & Algorithms in Python", departmentId: aimlId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21ail46", code: "21AIL46", name: "Machine Learning Experimentation Lab", departmentId: aimlId, semesterNumber: 4, credits: 2 },
-      { id: "sub-21ai61", code: "21AI61", name: "Deep Learning & Neural Networks", departmentId: aimlId, semesterNumber: 6, credits: 4 },
-      { id: "sub-21ai62", code: "21AI62", name: "Natural Language Processing & LLMs", departmentId: aimlId, semesterNumber: 6, credits: 4 }
-    );
-    const iseDept = departmentsList.find((d) => d.code === "ISE");
-    const iseId = iseDept ? iseDept.id : "dept-ise";
-    subs.push(
-      { id: "sub-21is41", code: "21IS41", name: "Design and Analysis of Algorithms", departmentId: iseId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21is42", code: "21IS42", name: "Relational Database Engineering", departmentId: iseId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21is43", code: "21IS43", name: "Operating Systems & System Programming", departmentId: iseId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21isl46", code: "21ISL46", name: "DBMS & Systems Lab", departmentId: iseId, semesterNumber: 4, credits: 2 }
-    );
-    const mechDept = departmentsList.find((d) => d.code === "MECH");
-    const mechId = mechDept ? mechDept.id : "dept-mech";
-    subs.push(
-      { id: "sub-21me41", code: "21ME41", name: "Fluid Mechanics & Turbo Machinery", departmentId: mechId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21me42", code: "21ME42", name: "Kinematics of Machines", departmentId: mechId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21me43", code: "21ME43", name: "Manufacturing Technology & Metallurgy", departmentId: mechId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21mel46", code: "21MEL46", name: "Fluid Mechanics & Machine Shop Lab", departmentId: mechId, semesterNumber: 4, credits: 2 }
-    );
-    const civilDept = departmentsList.find((d) => d.code === "CIVIL");
-    const civilId = civilDept ? civilDept.id : "dept-civil";
-    subs.push(
-      { id: "sub-21cv41", code: "21CV41", name: "Structural Mechanics & Analysis", departmentId: civilId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21cv42", code: "21CV42", name: "Hydrology and Water Resources Engineering", departmentId: civilId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21cv43", code: "21CV43", name: "Surveying & Geomatics Engineering", departmentId: civilId, semesterNumber: 4, credits: 4 },
-      { id: "sub-21cvl46", code: "21CVL46", name: "Surveying Field Practice Lab", departmentId: civilId, semesterNumber: 4, credits: 2 }
-    );
-    return subs;
-  }
-  const users = [
+  const adminUsers = [
     {
       id: "usr-admin-1",
       name: "Adarsh Kudachi (Administrator)",
       email: "adarshkudachi18@gmail.com",
       role: "admin",
       status: "active",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      createdAt: "2026-01-01T00:00:00Z"
     },
     {
       id: "usr-admin-2",
@@ -199,7 +61,7 @@ function initializeCleanData() {
       email: "ecedept123456@gmail.com",
       role: "admin",
       status: "active",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      createdAt: "2026-01-01T00:00:00Z"
     },
     {
       id: "usr-admin-3",
@@ -207,52 +69,17 @@ function initializeCleanData() {
       email: "admin@klecet.edu.in",
       role: "admin",
       status: "active",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    }
-  ];
-  const initialNotices = [
-    {
-      id: "notice-klecet-welcome",
-      title: "Welcome to K.L.E. College of Engineering and Technology Academic Portal",
-      body: "The centralized digital academic hub for K.L.E. College of Engineering and Technology is now initialized for Academic Year 2026-2027. Faculty members and administrators can manage attendance sessions, continuous internal evaluations (CIE), curriculum timetables, and student records.",
-      createdBy: "usr-admin-1",
-      authorName: "College Administration",
-      audienceType: "everyone",
-      priority: "normal",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    }
-  ];
-  const initialNotifications = [
-    {
-      id: "notif-ready",
-      userId: "usr-admin-1",
-      type: "system",
-      title: "Portal Ready for Production Operations",
-      message: "All demo data has been purged. K.L.E. College of Engineering and Technology is ready for faculty allocation, student enrollment, and timetable generation.",
-      link: "/admin",
-      read: false,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    }
-  ];
-  const initialAuditLogs = [
-    {
-      id: "aud-1",
-      userId: "usr-admin-1",
-      userName: "Campus Administrator",
-      userRole: "admin",
-      action: "SYSTEM_INITIALIZED",
-      details: "K.L.E. Society's KLE College of Engineering and Technology academic portal initialized with clean state (0 demo records).",
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      createdAt: "2026-01-01T00:00:00Z"
     }
   ];
   return {
     settings: defaultSettings,
-    users,
+    users: adminUsers,
     teachers: [],
     students: [],
-    departments,
-    semesters,
-    subjects,
+    departments: [],
+    semesters: [],
+    subjects: [],
     teacherSubjectAssignments: [],
     attendanceSessions: [],
     attendanceRecords: [],
@@ -260,12 +87,12 @@ function initializeCleanData() {
     assignmentSubmissionStatuses: [],
     testMarkSheets: [],
     testMarks: [],
-    notices: initialNotices,
+    notices: [],
     events: [],
-    notifications: initialNotifications,
+    notifications: [],
     timetableUploads: [],
     studentImportBatches: [],
-    auditLogs: initialAuditLogs
+    auditLogs: []
   };
 }
 function initializeSampleDemoData() {
@@ -273,8 +100,312 @@ function initializeSampleDemoData() {
 }
 var DatabaseService = class {
   constructor() {
+    this.saveTimeout = null;
+    this.isSavingToSupabase = false;
+    this.pendingSupabaseSave = false;
+    // Supabase / Postgres connection state
+    this.pgPool = null;
+    this.supabaseClient = null;
+    this.isSupabaseConnected = false;
+    this.lastSupabaseSync = null;
+    this.lastSupabaseError = void 0;
     this.startTime = Date.now();
-    this.store = initializeCleanData();
+    this.lastModified = Date.now();
+    this.dbFilePath = import_path.default.join(process.cwd(), "data", "campus_db.json");
+    this.databaseUrl = process.env.DATABASE_URL || "";
+    this.supabaseUrl = process.env.SUPABASE_URL || "";
+    this.supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
+    this.store = this.loadFromDisk();
+    this.initSupabase();
+  }
+  async initSupabase() {
+    try {
+      if (this.databaseUrl) {
+        this.pgPool = new import_pg.Pool({
+          connectionString: this.databaseUrl,
+          ssl: { rejectUnauthorized: false },
+          max: 10,
+          idleTimeoutMillis: 3e4,
+          connectionTimeoutMillis: 1e4
+        });
+        await this.pgPool.query(`
+          CREATE TABLE IF NOT EXISTS campus_hub_store (
+            key TEXT PRIMARY KEY,
+            data JSONB NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+          );
+        `);
+        const existing = await this.pgPool.query(
+          `SELECT data, updated_at FROM campus_hub_store WHERE key = 'main_db' LIMIT 1;`
+        );
+        if (existing.rows.length > 0 && existing.rows[0].data) {
+          console.log("[Supabase/PG] Existing database found in cloud! Restoring cloud state to memory & disk cache...");
+          const cloudData = existing.rows[0].data;
+          this.store = this.mergeWithCleanDefaults(cloudData);
+          this.persistDiskSync();
+        } else {
+          console.log("[Supabase/PG] First time init: Seeding initial dataset to cloud PostgreSQL...");
+          await this.pgPool.query(
+            `INSERT INTO campus_hub_store (key, data, updated_at) VALUES ('main_db', $1, NOW()) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW();`,
+            [JSON.stringify(this.store)]
+          );
+        }
+        this.isSupabaseConnected = true;
+        this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+        this.lastSupabaseError = void 0;
+        console.log("[Supabase/PG] Cloud database connected and synchronized.");
+      } else if (this.supabaseUrl && this.supabaseKey) {
+        this.initSupabaseRestClient();
+        if (this.supabaseClient) {
+          const { data, error } = await this.supabaseClient.from("campus_hub_store").select("data, updated_at").eq("key", "main_db").maybeSingle();
+          if (!error && data && data.data) {
+            console.log("[Supabase/REST] Existing database found in Supabase! Restoring cloud state...");
+            const cloudData = data.data;
+            this.store = this.mergeWithCleanDefaults(cloudData);
+            this.persistDiskSync();
+            this.isSupabaseConnected = true;
+            this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+            this.lastSupabaseError = void 0;
+          } else {
+            console.log("[Supabase/REST] No cloud dataset found. Seeding initial data...");
+            await this.supabaseClient.from("campus_hub_store").upsert({ key: "main_db", data: this.store, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
+            this.isSupabaseConnected = true;
+            this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+            this.lastSupabaseError = void 0;
+          }
+        }
+      }
+    } catch (err) {
+      this.isSupabaseConnected = false;
+      this.lastSupabaseError = err.message || "Failed to connect to cloud database";
+      console.warn("[DB] Could not sync with remote database at startup, running on local cache:", err.message);
+      if (!this.supabaseClient && this.supabaseUrl && this.supabaseKey) {
+        this.initSupabaseRestClient();
+      }
+    }
+  }
+  initSupabaseRestClient() {
+    if (this.supabaseUrl && this.supabaseKey) {
+      try {
+        const cleanUrl = this.supabaseUrl.replace(/\/rest\/v1\/?$/, "");
+        this.supabaseClient = (0, import_supabase_js.createClient)(cleanUrl, this.supabaseKey, {
+          auth: { persistSession: false }
+        });
+        console.log("[Supabase] REST Client initialized as backup connector.");
+      } catch (err) {
+        console.warn("[Supabase] REST Client initialization failed:", err.message);
+      }
+    }
+  }
+  mergeWithCleanDefaults(cloudData) {
+    const clean = initializeCleanData();
+    const cloudUserMap = new Map((Array.isArray(cloudData.users) ? cloudData.users : []).map((u) => [u.id, u]));
+    const mergedUsers = [];
+    for (const cleanUser of clean.users) {
+      if (cloudUserMap.has(cleanUser.id)) {
+        mergedUsers.push(cloudUserMap.get(cleanUser.id));
+        cloudUserMap.delete(cleanUser.id);
+      } else {
+        mergedUsers.push(cleanUser);
+      }
+    }
+    for (const remainingUser of cloudUserMap.values()) {
+      mergedUsers.push(remainingUser);
+    }
+    return {
+      settings: cloudData.settings ? { ...clean.settings, ...cloudData.settings } : clean.settings,
+      users: mergedUsers,
+      teachers: Array.isArray(cloudData.teachers) ? cloudData.teachers : [],
+      students: Array.isArray(cloudData.students) ? cloudData.students : [],
+      departments: Array.isArray(cloudData.departments) ? cloudData.departments : [],
+      semesters: Array.isArray(cloudData.semesters) ? cloudData.semesters : [],
+      subjects: Array.isArray(cloudData.subjects) ? cloudData.subjects : [],
+      teacherSubjectAssignments: Array.isArray(cloudData.teacherSubjectAssignments) ? cloudData.teacherSubjectAssignments : [],
+      attendanceSessions: Array.isArray(cloudData.attendanceSessions) ? cloudData.attendanceSessions : [],
+      attendanceRecords: Array.isArray(cloudData.attendanceRecords) ? cloudData.attendanceRecords : [],
+      assignments: Array.isArray(cloudData.assignments) ? cloudData.assignments : [],
+      assignmentSubmissionStatuses: Array.isArray(cloudData.assignmentSubmissionStatuses) ? cloudData.assignmentSubmissionStatuses : [],
+      testMarkSheets: Array.isArray(cloudData.testMarkSheets) ? cloudData.testMarkSheets : [],
+      testMarks: Array.isArray(cloudData.testMarks) ? cloudData.testMarks : [],
+      notices: Array.isArray(cloudData.notices) ? cloudData.notices : [],
+      events: Array.isArray(cloudData.events) ? cloudData.events : [],
+      notifications: Array.isArray(cloudData.notifications) ? cloudData.notifications : [],
+      timetableUploads: Array.isArray(cloudData.timetableUploads) ? cloudData.timetableUploads : [],
+      studentImportBatches: Array.isArray(cloudData.studentImportBatches) ? cloudData.studentImportBatches : [],
+      auditLogs: Array.isArray(cloudData.auditLogs) ? cloudData.auditLogs : []
+    };
+  }
+  loadFromDisk() {
+    try {
+      if (import_fs.default.existsSync(this.dbFilePath)) {
+        const raw = import_fs.default.readFileSync(this.dbFilePath, "utf-8");
+        if (raw && raw.trim().length > 0) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object" && Array.isArray(parsed.departments)) {
+            console.log(
+              `[DB] Loaded campus database from local disk: ${parsed.students?.length || 0} students, ${parsed.teachers?.length || 0} faculty.`
+            );
+            this.lastModified = Date.now();
+            return this.mergeWithCleanDefaults(parsed);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[DB] Could not load persisted data from disk, initializing clean database:", err);
+    }
+    const clean = initializeCleanData();
+    this.persistDiskSync(clean);
+    return clean;
+  }
+  persistDiskSync(dataToSave) {
+    try {
+      const dir = import_path.default.dirname(this.dbFilePath);
+      if (!import_fs.default.existsSync(dir)) {
+        import_fs.default.mkdirSync(dir, { recursive: true });
+      }
+      const data = dataToSave || this.store;
+      const tmpPath = `${this.dbFilePath}.tmp.${Date.now()}`;
+      import_fs.default.writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
+      import_fs.default.renameSync(tmpPath, this.dbFilePath);
+      this.lastModified = Date.now();
+    } catch (err) {
+      console.error("[DB] Failed to persist data to disk:", err);
+    }
+  }
+  async persistToSupabase() {
+    if (this.isSavingToSupabase) {
+      this.pendingSupabaseSave = true;
+      return true;
+    }
+    this.isSavingToSupabase = true;
+    try {
+      const dataJson = JSON.stringify(this.store);
+      if (this.pgPool) {
+        await this.pgPool.query(
+          `INSERT INTO campus_hub_store (key, data, updated_at)
+           VALUES ('main_db', $1, NOW())
+           ON CONFLICT (key) DO UPDATE
+           SET data = EXCLUDED.data, updated_at = NOW();`,
+          [dataJson]
+        );
+        this.isSupabaseConnected = true;
+        this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+        this.lastSupabaseError = void 0;
+      } else if (this.supabaseClient) {
+        const { error } = await this.supabaseClient.from("campus_hub_store").upsert({ key: "main_db", data: this.store, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
+        if (error) throw error;
+        this.isSupabaseConnected = true;
+        this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+        this.lastSupabaseError = void 0;
+      }
+      return true;
+    } catch (err) {
+      this.isSupabaseConnected = false;
+      this.lastSupabaseError = err.message || "Supabase save failed";
+      console.error("[Supabase Save Error]:", err.message);
+      return false;
+    } finally {
+      this.isSavingToSupabase = false;
+      if (this.pendingSupabaseSave) {
+        this.pendingSupabaseSave = false;
+        setTimeout(() => this.persistToSupabase(), 100);
+      }
+    }
+  }
+  persistSync(dataToSave) {
+    this.persistDiskSync(dataToSave);
+    this.persistToSupabase().catch((err) => {
+      console.warn("[DB] Background Supabase persist error:", err);
+    });
+  }
+  persist() {
+    this.lastModified = Date.now();
+    this.persistDiskSync();
+    this.persistToSupabase().catch((err) => {
+      console.warn("[DB] Immediate Supabase save caught:", err);
+    });
+  }
+  async pullFromSupabase() {
+    try {
+      if (!this.pgPool && !this.supabaseClient) {
+        await this.initSupabase();
+      }
+      if (this.pgPool) {
+        const result = await this.pgPool.query(
+          `SELECT data, updated_at FROM campus_hub_store WHERE key = 'main_db' LIMIT 1;`
+        );
+        if (result.rows.length > 0 && result.rows[0].data) {
+          const cloudData = result.rows[0].data;
+          this.store = this.mergeWithCleanDefaults(cloudData);
+          this.lastModified = Date.now();
+          this.isSupabaseConnected = true;
+          this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+          this.lastSupabaseError = void 0;
+          this.persistDiskSync();
+          return {
+            success: true,
+            message: `Successfully pulled latest campus state from Supabase (${this.store.students.length} students, ${this.store.teachers.length} faculty).`
+          };
+        }
+      } else if (this.supabaseClient) {
+        const { data, error } = await this.supabaseClient.from("campus_hub_store").select("data, updated_at").eq("key", "main_db").maybeSingle();
+        if (!error && data && data.data) {
+          const cloudData = data.data;
+          this.store = this.mergeWithCleanDefaults(cloudData);
+          this.lastModified = Date.now();
+          this.isSupabaseConnected = true;
+          this.lastSupabaseSync = (/* @__PURE__ */ new Date()).toISOString();
+          this.lastSupabaseError = void 0;
+          this.persistDiskSync();
+          return {
+            success: true,
+            message: `Successfully pulled latest campus state from Supabase (${this.store.students.length} students, ${this.store.teachers.length} faculty).`
+          };
+        }
+      }
+      return { success: false, message: "No remote dataset found in Supabase." };
+    } catch (err) {
+      this.isSupabaseConnected = false;
+      this.lastSupabaseError = err.message;
+      return { success: false, message: `Failed to pull from Supabase: ${err.message}` };
+    }
+  }
+  getSupabaseStatus() {
+    let host = "Not configured";
+    try {
+      if (this.databaseUrl) {
+        const match = this.databaseUrl.match(/@([^:/]+)/);
+        if (match && match[1]) host = match[1];
+      } else if (this.supabaseUrl) {
+        const parsed = new URL(this.supabaseUrl);
+        host = parsed.hostname;
+      }
+    } catch {
+    }
+    return {
+      configured: Boolean(this.databaseUrl || this.supabaseUrl),
+      connected: this.isSupabaseConnected,
+      provider: this.pgPool ? "supabase_postgres" : this.supabaseClient ? "supabase_rest" : "local_fallback",
+      databaseHost: host,
+      lastSyncTime: this.lastSupabaseSync,
+      status: this.isSupabaseConnected ? "connected" : this.lastSupabaseError ? "error" : "local_only",
+      records: {
+        students: this.store.students?.length || 0,
+        teachers: this.store.teachers?.length || 0,
+        departments: this.store.departments?.length || 0,
+        semesters: this.store.semesters?.length || 0,
+        subjects: this.store.subjects?.length || 0,
+        attendanceSessions: this.store.attendanceSessions?.length || 0,
+        attendanceRecords: this.store.attendanceRecords?.length || 0,
+        testMarks: this.store.testMarks?.length || 0,
+        assignments: this.store.assignments?.length || 0,
+        notices: this.store.notices?.length || 0
+      },
+      error: this.lastSupabaseError
+    };
+  }
+  getLastModified() {
+    return this.lastModified;
   }
   getStore() {
     return this.store;
@@ -287,16 +418,27 @@ var DatabaseService = class {
       ...this.store.settings,
       ...partial
     };
+    this.persist();
     return this.store.settings;
   }
   resetToClean() {
     this.store = initializeCleanData();
+    this.persistSync();
+  }
+  wipeAllData() {
+    this.store = initializeCleanData();
+    this.persistSync();
+    this.persistToSupabase().catch((err) => console.warn("[DB] Supabase wipe sync error:", err));
+    console.log("[DB] Database wiped completely to 0 records across all entities.");
+    return { success: true, message: "All database records successfully deleted from database." };
   }
   resetToSeed() {
     this.store = initializeCleanData();
+    this.persistSync();
   }
   loadSampleData() {
     this.store = initializeSampleDemoData();
+    this.persistSync();
   }
   restoreData(newData) {
     if (!newData || typeof newData !== "object") {
@@ -320,7 +462,16 @@ var DatabaseService = class {
     if (Array.isArray(newData.events)) this.store.events = newData.events;
     if (Array.isArray(newData.notifications)) this.store.notifications = newData.notifications;
     if (Array.isArray(newData.auditLogs)) this.store.auditLogs = newData.auditLogs;
-    return { success: true, message: "Campus database restored successfully." };
+    this.persistSync();
+    return { success: true, message: "Campus database restored successfully and persisted to Supabase and storage." };
+  }
+  // Authoritative Synchronizer: Server sends authoritative state to client
+  syncWithClient(clientSnapshot, clientLastModified) {
+    return {
+      store: this.store,
+      lastModified: this.lastModified,
+      actionTaken: "client_updated_from_server"
+    };
   }
   // Audit Logger
   logAudit(userId, userName, userRole, action, details) {
@@ -333,6 +484,7 @@ var DatabaseService = class {
       details,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
+    this.persist();
   }
   // Helper to create notifications for target audience
   notifyUsers(userIds, type, title, message, link) {
@@ -349,6 +501,7 @@ var DatabaseService = class {
         createdAt: now
       });
     });
+    this.persist();
   }
 };
 var db = new DatabaseService();
@@ -380,6 +533,12 @@ async function extractTimetableData(input) {
   } = input;
   const targetSem = Number(defaultSemester) || 4;
   const targetDept = (defaultDepartment || "CSE").toUpperCase().trim();
+  if (!imageData && fileContent && fileContent.trim().length > 0) {
+    const fastParsed = fallbackDeterministicParser(fileContent, existingTeachers, targetSem, targetDept);
+    if (fastParsed && fastParsed.length > 0) {
+      return fastParsed;
+    }
+  }
   const ai = getAiClient();
   if (ai) {
     const teacherNames = existingTeachers.map((t) => `${t.user?.name || ""} (Code: ${t.teacherCode}, Dept: ${t.department})`).join("\n");
@@ -448,7 +607,7 @@ ${fileContent.slice(0, 2e4)}
 \`\`\`` : promptText;
     parts.push({ text: fullTextPrompt });
     try {
-      const response = await ai.models.generateContent({
+      const aiPromise = ai.models.generateContent({
         model: "gemini-3.7-flash",
         contents: { parts },
         config: {
@@ -473,7 +632,11 @@ ${fileContent.slice(0, 2e4)}
           }
         }
       });
-      if (response.text) {
+      const timeoutPromise = new Promise(
+        (_, reject) => setTimeout(() => reject(new Error("AI generation timed out (6s)")), 6e3)
+      );
+      const response = await Promise.race([aiPromise, timeoutPromise]);
+      if (response && response.text) {
         let cleanText = response.text.trim();
         if (cleanText.includes("```")) {
           const match = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -492,7 +655,7 @@ ${fileContent.slice(0, 2e4)}
         }
       }
     } catch (err) {
-      console.warn(`Gemini extraction failed (${err.message || err}), using fallback timetable parser...`);
+      console.warn(`Fast fallback timetable parser triggered (${err.message || err})`);
     }
   }
   return fallbackDeterministicParser(fileContent, existingTeachers, targetSem, targetDept);
@@ -733,16 +896,26 @@ function fallbackDeterministicParser(text, teachers, defaultSemester = 4, defaul
 }
 
 // server.ts
-import_dotenv.default.config();
+import_dotenv2.default.config();
 var app = (0, import_express.default)();
 var PORT = 3e3;
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.FRONTEND_URL || "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id");
-  res.header("Access-Control-Allow-Credentials", "true");
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, Cache-Control, Pragma, Expires"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Max-Age", "86400");
   if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
+    return res.status(204).end();
   }
   next();
 });
@@ -796,8 +969,84 @@ function rejectStudentMutations(req, res, next) {
   next();
 }
 app.use("/api", rejectStudentMutations);
+app.use("/api", (req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        db.persist();
+      }
+    });
+  }
+  next();
+});
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
+});
+app.post("/api/db/sync", (req, res) => {
+  try {
+    const { clientSnapshot, clientLastModified } = req.body || {};
+    const result = db.syncWithClient(clientSnapshot, clientLastModified);
+    res.json({
+      success: true,
+      actionTaken: result.actionTaken,
+      lastModified: result.lastModified,
+      store: result.store
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Sync failed." });
+  }
+});
+app.get("/api/db/sync-status", (req, res) => {
+  const store = db.getStore();
+  res.json({
+    lastModified: db.getLastModified(),
+    supabase: db.getSupabaseStatus(),
+    stats: {
+      studentsCount: store.students?.length || 0,
+      teachersCount: store.teachers?.length || 0,
+      attendanceCount: store.attendanceSessions?.length || 0,
+      assignmentsCount: store.assignments?.length || 0,
+      marksCount: store.testMarkSheets?.length || 0,
+      noticesCount: store.notices?.length || 0
+    }
+  });
+});
+app.get("/api/admin/supabase/status", requireRole("admin"), (req, res) => {
+  const status = db.getSupabaseStatus();
+  res.json({ success: true, status });
+});
+app.post("/api/admin/supabase/sync", requireRole("admin"), async (req, res) => {
+  try {
+    const action = req.body?.action || "push";
+    if (action === "pull") {
+      const result = await db.pullFromSupabase();
+      return res.json({ success: result.success, message: result.message, status: db.getSupabaseStatus() });
+    } else {
+      const success = await db.persistToSupabase();
+      return res.json({
+        success,
+        message: success ? "Campus database successfully pushed and persisted to Supabase PostgreSQL!" : "Failed to push to Supabase. Check credentials or connection.",
+        status: db.getSupabaseStatus()
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message || "Supabase sync failed" });
+  }
+});
+app.get("/api/db/export", (req, res) => {
+  const store = db.getStore();
+  const filename = `kle_campus_database_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader("Content-Type", "application/json");
+  res.send(JSON.stringify(store, null, 2));
+});
+app.post("/api/db/restore", (req, res) => {
+  try {
+    const result = db.restoreData(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Failed to restore database." });
+  }
 });
 app.get("/api/settings", (req, res) => {
   const store = db.getStore();
@@ -1233,7 +1482,21 @@ app.post("/api/auth/login", (req, res) => {
         error: "Please enter your Student USN (e.g. 2KL23EC001), Faculty Code (e.g. ECE01), or Admin Key."
       });
     }
-    const adminKeys = [
+    const envAdminKeys = [];
+    const envSources = [
+      process.env.ADMIN_ACCESS_KEY,
+      process.env.ADMIN_KEY,
+      process.env.VITE_ADMIN_ACCESS_KEY,
+      process.env.VITE_ADMIN_KEY,
+      process.env.ADMIN_PASSWORD
+    ].filter(Boolean);
+    envSources.forEach((val) => {
+      val.split(/[,;|]/).forEach((k) => {
+        const trimmed = k.trim();
+        if (trimmed) envAdminKeys.push(trimmed);
+      });
+    });
+    const defaultAdminKeys = [
       "adarsh@1808",
       "adarsh1808",
       "adarsh@1808#",
@@ -1250,9 +1513,13 @@ app.post("/api/auth/login", (req, res) => {
       "password",
       "123456"
     ];
-    if (role === "admin" || adminKeys.includes(inputLower) || adminKeys.includes(rawInput) || inputLower === "adarsh@1808" || inputLower === "adarsh1808" || rawInput.includes("@") && (inputLower.includes("admin") || inputLower.includes("ecedept") || inputLower.includes("adarsh"))) {
+    const allAdminKeys = [...envAdminKeys, ...defaultAdminKeys];
+    const isMatchedAdminKey = allAdminKeys.some(
+      (k) => k === rawInput || k.toLowerCase() === inputLower || k.length > 2 && rawInput.toLowerCase() === k.toLowerCase()
+    );
+    if (role === "admin" || isMatchedAdminKey || rawInput.includes("@") && (inputLower.includes("admin") || inputLower.includes("ecedept") || inputLower.includes("adarsh"))) {
       user = store.users.find(
-        (u) => u.role === "admin" && (u.email.toLowerCase() === inputLower || u.name.toLowerCase().includes(inputLower) || inputLower === "adarsh@1808" || inputLower === "adarsh1808" || inputLower === "admin@123" || inputLower === "admin123" || inputLower === "admin")
+        (u) => u.role === "admin" && (u.email.toLowerCase() === inputLower || u.name.toLowerCase().includes(inputLower) || isMatchedAdminKey)
       );
       if (!user) {
         user = store.users.find((u) => u.role === "admin");
@@ -1522,6 +1789,7 @@ app.post("/api/admin/teachers", requireRole("admin"), (req, res) => {
     }
   }
   db.logAudit(req.user.id, req.user.name, "admin", "TEACHER_CREATED", `Created teacher ${name} (${teacherCode})`);
+  db.persist();
   res.status(201).json({ teacher: { ...newTeacher, user: newUser } });
 });
 app.put("/api/admin/teachers/:id", requireRole("admin"), (req, res) => {
@@ -1555,6 +1823,7 @@ app.put("/api/admin/teachers/:id", requireRole("admin"), (req, res) => {
     "TEACHER_UPDATED",
     `Updated faculty ${teacher.teacherCode} (${user?.name || ""})`
   );
+  db.persist();
   res.json({ success: true, teacher: { ...teacher, user } });
 });
 app.delete("/api/admin/teachers/:id", requireRole("admin"), (req, res) => {
@@ -1577,6 +1846,7 @@ app.delete("/api/admin/teachers/:id", requireRole("admin"), (req, res) => {
     "TEACHER_DELETED",
     `Deleted faculty ${teacher.teacherCode}`
   );
+  db.persist();
   res.json({ success: true, message: `Faculty ${teacher.teacherCode} deleted successfully.` });
 });
 app.get("/api/admin/subjects", requireRole("admin", "teacher"), (req, res) => {
@@ -1612,6 +1882,7 @@ app.post("/api/admin/subjects", requireRole("admin"), (req, res) => {
   };
   store.subjects.push(newSubject);
   db.logAudit(req.user.id, req.user.name, "admin", "SUBJECT_CREATED", `Created subject ${newSubject.name} (${newSubject.code})`);
+  db.persist();
   res.status(201).json({ success: true, subject: newSubject });
 });
 app.put("/api/admin/subjects/:id", requireRole("admin"), (req, res) => {
@@ -1635,6 +1906,7 @@ app.put("/api/admin/subjects/:id", requireRole("admin"), (req, res) => {
   if (semesterNumber) sub.semesterNumber = Number(semesterNumber);
   if (credits !== void 0) sub.credits = Number(credits);
   db.logAudit(req.user.id, req.user.name, "admin", "SUBJECT_UPDATED", `Updated subject ${sub.code} (${sub.name})`);
+  db.persist();
   res.json({ success: true, subject: sub });
 });
 app.delete("/api/admin/subjects/:id", requireRole("admin"), (req, res) => {
@@ -1647,6 +1919,7 @@ app.delete("/api/admin/subjects/:id", requireRole("admin"), (req, res) => {
   const [removed] = store.subjects.splice(idx, 1);
   store.teacherSubjectAssignments = store.teacherSubjectAssignments.filter((a) => a.subjectId !== id);
   db.logAudit(req.user.id, req.user.name, "admin", "SUBJECT_DELETED", `Deleted subject ${removed.code} (${removed.name})`);
+  db.persist();
   res.json({ success: true, message: `Subject ${removed.code} deleted successfully.` });
 });
 app.post("/api/admin/teachers/auto-assign", requireRole("admin"), (req, res) => {
@@ -1759,6 +2032,7 @@ app.post("/api/admin/teachers/auto-assign", requireRole("admin"), (req, res) => 
     "TEACHER_SUBJECTS_AUTO_ASSIGNED",
     `Auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members`
   );
+  db.persist();
   res.json({
     success: true,
     message: `Successfully auto-assigned ${assignedCount} subjects across ${targetTeachers.length} faculty members.`,
@@ -1784,6 +2058,7 @@ app.post("/api/admin/teachers/:id/assign-subject", requireRole("admin"), (req, r
   );
   if (existingAssignment) {
     existingAssignment.confirmedByAdmin = true;
+    db.persist();
     return res.json({ success: true, assignment: existingAssignment, message: "Subject assignment already active." });
   }
   const newAssignment = {
@@ -1802,6 +2077,7 @@ app.post("/api/admin/teachers/:id/assign-subject", requireRole("admin"), (req, r
     "TEACHER_SUBJECT_ASSIGNED",
     `Assigned subject ${subject.code} (${subject.name}) to teacher ${teacher.teacherCode}`
   );
+  db.persist();
   res.status(201).json({ success: true, assignment: newAssignment });
 });
 app.delete("/api/admin/teachers/:id/assign-subject/:subjectId", requireRole("admin"), (req, res) => {
@@ -1818,6 +2094,7 @@ app.delete("/api/admin/teachers/:id/assign-subject/:subjectId", requireRole("adm
     "TEACHER_SUBJECT_UNASSIGNED",
     `Unassigned subject ${subjectId} from teacher ${id}`
   );
+  db.persist();
   res.json({
     success: true,
     message: "Subject unassigned from teacher.",
@@ -1888,6 +2165,33 @@ app.post("/api/admin/teachers/import/validate", requireRole("admin"), (req, res)
       if (u && name && u.name.trim().toLowerCase() === name.trim().toLowerCase()) return true;
       return false;
     });
+    const rawSubCode = row.subjectCode ? String(row.subjectCode).trim().toUpperCase() : "";
+    const rawSubName = row.subjectName ? String(row.subjectName).trim() : "";
+    let assignedSubjectId = void 0;
+    let assignedSubjectCode = void 0;
+    let assignedSubjectName = void 0;
+    let isAutoAssigned = false;
+    let semesterNum = void 0;
+    let credits = void 0;
+    if (rawSubCode || rawSubName) {
+      let matchedSub = store.subjects.find((s) => rawSubCode && s.code.toUpperCase() === rawSubCode);
+      if (!matchedSub && rawSubName) {
+        matchedSub = store.subjects.find((s) => s.name.toLowerCase() === rawSubName.toLowerCase());
+      }
+      if (matchedSub) {
+        assignedSubjectId = matchedSub.id;
+        assignedSubjectCode = matchedSub.code;
+        assignedSubjectName = matchedSub.name;
+        semesterNum = matchedSub.semesterNumber;
+        credits = matchedSub.credits;
+        isAutoAssigned = true;
+      } else if (rawSubCode) {
+        assignedSubjectCode = rawSubCode;
+        assignedSubjectName = rawSubName || rawSubCode;
+        isAutoAssigned = true;
+        credits = 4;
+      }
+    }
     const isValid = errors.length === 0;
     if (isValid) validCount++;
     else invalidCount++;
@@ -1899,8 +2203,14 @@ app.post("/api/admin/teachers/import/validate", requireRole("admin"), (req, res)
       email,
       designation,
       qualification,
-      subjectCode: row.subjectCode ? String(row.subjectCode).trim().toUpperCase() : void 0,
-      subjectName: row.subjectName ? String(row.subjectName).trim() : void 0,
+      subjectCode: rawSubCode || void 0,
+      subjectName: rawSubName || void 0,
+      assignedSubjectId,
+      assignedSubjectCode,
+      assignedSubjectName,
+      isAutoAssigned,
+      semesterNumber: semesterNum,
+      credits,
       isValid,
       isExisting,
       errors
@@ -1927,10 +2237,13 @@ app.post("/api/admin/teachers/import/commit", requireRole("admin"), (req, res) =
   }
   let insertedCount = 0;
   let updatedCount = 0;
+  let autoAssignedCount = 0;
+  let createdSubjectsCount = 0;
   targetRows.forEach((row, idx) => {
     const rawCode = (row.teacherCode || "").trim().toUpperCase();
     const rawEmail = (row.email || "").trim().toLowerCase();
     const rawName = (row.name || "").trim();
+    const deptCode = normalizeDeptCode(row.department || "CSE", ["CSE", "ECE", "AI-ML", "ISE", "MECH", "CIVIL"]);
     let existingTeacher = store.teachers.find(
       (t) => t.teacherCode.toUpperCase() === rawCode
     );
@@ -1951,7 +2264,7 @@ app.post("/api/admin/teachers/import/commit", requireRole("admin"), (req, res) =
       if (rawCode) {
         existingTeacher.teacherCode = rawCode;
       }
-      existingTeacher.department = row.department || existingTeacher.department;
+      existingTeacher.department = deptCode;
       existingTeacher.designation = row.designation || existingTeacher.designation;
       existingTeacher.qualification = row.qualification || existingTeacher.qualification;
       const user = store.users.find((u) => u.id === existingTeacher.userId);
@@ -1977,7 +2290,7 @@ app.post("/api/admin/teachers/import/commit", requireRole("admin"), (req, res) =
         id: teacherId,
         userId,
         teacherCode: tCode,
-        department: row.department,
+        department: deptCode,
         designation: row.designation || "Assistant Professor",
         qualification: row.qualification || "M.Tech"
       };
@@ -1986,62 +2299,73 @@ app.post("/api/admin/teachers/import/commit", requireRole("admin"), (req, res) =
       currentTeacherId = teacherId;
       insertedCount++;
     }
-    if ((row.subjectCode || row.subjectName) && currentTeacherId) {
-      const deptCode = normalizeDeptCode(row.department || "CSE", ["CSE", "ECE", "AI-ML", "ISE", "MECH", "CIVIL"]);
-      const subCode = (row.subjectCode ? String(row.subjectCode) : `SUB-${Date.now() % 1e3}`).trim().toUpperCase();
-      const subName = (row.subjectName ? String(row.subjectName) : subCode).trim();
-      let matchedSubject = store.subjects.find((s) => s.code.toUpperCase() === subCode);
+    const effectiveSubjectId = row.assignedSubjectId;
+    const subCode = (row.assignedSubjectCode || row.subjectCode ? String(row.assignedSubjectCode || row.subjectCode) : "").trim().toUpperCase();
+    const subName = (row.assignedSubjectName || row.subjectName ? String(row.assignedSubjectName || row.subjectName) : "").trim();
+    if (currentTeacherId && (effectiveSubjectId || subCode || subName)) {
+      let matchedSubject = void 0;
+      if (effectiveSubjectId) {
+        matchedSubject = store.subjects.find((s) => s.id === effectiveSubjectId);
+      }
+      if (!matchedSubject && subCode) {
+        matchedSubject = store.subjects.find((s) => s.code.toUpperCase() === subCode);
+      }
       if (!matchedSubject && subName) {
         matchedSubject = store.subjects.find((s) => s.name.toLowerCase() === subName.toLowerCase());
       }
-      if (!matchedSubject) {
+      if (!matchedSubject && (subCode || subName)) {
+        const finalCode = subCode || `B${deptCode.slice(0, 2)}${row.semesterNumber || 4}01`;
+        const finalName = subName || finalCode;
         const deptObj = store.departments.find((d) => d.code.toUpperCase() === deptCode);
         const deptId = deptObj ? deptObj.id : `dept-${deptCode.toLowerCase()}`;
-        let semNum = 4;
-        const semMatch = subCode.match(/\b([1-8])\b/) || subName.match(/sem(?:ester)?\s*([1-8])/i);
+        let semNum = row.semesterNumber || 4;
+        const semMatch = finalCode.match(/\b([1-8])\b/) || finalName.match(/sem(?:ester)?\s*([1-8])/i);
         if (semMatch) semNum = parseInt(semMatch[1], 10);
         matchedSubject = {
-          id: `sub-${subCode.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36)}`,
-          code: subCode,
-          name: subName,
+          id: `sub-${finalCode.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36)}`,
+          code: finalCode,
+          name: finalName,
           departmentId: deptId,
           semesterNumber: semNum,
-          credits: 4
+          credits: row.credits || 4
         };
         store.subjects.push(matchedSubject);
+        createdSubjectsCount++;
       }
-      let targetSemester = store.semesters.find(
-        (s) => s.number === matchedSubject.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === "active"
-      ) || store.semesters.find((s) => s.number === matchedSubject.semesterNumber) || store.semesters[0];
-      if (!targetSemester) {
-        targetSemester = {
-          id: `sem-${deptCode.toLowerCase()}-${matchedSubject.semesterNumber}`,
-          number: matchedSubject.semesterNumber,
-          academicYear: store.settings.academicYear || "2026-2027",
-          departmentCode: deptCode,
-          section: "A",
-          status: "active",
-          createdAt: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        store.semesters.push(targetSemester);
-      }
-      const hasAssignment = store.teacherSubjectAssignments.some(
-        (a) => a.teacherId === currentTeacherId && a.subjectId === matchedSubject.id && a.semesterId === targetSemester.id
-      );
-      if (!hasAssignment) {
-        store.teacherSubjectAssignments.push({
-          id: `tsa-csv-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
-          teacherId: currentTeacherId,
-          subjectId: matchedSubject.id,
-          semesterId: targetSemester.id,
-          createdFrom: "manual",
-          confirmedByAdmin: true
-        });
+      if (matchedSubject) {
+        let targetSemester = store.semesters.find(
+          (s) => s.number === matchedSubject.semesterNumber && s.departmentCode.toUpperCase() === deptCode && s.status === "active"
+        ) || store.semesters.find((s) => s.number === matchedSubject.semesterNumber && s.status === "active") || store.semesters.find((s) => s.number === matchedSubject.semesterNumber) || store.semesters[0];
+        if (!targetSemester) {
+          targetSemester = {
+            id: `sem-${deptCode.toLowerCase()}-${matchedSubject.semesterNumber}`,
+            number: matchedSubject.semesterNumber,
+            academicYear: store.settings.academicYear || "2026-2027",
+            departmentCode: deptCode,
+            section: "A",
+            status: "active",
+            createdAt: (/* @__PURE__ */ new Date()).toISOString()
+          };
+          store.semesters.push(targetSemester);
+        }
+        const hasAssignment = store.teacherSubjectAssignments.some(
+          (a) => a.teacherId === currentTeacherId && a.subjectId === matchedSubject.id && a.semesterId === targetSemester.id
+        );
+        if (!hasAssignment) {
+          store.teacherSubjectAssignments.push({
+            id: `tsa-import-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+            teacherId: currentTeacherId,
+            subjectId: matchedSubject.id,
+            semesterId: targetSemester.id,
+            createdFrom: "manual",
+            confirmedByAdmin: true
+          });
+          autoAssignedCount++;
+        }
       }
     }
   });
-  let autoAssignedCount = 0;
-  if (req.body.autoAssign !== false) {
+  if (req.body.autoAssign === true) {
     const targetTeachers = store.teachers.filter(
       (t) => !store.teacherSubjectAssignments.some((a) => a.teacherId === t.id && a.confirmedByAdmin !== false)
     );
@@ -2107,6 +2431,7 @@ app.post("/api/admin/teachers/import/commit", requireRole("admin"), (req, res) =
     "TEACHERS_IMPORT_COMMITTED",
     `Committed teacher roster: ${insertedCount} added, ${updatedCount} updated (codes synced from CSV), ${autoAssignedCount} subjects assigned`
   );
+  db.persist();
   res.json({
     success: true,
     insertedCount,
@@ -2211,6 +2536,7 @@ app.post("/api/admin/teachers/bulk", requireRole("admin"), (req, res) => {
     "TEACHERS_BULK_IMPORT",
     `Bulk processed teachers: ${createdCount} created, ${updatedCount} updated`
   );
+  db.persist();
   res.json({
     createdCount,
     updatedCount,
@@ -2386,6 +2712,7 @@ app.post("/api/admin/students/import/commit", requireRole("admin"), (req, res) =
     "STUDENT_IMPORT_COMMITTED",
     `Processed student import: ${insertedCount} inserted, ${updatedCount} updated`
   );
+  db.persist();
   res.json({
     success: true,
     insertedCount,
@@ -2454,6 +2781,7 @@ app.post("/api/admin/students", requireRole("admin"), (req, res) => {
     "STUDENT_CREATED",
     `Enrolled student ${cleanName} (${cleanUsn}) in Sem ${numSemester} ${cleanDept}`
   );
+  db.persist();
   res.status(201).json({
     success: true,
     student: {
@@ -2485,6 +2813,7 @@ app.put("/api/admin/students/:id", requireRole("admin"), (req, res) => {
     "STUDENT_UPDATED",
     `Updated student record ${student.usn} (${user?.name})`
   );
+  db.persist();
   res.json({ success: true, student: { ...student, user } });
 });
 app.delete("/api/admin/students/:id", requireRole("admin"), (req, res) => {
@@ -2505,6 +2834,7 @@ app.delete("/api/admin/students/:id", requireRole("admin"), (req, res) => {
     "STUDENT_DELETED",
     `Deleted student record ${removed.usn}`
   );
+  db.persist();
   res.json({ success: true, message: `Student ${removed.usn} deleted successfully.` });
 });
 app.get("/api/admin/subjects", requireRole("admin", "teacher"), (req, res) => {
@@ -2709,6 +3039,7 @@ app.post("/api/admin/timetable/:id/confirm", requireRole("admin"), (req, res) =>
     "TIMETABLE_CONFIRMED",
     `Confirmed timetable: Provisioned ${createdSubjectsCount} subjects, registered ${createdProfessorsCount} professors, linked ${createdAssignments} faculty-subject assignments.`
   );
+  db.persist();
   res.json({
     success: true,
     createdAssignments,
@@ -2717,6 +3048,179 @@ app.post("/api/admin/timetable/:id/confirm", requireRole("admin"), (req, res) =>
     totalSubjects: store.subjects.length,
     totalTeachers: store.teachers.length,
     totalAssignments: store.teacherSubjectAssignments.length
+  });
+});
+app.post("/api/admin/timetable/allocations/batch-save", requireRole("admin"), (req, res) => {
+  const { rows, departmentCode, semesterNumber } = req.body;
+  const store = db.getStore();
+  const deptCode = (departmentCode || "CSE").toUpperCase().trim();
+  const semNum = Number(semesterNumber) || 4;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).json({ error: "No allocation rows provided." });
+  }
+  let dept = store.departments.find((d) => d.code.toUpperCase() === deptCode);
+  if (!dept) {
+    dept = { id: `dept-${deptCode.toLowerCase()}`, name: `${deptCode} Department`, code: deptCode };
+    store.departments.push(dept);
+  }
+  let targetSemester = store.semesters.find(
+    (s) => s.number === semNum && s.departmentCode.toUpperCase() === deptCode && s.status === "active"
+  ) || store.semesters.find((s) => s.number === semNum && s.status === "active") || store.semesters.find((s) => s.number === semNum) || store.semesters[0];
+  if (!targetSemester) {
+    targetSemester = {
+      id: `sem-${deptCode.toLowerCase()}-${semNum}`,
+      number: semNum,
+      academicYear: store.settings.academicYear || "2026-2027",
+      departmentCode: deptCode,
+      section: "A",
+      status: "active",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    store.semesters.push(targetSemester);
+  }
+  let createdSubjectsCount = 0;
+  let createdProfessorsCount = 0;
+  let createdAssignments = 0;
+  const existingNumbers = store.teachers.map((t) => parseInt(t.teacherCode.replace(/\D/g, ""), 10)).filter((n) => !isNaN(n) && n > 0);
+  let nextCodeNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 10;
+  rows.forEach((row, idx) => {
+    const rawSubCode = (row.subjectCode || `SUB${idx + 1}`).trim().toUpperCase();
+    const rawSubName = (row.subjectName || rawSubCode).trim();
+    const rawTeacherCode = (row.teacherCode || "").trim().toUpperCase();
+    const rawTeacherName = (row.teacherName || "").trim();
+    const credits = Number(row.credits) || (rawSubCode.includes("LAB") || rawSubCode.startsWith("BECL") ? 2 : 4);
+    let subject = store.subjects.find((s) => s.code.toUpperCase() === rawSubCode);
+    if (!subject) {
+      subject = {
+        id: `sub-${rawSubCode.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36)}-${idx}`,
+        code: rawSubCode,
+        name: rawSubName,
+        departmentId: dept.id,
+        semesterNumber: semNum,
+        credits
+      };
+      store.subjects.push(subject);
+      createdSubjectsCount++;
+    } else {
+      subject.name = rawSubName;
+      subject.semesterNumber = semNum;
+      subject.credits = credits;
+      if (dept) subject.departmentId = dept.id;
+    }
+    let teacher = store.teachers.find((t) => {
+      if (rawTeacherCode && t.teacherCode.toUpperCase() === rawTeacherCode) return true;
+      const u = store.users.find((usr) => usr.id === t.userId);
+      if (u && rawTeacherName && u.name.trim().toLowerCase() === rawTeacherName.toLowerCase()) return true;
+      return false;
+    });
+    if (!teacher && (rawTeacherCode || rawTeacherName)) {
+      const tCode = rawTeacherCode || `T${(nextCodeNum++).toString().padStart(3, "0")}`;
+      const newUserId = `usr-${tCode.toLowerCase()}-${Date.now().toString(36)}-${idx}`;
+      const cleanSlug = rawTeacherName.toLowerCase().replace(/^(dr\.|prof\.|mr\.|mrs\.|ms\.)\s*/i, "").trim().replace(/[^a-z0-9]+/g, ".");
+      const email = cleanSlug ? `${cleanSlug}@campus.edu` : `${tCode.toLowerCase()}@campus.edu`;
+      const newUser = {
+        id: newUserId,
+        name: rawTeacherName || `Faculty ${tCode}`,
+        email,
+        role: "teacher",
+        status: "active",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      store.users.push(newUser);
+      teacher = {
+        id: `tchr-${tCode.toLowerCase()}`,
+        userId: newUserId,
+        teacherCode: tCode,
+        department: deptCode,
+        designation: "Assistant Professor",
+        qualification: "M.Tech / Ph.D"
+      };
+      store.teachers.push(teacher);
+      createdProfessorsCount++;
+    }
+    if (teacher && subject && targetSemester) {
+      const hasAssignment = store.teacherSubjectAssignments.some(
+        (a) => a.teacherId === teacher.id && a.subjectId === subject.id && a.semesterId === targetSemester.id
+      );
+      if (!hasAssignment) {
+        store.teacherSubjectAssignments.push({
+          id: `tsa-batch-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+          teacherId: teacher.id,
+          subjectId: subject.id,
+          semesterId: targetSemester.id,
+          createdFrom: "manual",
+          confirmedByAdmin: true
+        });
+        createdAssignments++;
+      }
+    }
+  });
+  db.persist();
+  res.json({
+    success: true,
+    savedCount: rows.length,
+    createdSubjectsCount,
+    createdProfessorsCount,
+    createdAssignments,
+    totalSubjects: store.subjects.length,
+    totalTeachers: store.teachers.length,
+    totalAssignments: store.teacherSubjectAssignments.length
+  });
+});
+app.post("/api/admin/timetable/auto-allocate", requireRole("admin"), (req, res) => {
+  const { departmentCode, semesterNumber } = req.body;
+  const store = db.getStore();
+  const deptCode = (departmentCode || "CSE").toUpperCase().trim();
+  const semNum = Number(semesterNumber) || 4;
+  const targetSemester = store.semesters.find(
+    (s) => s.number === semNum && s.departmentCode.toUpperCase() === deptCode && s.status === "active"
+  ) || store.semesters.find((s) => s.number === semNum && s.status === "active") || store.semesters.find((s) => s.number === semNum);
+  if (!targetSemester) {
+    return res.status(400).json({ error: `Active semester ${semNum} for ${deptCode} not found.` });
+  }
+  const semSubjects = store.subjects.filter((sub) => {
+    const dept = store.departments.find((d) => d.id === sub.departmentId);
+    return sub.semesterNumber === semNum && (dept?.code.toUpperCase() === deptCode || !dept);
+  });
+  if (semSubjects.length === 0) {
+    return res.status(400).json({ error: `No subjects registered for ${deptCode} Semester ${semNum}. Please add or import subjects first.` });
+  }
+  let deptTeachers = store.teachers.filter(
+    (t) => (t.department || "").toUpperCase() === deptCode
+  );
+  if (deptTeachers.length === 0) {
+    deptTeachers = store.teachers;
+  }
+  if (deptTeachers.length === 0) {
+    return res.status(400).json({ error: "No teachers registered in system to allocate." });
+  }
+  let allocatedCount = 0;
+  const newAssignments = [];
+  semSubjects.forEach((sub, idx) => {
+    const existing = store.teacherSubjectAssignments.find(
+      (a) => a.subjectId === sub.id && a.semesterId === targetSemester.id
+    );
+    if (!existing) {
+      const teacher = deptTeachers[idx % deptTeachers.length];
+      const newTsa = {
+        id: `tsa-auto-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+        teacherId: teacher.id,
+        subjectId: sub.id,
+        semesterId: targetSemester.id,
+        createdFrom: "manual",
+        confirmedByAdmin: true
+      };
+      store.teacherSubjectAssignments.push(newTsa);
+      newAssignments.push(newTsa);
+      allocatedCount++;
+    }
+  });
+  db.persist();
+  res.json({
+    success: true,
+    allocatedCount,
+    totalSubjects: semSubjects.length,
+    semesterId: targetSemester.id
   });
 });
 app.get("/api/admin/semesters", requireRole("admin"), (req, res) => {
@@ -2772,6 +3276,7 @@ app.post("/api/admin/semesters", requireRole("admin"), (req, res) => {
     "SEMESTER_CREATED",
     `Created Semester ${numSemester} ${cleanDept} Sec ${cleanSec} (${initStatus})`
   );
+  db.persist();
   res.status(201).json({ success: true, semester: newSemester });
 });
 app.delete("/api/admin/semesters/:id", requireRole("admin"), (req, res) => {
@@ -2789,6 +3294,7 @@ app.delete("/api/admin/semesters/:id", requireRole("admin"), (req, res) => {
     "SEMESTER_DELETED",
     `Removed semester cycle ${removed.number} ${removed.departmentCode}`
   );
+  db.persist();
   res.json({ success: true, message: "Semester cycle removed successfully." });
 });
 app.get("/api/admin/semesters/:id/students", requireRole("admin"), (req, res) => {
@@ -2844,6 +3350,7 @@ app.post("/api/admin/semesters/activate", requireRole("admin"), (req, res) => {
     "SEMESTER_ACTIVATED",
     `Activated Semester ${semester.number} ${semester.departmentCode} (Sec ${semester.section})`
   );
+  db.persist();
   res.json({ success: true, semester });
 });
 app.post("/api/admin/semesters/:id/complete", requireRole("admin"), (req, res) => {
@@ -2874,6 +3381,7 @@ app.post("/api/admin/semesters/:id/complete", requireRole("admin"), (req, res) =
       "SEMESTER_8_GRADUATION_DELETED",
       `Completed Semester 8 (${semester.departmentCode || "All Branches"}). Permanently deleted ${graduatedStudentsCount} graduating students and revoked their login access.`
     );
+    db.persist();
     return res.json({
       success: true,
       message: `Semester 8 (${semester.departmentCode || "All"}) finalized! All ${graduatedStudentsCount} graduating students and their login access have been permanently deleted from the system.`,
@@ -2895,6 +3403,7 @@ app.post("/api/admin/semesters/:id/complete", requireRole("admin"), (req, res) =
     "SEMESTER_ARCHIVED",
     `Completed and archived Semester ${semester.number} ${semester.departmentCode}`
   );
+  db.persist();
   res.json({
     success: true,
     message: `Semester ${semester.number} ${semester.departmentCode} archived. Associated teacher subject allocations cleared. You can now setup a new semester.`
@@ -3022,6 +3531,7 @@ app.post("/api/admin/semesters/:id/complete-and-promote", requireRole("admin"), 
     "SEMESTER_COMPLETED_AND_PROMOTED",
     `Archived Sem ${currentSemester.number} ${currentSemester.departmentCode}, removed teacher subject allocations, promoted ${promotedCount} students to Sem ${nextSemNum}, and refreshed their academic data.`
   );
+  db.persist();
   res.json({
     success: true,
     message: `Completed Semester ${currentSemester.number}, cleared teacher allocations, and promoted ${promotedCount} students to Semester ${nextSemNum} with fresh academic records.`,
@@ -3031,11 +3541,13 @@ app.post("/api/admin/semesters/:id/complete-and-promote", requireRole("admin"), 
   });
 });
 app.post("/api/admin/notices", requireRole("admin"), (req, res) => {
-  const { title, body, audienceType, audienceTargetId, priority } = req.body;
+  const { title, body, audienceType, audienceTargetId, priority, date } = req.body;
   const store = db.getStore();
   if (!title || !body || !audienceType) {
     return res.status(400).json({ error: "Title, body, and audienceType are required." });
   }
+  const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+  const noticeDate = date ? date.includes("T") ? date : `${date}T09:00:00.000Z` : nowIso;
   const newNotice = {
     id: `not-${Date.now()}`,
     title,
@@ -3045,9 +3557,12 @@ app.post("/api/admin/notices", requireRole("admin"), (req, res) => {
     audienceType,
     audienceTargetId: audienceTargetId || null,
     priority: priority || "normal",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    date: date || nowIso.split("T")[0],
+    publishedAt: noticeDate,
+    createdAt: nowIso
   };
   store.notices.unshift(newNotice);
+  db.persist();
   let targetStudentUserIds = [];
   if (audienceType === "everyone") {
     targetStudentUserIds = store.students.map((s) => s.userId);
@@ -3063,8 +3578,30 @@ app.post("/api/admin/notices", requireRole("admin"), (req, res) => {
     body.slice(0, 120) + (body.length > 120 ? "..." : ""),
     "/student/notices"
   );
-  db.logAudit(req.user.id, req.user.name, "admin", "NOTICE_PUBLISHED", `Published notice "${title}" to ${audienceType}`);
+  db.logAudit(req.user.id, req.user.name, "admin", "NOTICE_PUBLISHED", `Published notice "${title}" to ${audienceType} on date ${newNotice.date}`);
   res.status(201).json({ notice: newNotice, notifiedStudentsCount: targetStudentUserIds.length });
+});
+app.delete("/api/admin/notices/:id", requireRole("admin"), (req, res) => {
+  const { id } = req.params;
+  const store = db.getStore();
+  const index = store.notices.findIndex((n) => n.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Circular / Notice not found." });
+  }
+  const [removedNotice] = store.notices.splice(index, 1);
+  db.persist();
+  db.logAudit(
+    req.user.id,
+    req.user.name,
+    "admin",
+    "NOTICE_DELETED",
+    `Deleted circular notice "${removedNotice.title}" (ID: ${removedNotice.id})`
+  );
+  res.json({
+    success: true,
+    message: `Circular "${removedNotice.title}" deleted successfully.`,
+    deletedNotice: removedNotice
+  });
 });
 app.post("/api/admin/events", requireRole("admin"), (req, res) => {
   const { title, description, date, venue, posterImageUrl, organizer } = req.body;
@@ -3072,28 +3609,63 @@ app.post("/api/admin/events", requireRole("admin"), (req, res) => {
   if (!title || !description || !date || !venue) {
     return res.status(400).json({ error: "Title, description, date, and venue are required." });
   }
+  const nowIso = (/* @__PURE__ */ new Date()).toISOString();
   const newEvent = {
     id: `evt-${Date.now()}`,
     title,
     description,
-    date,
+    date: date || nowIso.split("T")[0],
     venue,
     posterImageUrl: posterImageUrl || "https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=800&q=80",
     createdBy: req.user.id,
     organizer: organizer || "Campus Academic Hub",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    createdAt: nowIso
   };
   store.events.unshift(newEvent);
+  db.persist();
   const allStudentUserIds = store.students.map((s) => s.userId);
   db.notifyUsers(
     allStudentUserIds,
     "event",
     `Upcoming Campus Event: ${title}`,
-    `Scheduled for ${date} at ${venue}`,
+    `Scheduled for ${newEvent.date} at ${venue}`,
     "/student/events"
   );
-  db.logAudit(req.user.id, req.user.name, "admin", "EVENT_PUBLISHED", `Published event "${title}" on ${date}`);
+  db.logAudit(req.user.id, req.user.name, "admin", "EVENT_PUBLISHED", `Published event "${title}" on ${newEvent.date}`);
   res.status(201).json({ event: newEvent });
+});
+app.delete("/api/admin/events/:id", requireRole("admin"), (req, res) => {
+  const { id } = req.params;
+  const store = db.getStore();
+  const index = store.events.findIndex((e) => e.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Campus Event not found." });
+  }
+  const [removedEvent] = store.events.splice(index, 1);
+  db.persist();
+  db.logAudit(
+    req.user.id,
+    req.user.name,
+    "admin",
+    "EVENT_DELETED",
+    `Deleted campus event "${removedEvent.title}" (ID: ${removedEvent.id})`
+  );
+  res.json({
+    success: true,
+    message: `Event "${removedEvent.title}" deleted successfully.`,
+    deletedEvent: removedEvent
+  });
+});
+app.post("/api/admin/wipe-database", requireRole("admin"), (req, res) => {
+  const result = db.wipeAllData();
+  db.logAudit(
+    req.user.id,
+    req.user.name,
+    "admin",
+    "DATABASE_WIPED",
+    "Purged all records from the database across faculty, students, subjects, attendance, marks, assignments, notices, and events."
+  );
+  res.json(result);
 });
 app.get("/api/admin/reports/attendance", requireRole("admin"), (req, res) => {
   const store = db.getStore();
@@ -3843,12 +4415,21 @@ app.post("/api/teacher/marks/sheets/:id/publish", requireRole("teacher", "admin"
 });
 function getStudentFromReq(req) {
   const store = db.getStore();
-  if (req.student) return req.student;
   if (req.user?.role === "student") {
-    const found = store.students.find((s) => s.userId === req.user?.id || s.email?.toLowerCase() === req.user?.email?.toLowerCase() || s.usn?.toLowerCase() === req.user?.email?.toLowerCase());
+    if (req.student) return req.student;
+    const found = store.students.find(
+      (s) => s.userId === req.user?.id || s.email?.toLowerCase() === req.user?.email?.toLowerCase() || s.usn?.toLowerCase() === req.user?.email?.toLowerCase()
+    );
+    return found || null;
+  }
+  const requestedStudentId = req.query.studentId || req.headers["x-student-id"];
+  if (requestedStudentId) {
+    const found = store.students.find(
+      (s) => s.id === requestedStudentId || s.userId === requestedStudentId || s.usn === requestedStudentId
+    );
     if (found) return found;
   }
-  return store.students[0] || null;
+  return req.student || store.students[0] || null;
 }
 app.get("/api/student/dashboard", requireRole("student", "admin", "teacher"), (req, res) => {
   const store = db.getStore();
@@ -4145,10 +4726,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = import_path.default.join(process.cwd(), "dist");
+    const distPath = import_path2.default.join(process.cwd(), "dist");
     app.use(import_express.default.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile(import_path.default.join(distPath, "index.html"));
+      res.sendFile(import_path2.default.join(distPath, "index.html"));
     });
   }
   app.listen(PORT, "0.0.0.0", () => {

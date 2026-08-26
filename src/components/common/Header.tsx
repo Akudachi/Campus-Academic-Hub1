@@ -11,11 +11,15 @@ import {
   Sparkles,
   WifiOff,
   Wifi,
+  Smartphone,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { NotificationDrawer } from './NotificationDrawer';
+import { MobileSyncHubModal } from './MobileSyncHubModal';
 import { api } from '../../lib/api';
 import { storageService } from '../../lib/storageService';
+import { realtimeSync, SyncStatus } from '../../lib/realtimeSync';
 import { AppLogo } from './AppLogo';
 
 interface HeaderProps {
@@ -26,11 +30,20 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) => {
   const { user, teacher, student, role, personas, switchPersona, logout, unreadCount } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isPersonaMenuOpen, setIsPersonaMenuOpen] = useState(false);
   const [institutionName, setInstitutionName] = useState("K.L.E. College of Engineering & Technology");
   const [academicYear, setAcademicYear] = useState('2026–27');
   const [currentTerm, setCurrentTerm] = useState('Even Sem (2, 4, 6, 8)');
   const [isOnline, setIsOnline] = useState<boolean>(storageService.isOnline());
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(realtimeSync.getStatus());
+
+  useEffect(() => {
+    const unsub = realtimeSync.subscribeToSyncStatus((status) => {
+      setSyncStatus(status);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const unsub = storageService.subscribeToNetworkStatus((online) => {
@@ -135,18 +148,37 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
               </span>
             </div>
 
-            {/* Right Action Tools: Network, Notifications, Persona Switcher */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              {/* Network Status Badge */}
-              {!isOnline && (
-                <div
-                  className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 text-[10px] sm:text-xs font-bold shadow-2xs"
-                  title="Offline Mode Active"
-                >
-                  <WifiOff className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-700 animate-pulse" />
-                  <span className="hidden xs:inline">Offline</span>
-                </div>
-              )}
+            {/* Right Action Tools: Network, Sync Hub, Notifications, Persona Switcher */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Mobile App & Realtime Sync Indicator / Button */}
+              <button
+                id="header-mobile-sync-hub-btn"
+                type="button"
+                onClick={() => setIsSyncModalOpen(true)}
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl text-xs font-bold transition-all border shadow-2xs active:scale-95 cursor-pointer ${
+                  syncStatus.isSyncing
+                    ? 'bg-blue-50 border-blue-300 text-[#2E6FB0]'
+                    : !isOnline
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-emerald-50/80 hover:bg-emerald-100/80 border-emerald-300/80 text-emerald-900'
+                }`}
+                title="Android App Link & Realtime Database Sync Hub"
+              >
+                {syncStatus.isSyncing ? (
+                  <RotateCcw className="w-3.5 h-3.5 text-[#2E6FB0] animate-spin" />
+                ) : !isOnline ? (
+                  <WifiOff className="w-3.5 h-3.5 text-amber-700" />
+                ) : (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                )}
+                <Smartphone className="w-3.5 h-3.5 text-slate-700 hidden xs:block" />
+                <span className="hidden md:inline font-semibold">
+                  {syncStatus.isSyncing ? 'Syncing...' : 'Sync Link'}
+                </span>
+              </button>
 
               {/* Notifications Button */}
               <button
@@ -301,6 +333,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLoginModal, onNavigate }) 
         isOpen={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
         onNavigate={onNavigate}
+      />
+
+      {/* Mobile App & Realtime Sync Hub Modal */}
+      <MobileSyncHubModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
       />
     </>
   );
