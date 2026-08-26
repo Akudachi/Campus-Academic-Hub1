@@ -766,26 +766,6 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
     lastModified: number;
     actionTaken: 'restored_from_client' | 'client_updated_from_server' | 'in_sync';
   } {
-    const isServerEmpty = (this.store.students?.length || 0) === 0 && (this.store.teachers?.length || 0) === 0 && (this.store.departments?.length || 0) === 0;
-    const clientHasData = Boolean(
-      clientSnapshot &&
-      typeof clientSnapshot === 'object' &&
-      ((clientSnapshot.students && clientSnapshot.students.length > 0) ||
-       (clientSnapshot.teachers && clientSnapshot.teachers.length > 0) ||
-       (clientSnapshot.departments && clientSnapshot.departments.length > 0))
-    );
-
-    // Safeguard: If server lost data (e.g. container scale-to-zero before Supabase was configured) but client has snapshot:
-    if (isServerEmpty && clientHasData && clientSnapshot) {
-      console.log('[Sync Engine] Server empty but client cache has valid data! Restoring cloud state from client snapshot...');
-      this.restoreData(clientSnapshot);
-      return {
-        store: this.store,
-        lastModified: this.lastModified,
-        actionTaken: 'restored_from_client',
-      };
-    }
-
     return {
       store: this.store,
       lastModified: this.lastModified,

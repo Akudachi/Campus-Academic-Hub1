@@ -4,7 +4,7 @@
     "shortName": "KLECET",
     "campusCode": "KLECET-2026",
     "academicYear": "2026-2027",
-    "currentSemesterTerm": "Even Semester (Semesters 2, 4, 6, 8)",
+    "currentSemesterTerm": "Academic Year 2026-2027",
     "semesterTermType": "even",
     "minAttendanceWarning": 75,
     "adminContactEmail": "ecedept123456@gmail.com",
@@ -14,26 +14,26 @@
     {
       "id": "usr-admin-1",
       "name": "Adarsh Kudachi (Administrator)",
-      "email": "adarshkudachi18@gmail.com",
       "role": "admin",
+      "email": "adarshkudachi18@gmail.com",
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00Z"
+      "createdAt": "2026-01-01T00:00:00.000Z"
     },
     {
       "id": "usr-admin-2",
       "name": "Campus Administrator",
-      "email": "ecedept123456@gmail.com",
       "role": "admin",
+      "email": "ecedept123456@gmail.com",
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00Z"
+      "createdAt": "2026-01-01T00:00:00.000Z"
     },
     {
       "id": "usr-admin-3",
       "name": "College Administration Desk",
-      "email": "admin@klecet.edu.in",
       "role": "admin",
+      "email": "admin@klecet.edu.in",
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00Z"
+      "createdAt": "2026-01-01T00:00:00.000Z"
     }
   ],
   "teachers": [],

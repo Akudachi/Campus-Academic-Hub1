@@ -423,24 +423,26 @@ app.post('/api/admin/departments', requireRole('admin'), (req: AuthenticatedRequ
 
   store.departments.push(newDept);
 
-  // Automatically create default initial Semester cycles
-  const ay = store.settings?.academicYear || '2025-2026';
-  const defaultSemNumbers = [4, 6];
-  defaultSemNumbers.forEach((semNum) => {
-    const semId = `sem-${cleanCode.toLowerCase()}-${semNum}-${Date.now().toString(36)}`;
-    const semExists = store.semesters.some((s) => s.departmentCode === cleanCode && s.number === semNum && s.section === 'A');
-    if (!semExists) {
-      store.semesters.push({
-        id: semId,
-        number: semNum,
-        academicYear: ay,
-        departmentCode: cleanCode,
-        section: 'A',
-        status: semNum === 4 ? 'active' : 'setup',
-        createdAt: new Date().toISOString(),
-      });
-    }
-  });
+  // Only create default initial Semester cycles if explicitly requested
+  if (createDefaultSemesters === true) {
+    const ay = store.settings?.academicYear || '2026-2027';
+    const defaultSemNumbers = [4, 6];
+    defaultSemNumbers.forEach((semNum) => {
+      const semId = `sem-${cleanCode.toLowerCase()}-${semNum}-${Date.now().toString(36)}`;
+      const semExists = store.semesters.some((s) => s.departmentCode === cleanCode && s.number === semNum && s.section === 'A');
+      if (!semExists) {
+        store.semesters.push({
+          id: semId,
+          number: semNum,
+          academicYear: ay,
+          departmentCode: cleanCode,
+          section: 'A',
+          status: 'setup',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    });
+  }
 
   db.logAudit(
     req.user!.id,
@@ -449,6 +451,7 @@ app.post('/api/admin/departments', requireRole('admin'), (req: AuthenticatedRequ
     'DEPARTMENT_CREATED',
     `Created academic branch/department ${cleanName} (${cleanCode}) with HOD "${headOfDepartment || 'Unassigned'}"`
   );
+  db.persist();
 
   res.status(201).json({
     success: true,
@@ -456,7 +459,7 @@ app.post('/api/admin/departments', requireRole('admin'), (req: AuthenticatedRequ
       ...newDept,
       studentsCount: 0,
       teachersCount: 0,
-      semestersCount: 2,
+      semestersCount: store.semesters.filter((s) => s.departmentCode === cleanCode).length,
       subjectsCount: 0,
     },
     message: `Academic branch ${cleanCode} (${cleanName}) created successfully.`,
@@ -3494,15 +3497,15 @@ app.delete('/api/admin/events/:id', requireRole('admin'), (req: AuthenticatedReq
   });
 });
 
-// Admin: Wipe everything from database for once
-app.post('/api/admin/wipe-database', requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
+// Admin: Wipe everything from database for a fresh start
+app.post(['/api/admin/wipe-database', '/api/admin/reset'], requireRole('admin'), (req: AuthenticatedRequest, res: Response) => {
   const result = db.wipeAllData();
   db.logAudit(
     req.user!.id,
     req.user!.name,
     'admin',
     'DATABASE_WIPED',
-    'Purged all records from the database across faculty, students, subjects, attendance, marks, assignments, notices, and events.'
+    'Purged all records from the database across branches, faculty, students, semesters, subjects, attendance, marks, assignments, notices, and events.'
   );
   res.json(result);
 });

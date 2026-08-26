@@ -135,7 +135,7 @@ export const StudentImportView: React.FC<StudentImportViewProps> = ({ onBack }) 
       setSingleStudent({
         usn: '',
         name: '',
-        department: 'CSE',
+        department: departments.length > 0 ? departments[0].code : '',
         semester: 4,
         section: 'A',
         email: '',

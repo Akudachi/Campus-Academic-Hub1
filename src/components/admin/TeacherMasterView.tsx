@@ -113,20 +113,21 @@ export const TeacherMasterView: React.FC<TeacherMasterViewProps> = ({ onBack, on
 
   // Compute next recommended teacher code
   const getNextTeacherCode = () => {
-    if (teachers.length === 0) return 'T008';
+    if (teachers.length === 0) return 'T001';
     const numbers = teachers
       .map((t) => parseInt(t.teacherCode.replace(/\D/g, ''), 10))
       .filter((n) => !isNaN(n) && n > 0);
-    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 7;
+    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
     return `T${(maxNum + 1).toString().padStart(3, '0')}`;
   };
 
   const handleOpenAddModal = () => {
     const nextCode = getNextTeacherCode();
+    const defaultDept = departments.length > 0 ? departments[0].code : '';
     setFormData({
       name: '',
       email: '',
-      department: 'CSE',
+      department: defaultDept,
       teacherCode: nextCode,
       designation: 'Assistant Professor',
       qualification: 'M.Tech',
