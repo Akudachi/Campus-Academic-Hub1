@@ -17,7 +17,7 @@
       "role": "admin",
       "email": "adarshkudachi18@gmail.com",
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00.000Z"
+      "createdAt": "2026-08-25T13:10:36.191Z"
     },
     {
       "id": "usr-admin-2",
@@ -25,7 +25,7 @@
       "role": "admin",
       "email": "ecedept123456@gmail.com",
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00.000Z"
+      "createdAt": "2026-08-25T13:10:36.231Z"
     },
     {
       "id": "usr-admin-3",
@@ -33,7 +33,7 @@
       "role": "admin",
       "email": "admin@klecet.edu.in",
       "status": "active",
-      "createdAt": "2026-01-01T00:00:00.000Z"
+      "createdAt": "2026-08-25T13:10:36.231Z"
     }
   ],
   "teachers": [],
@@ -53,5 +53,15 @@
   "notifications": [],
   "timetableUploads": [],
   "studentImportBatches": [],
-  "auditLogs": []
+  "auditLogs": [
+    {
+      "id": "aud-init",
+      "action": "DATABASE_WIPED_CLEAN",
+      "userId": "usr-admin-1",
+      "details": "Campus database purged to 0 records. Ready for real operational data entry.",
+      "userName": "Campus Administrator",
+      "userRole": "admin",
+      "timestamp": "2026-08-25T00:00:00.000Z"
+    }
+  ]
 }

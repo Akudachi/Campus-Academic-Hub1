@@ -423,27 +423,6 @@ app.post('/api/admin/departments', requireRole('admin'), (req: AuthenticatedRequ
 
   store.departments.push(newDept);
 
-  // Only create default initial Semester cycles if explicitly requested
-  if (createDefaultSemesters === true) {
-    const ay = store.settings?.academicYear || '2026-2027';
-    const defaultSemNumbers = [4, 6];
-    defaultSemNumbers.forEach((semNum) => {
-      const semId = `sem-${cleanCode.toLowerCase()}-${semNum}-${Date.now().toString(36)}`;
-      const semExists = store.semesters.some((s) => s.departmentCode === cleanCode && s.number === semNum && s.section === 'A');
-      if (!semExists) {
-        store.semesters.push({
-          id: semId,
-          number: semNum,
-          academicYear: ay,
-          departmentCode: cleanCode,
-          section: 'A',
-          status: 'setup',
-          createdAt: new Date().toISOString(),
-        });
-      }
-    });
-  }
-
   db.logAudit(
     req.user!.id,
     req.user!.name,
@@ -625,38 +604,19 @@ app.post('/api/admin/semesters/switch-term', requireRole('admin'), (req: Authent
   }
 
   let activatedCount = 0;
-  let createdCount = 0;
 
   if (activateMatchingSemesters) {
-    store.departments.forEach((dept) => {
-      targetNumbers.forEach((semNum) => {
-        let sem = store.semesters.find((s) => s.number === semNum && s.departmentCode === dept.code);
-        if (!sem) {
-          sem = {
-            id: `sem-${dept.code.toLowerCase()}-${semNum}-${Date.now().toString(36)}`,
-            number: semNum,
-            academicYear: ay,
-            departmentCode: dept.code,
-            section: 'A',
-            status: 'active',
-            createdAt: new Date().toISOString(),
-          };
-          store.semesters.push(sem);
-          createdCount++;
-        } else {
+    const oppositeNumbers = isEven ? [1, 3, 5, 7] : [2, 4, 6, 8];
+    store.semesters.forEach((sem) => {
+      if (targetNumbers.includes(sem.number)) {
+        if (sem.status !== 'archived') {
           sem.status = 'active';
           sem.academicYear = ay;
           activatedCount++;
         }
-      });
-
-      // Archive opposite parity active semesters for clean active term state
-      const oppositeNumbers = isEven ? [1, 3, 5, 7] : [2, 4, 6, 8];
-      store.semesters
-        .filter((s) => s.departmentCode === dept.code && oppositeNumbers.includes(s.number) && s.status === 'active')
-        .forEach((s) => {
-          s.status = 'archived';
-        });
+      } else if (oppositeNumbers.includes(sem.number) && sem.status === 'active') {
+        sem.status = 'archived';
+      }
     });
   }
 
@@ -670,10 +630,10 @@ app.post('/api/admin/semesters/switch-term', requireRole('admin'), (req: Authent
 
   res.json({
     success: true,
-    message: `Campus term updated to ${termName}. Active semester cycles synchronised across all branches.`,
+    message: `Campus term updated to ${termName}.`,
     settings: store.settings,
     activatedCount,
-    createdCount,
+    createdCount: 0,
   });
 });
 

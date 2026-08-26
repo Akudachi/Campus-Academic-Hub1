@@ -97,9 +97,16 @@ export const SemesterManagerView: React.FC<SemesterManagerViewProps> = ({ onBack
         api.getCampusSettings().catch(() => ({ settings: null })),
       ]);
       setSemesters(semRes.semesters as EnrichedSemester[]);
-      setDepartments(deptRes.departments || []);
+      const loadedDepts = deptRes.departments || [];
+      setDepartments(loadedDepts);
+      if (loadedDepts.length > 0 && !newSemDept) {
+        setNewSemDept(loadedDepts[0].code);
+      }
       if (settingsRes.settings) {
         setSettings(settingsRes.settings);
+        if (settingsRes.settings.academicYear) {
+          setNewSemAY(settingsRes.settings.academicYear);
+        }
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to load semester cycles', 'error');

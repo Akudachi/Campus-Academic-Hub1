@@ -111,7 +111,7 @@ export const DepartmentManagerView: React.FC<DepartmentManagerViewProps> = ({ on
           establishedYear: formEstYear.trim(),
           description: formDesc.trim(),
         });
-        showToast(`New Branch ${formCode.toUpperCase()} created successfully with default semesters!`, 'success');
+        showToast(`New Branch ${formCode.toUpperCase()} created successfully!`, 'success');
       }
       setIsModalOpen(false);
       await fetchDepartments();
@@ -430,15 +430,6 @@ export const DepartmentManagerView: React.FC<DepartmentManagerViewProps> = ({ on
               className="w-full px-3 py-2 text-xs rounded-lg border border-[#DCE3ED] focus:ring-1 focus:ring-[#2E6FB0]"
             />
           </div>
-
-          {!editingDept && (
-            <div className="bg-blue-50/70 border border-blue-200/60 p-3 rounded-lg flex items-start gap-2 text-xs text-blue-900">
-              <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-              <p className="leading-relaxed text-[11px]">
-                Creating this branch will automatically initialize standard Semester 4 and Semester 6 section cycles for instant student enrollment.
-              </p>
-            </div>
-          )}
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
