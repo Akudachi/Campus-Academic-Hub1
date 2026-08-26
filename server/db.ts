@@ -210,6 +210,16 @@ class DatabaseService {
       process.env.SUPABASE_ANON_KEY ||
       '';
 
+    // Immediate Startup Environment Diagnostic Logs
+    console.log('================================================================================');
+    console.log('[STARTUP ENV DIAGNOSTIC CHECK]');
+    console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL, process.env.SUPABASE_URL ? `(${this.supabaseUrl.replace(/^(https?:\/\/[^@/]+).*/, '$1')})` : '');
+    console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY ? `(length: ${process.env.SUPABASE_SERVICE_ROLE_KEY.length})` : '');
+    console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY, process.env.SUPABASE_ANON_KEY ? `(length: ${process.env.SUPABASE_ANON_KEY.length})` : '');
+    console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL, process.env.DATABASE_URL ? `(${this.databaseUrl.replace(/:[^:@]+@/, ':****@')})` : '');
+    console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+    console.log('================================================================================');
+
     // Start with clean memory store
     this.store = initializeCleanData();
 
@@ -255,6 +265,8 @@ class DatabaseService {
         this.lastSupabaseError = errorNotice;
         this.lastDiagnostic = 'MISSING_ENV_VARS: Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Cloud Run or .env.';
         
+        console.log('[STARTUP CODE PATH] >>> Using LOCAL FALLBACK only (No Supabase credentials configured in environment).');
+
         if (isProduction) {
           console.error(`
 ================================================================================
@@ -281,7 +293,7 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
     // 1. Try Direct PostgreSQL Connection via pg.Pool (Highest performance)
     if (this.databaseUrl) {
       try {
-        console.log('[Supabase/PG] Connecting via PostgreSQL Pool to:', this.databaseUrl.replace(/:[^:@]+@/, ':****@'));
+        console.log('[STARTUP CODE PATH] >>> Attempting Supabase connection via PostgreSQL Pool (DATABASE_URL)...');
         this.pgPool = new Pool({
           connectionString: this.databaseUrl,
           ssl: { rejectUnauthorized: false },
@@ -305,14 +317,14 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
         );
 
         if (existing.rows.length > 0 && existing.rows[0].data) {
-          console.log(`[Supabase/PG] Existing database restored from Supabase (${existing.rows[0].updated_at}).`);
           const cloudData = existing.rows[0].data as DatabaseStore;
           this.store = this.mergeWithCleanDefaults(cloudData);
           this.lastModified = new Date(existing.rows[0].updated_at).getTime() || Date.now();
           this.persistDiskSync();
+          console.log(`[STARTUP CODE PATH] >>> Connected to Supabase via PostgreSQL Pool! RESTORED existing data (${this.store.students.length} students, ${this.store.teachers.length} faculty, ${this.store.departments.length} departments, updated_at: ${existing.rows[0].updated_at}). NO DATA OVERWRITTEN.`);
         } else {
           // No cloud data yet, initial seed to cloud Supabase
-          console.log('[Supabase/PG] First-time cloud initialization: Seeding initial dataset to Supabase...');
+          console.log('[STARTUP CODE PATH] >>> Connected to Supabase via PostgreSQL Pool. Supabase table was EMPTY (key="main_db" not found). Seeding initial baseline...');
           await this.pgPool.query(
             `INSERT INTO public.campus_hub_store (key, data, updated_at) 
              VALUES ('main_db', $1, NOW()) 
@@ -343,7 +355,7 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
     // 2. Try Supabase REST Client via @supabase/supabase-js (Fallback / Standard REST)
     if (this.supabaseUrl && this.supabaseKey) {
       try {
-        console.log('[Supabase/REST] Connecting via Supabase JS Client to:', this.supabaseUrl);
+        console.log('[STARTUP CODE PATH] >>> Attempting Supabase connection via HTTPS REST Client (SUPABASE_URL)...');
         this.initSupabaseRestClient();
 
         if (this.supabaseClient) {
@@ -358,13 +370,13 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
           }
 
           if (data && data.data) {
-            console.log(`[Supabase/REST] Existing database restored from Supabase (${data.updated_at}).`);
             const cloudData = data.data as DatabaseStore;
             this.store = this.mergeWithCleanDefaults(cloudData);
             this.lastModified = new Date(data.updated_at).getTime() || Date.now();
             this.persistDiskSync();
+            console.log(`[STARTUP CODE PATH] >>> Connected to Supabase via HTTPS REST Client! RESTORED existing data (${this.store.students.length} students, ${this.store.teachers.length} faculty, ${this.store.departments.length} departments, updated_at: ${data.updated_at}). NO DATA OVERWRITTEN.`);
           } else {
-            console.log('[Supabase/REST] Seeding initial dataset to Supabase...');
+            console.log('[STARTUP CODE PATH] >>> Connected to Supabase via HTTPS REST Client. Table "campus_hub_store" has NO records with key="main_db". Seeding initial baseline...');
             const { error: upsertError } = await this.supabaseClient
               .from('campus_hub_store')
               .upsert({ key: 'main_db', data: this.store, updated_at: new Date().toISOString() });
@@ -383,6 +395,7 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
         this.isSupabaseConnected = false;
         this.lastSupabaseError = message;
         this.lastDiagnostic = diagnostic;
+        console.log(`[STARTUP CODE PATH] >>> Supabase REST Client connection failed: ${message}. Using local storage fallback.`);
       }
     }
   }

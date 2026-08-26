@@ -198,6 +198,34 @@ app.get('/api/admin/supabase/status', requireRole('admin'), (req: AuthenticatedR
   res.json({ success: true, status });
 });
 
+app.get('/api/admin/supabase-live-diagnostics', async (req: Request, res: Response) => {
+  const envCheck = {
+    SUPABASE_URL_EXISTS: !!process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY_EXISTS: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_ANON_KEY_EXISTS: !!process.env.SUPABASE_ANON_KEY,
+    DATABASE_URL_EXISTS: !!process.env.DATABASE_URL,
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    SUPABASE_HOST: process.env.SUPABASE_URL ? process.env.SUPABASE_URL.replace(/^(https?:\/\/[^@/]+).*/, '$1') : 'N/A',
+  };
+
+  const currentStatus = db.getSupabaseStatus();
+  const store = db.getStore();
+
+  res.json({
+    timestamp: new Date().toISOString(),
+    envCheck,
+    currentStatus,
+    inMemoryRecords: {
+      students: store.students?.length || 0,
+      teachers: store.teachers?.length || 0,
+      departments: store.departments?.length || 0,
+      semesters: store.semesters?.length || 0,
+      subjects: store.subjects?.length || 0,
+      attendanceSessions: store.attendanceSessions?.length || 0,
+    },
+  });
+});
+
 app.post('/api/admin/supabase/sync', requireRole('admin'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const action = req.body?.action || 'push';
