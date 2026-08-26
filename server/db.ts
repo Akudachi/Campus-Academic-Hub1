@@ -379,7 +379,10 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
             console.log('[STARTUP CODE PATH] >>> Connected to Supabase via HTTPS REST Client. Table "campus_hub_store" has NO records with key="main_db". Seeding initial baseline...');
             const { error: upsertError } = await this.supabaseClient
               .from('campus_hub_store')
-              .upsert({ key: 'main_db', data: this.store, updated_at: new Date().toISOString() });
+              .upsert(
+                { key: 'main_db', data: this.store, updated_at: new Date().toISOString() },
+                { onConflict: 'key' }
+              );
             if (upsertError) throw upsertError;
           }
 
@@ -474,7 +477,7 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
   }
 
   /**
-   * Persists the current database store directly to Supabase with retries and comprehensive error logging
+   * Persists the current database store directly to Supabase with retries, payload metrics, timing, and comprehensive error logging
    */
   public async persistToSupabase(retryCount: number = 2): Promise<boolean> {
     if (this.isSavingToSupabase) {
@@ -484,11 +487,16 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
 
     this.isSavingToSupabase = true;
     let attempt = 0;
+    const writeStart = Date.now();
+
+    const dataJson = JSON.stringify(this.store);
+    const dataBytes = Buffer.byteLength(dataJson, 'utf-8');
+    const dataKB = (dataBytes / 1024).toFixed(2);
+
+    console.log(`[Supabase Write] Starting sync (${dataKB} KB, ${this.store.students.length} students, ${this.store.teachers.length} faculty, ${this.store.departments.length} depts)...`);
 
     while (attempt <= retryCount) {
       try {
-        const dataJson = JSON.stringify(this.store);
-
         if (this.pgPool) {
           try {
             await this.pgPool.query(
@@ -498,10 +506,14 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
                SET data = EXCLUDED.data, updated_at = NOW();`,
               [dataJson]
             );
+            const nowIso = new Date().toISOString();
+            const durationMs = Date.now() - writeStart;
             this.isSupabaseConnected = true;
-            this.lastSupabaseSync = new Date().toISOString();
+            this.lastSupabaseSync = nowIso;
             this.lastSupabaseError = undefined;
             this.lastDiagnostic = undefined;
+            console.log(`[Supabase/PG Sync Success] Persisted ${dataKB} KB in ${durationMs}ms (${this.store.students.length} students, ${this.store.teachers.length} faculty) to public.campus_hub_store.`);
+            this.isSavingToSupabase = false;
             return true;
           } catch (pgErr: any) {
             console.warn('[Supabase/PG] PostgreSQL Pool write failed, failing over to Supabase REST client:', pgErr?.message);
@@ -509,7 +521,6 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
               this.pgPool.end().catch(() => {});
               this.pgPool = null;
             }
-            // Initialize REST client if not present
             if (!this.supabaseClient) {
               this.initSupabaseRestClient();
             }
@@ -517,19 +528,33 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
         }
         
         if (this.supabaseClient) {
-          const { error } = await this.supabaseClient
+          const nowIso = new Date().toISOString();
+          const { data: upsertData, error } = await this.supabaseClient
             .from('campus_hub_store')
-            .upsert({ key: 'main_db', data: this.store, updated_at: new Date().toISOString() });
-          if (error) throw error;
+            .upsert(
+              { key: 'main_db', data: this.store, updated_at: nowIso },
+              { onConflict: 'key' }
+            )
+            .select('key, updated_at');
+            
+          if (error) {
+            const durationMs = Date.now() - writeStart;
+            console.error(`[Supabase/REST Upsert Failed] Duration: ${durationMs}ms, Size: ${dataKB} KB. Error:`, error);
+            throw error;
+          }
+          const durationMs = Date.now() - writeStart;
           this.isSupabaseConnected = true;
-          this.lastSupabaseSync = new Date().toISOString();
+          this.lastSupabaseSync = nowIso;
           this.lastSupabaseError = undefined;
           this.lastDiagnostic = undefined;
+          console.log(`[Supabase REST Sync Success] Persisted ${dataKB} KB in ${durationMs}ms (${this.store.students.length} students, ${this.store.teachers.length} faculty) to public.campus_hub_store.`);
+          this.isSavingToSupabase = false;
           return true;
         } else if (this.databaseUrl || (this.supabaseUrl && this.supabaseKey)) {
           // Re-attempt connecting
           await this.initSupabaseConnection();
           if (this.isSupabaseConnected) {
+            this.isSavingToSupabase = false;
             return this.persistToSupabase(0);
           }
         }
@@ -538,14 +563,16 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
         const msg = 'No active Supabase connector available to persist data.';
         this.isSupabaseConnected = false;
         this.lastSupabaseError = msg;
-        this.lastDiagnostic = 'Configure valid SUPABASE_SERVICE_ROLE_KEY or DATABASE_URL';
+        this.lastDiagnostic = 'MISSING_CREDENTIALS: Configure SUPABASE_SERVICE_ROLE_KEY or DATABASE_URL.';
         if (process.env.NODE_ENV === 'production') {
           console.error(`[CRITICAL] Write operation could not be saved to Supabase: ${msg}`);
         }
+        this.isSavingToSupabase = false;
         return false;
       } catch (err: any) {
         attempt++;
-        const { message, diagnostic } = formatSupabaseError(`PersistToSupabase (Attempt ${attempt}/${retryCount + 1})`, err);
+        const durationMs = Date.now() - writeStart;
+        const { message, diagnostic } = formatSupabaseError(`PersistToSupabase (Attempt ${attempt}/${retryCount + 1}, Duration: ${durationMs}ms, Size: ${dataKB} KB)`, err);
         this.isSupabaseConnected = false;
         this.lastSupabaseError = message;
         this.lastDiagnostic = diagnostic;
@@ -576,12 +603,15 @@ ACTION: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Cloud Run service
     });
   }
 
-  public persist(): void {
+  public async persist(): Promise<void> {
     this.lastModified = Date.now();
     this.persistDiskSync();
-    this.persistToSupabase().catch((err) => {
-      formatSupabaseError('Immediate persist call', err);
-    });
+    const success = await this.persistToSupabase();
+    if (!success) {
+      const errMessage = this.lastSupabaseError || 'Supabase write operation failed.';
+      const diagnostic = this.lastDiagnostic || 'Check Supabase table and permissions.';
+      throw new Error(`${errMessage} [Diagnostic: ${diagnostic}]`);
+    }
   }
 
   public async pullFromSupabase(): Promise<{ success: boolean; message: string; diagnostic?: string }> {

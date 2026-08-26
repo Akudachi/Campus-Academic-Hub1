@@ -140,14 +140,39 @@ function rejectStudentMutations(req: AuthenticatedRequest, res: Response, next: 
 
 app.use('/api', rejectStudentMutations);
 
-// Auto-persist all database mutations to disk immediately upon completion
+// Async Database Mutation Persistence Middleware
+// Intercepts API mutation responses and ensures persistence to Supabase completes before sending response
 app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-    res.on('finish', () => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && !req.path.includes('/supabase/sync')) {
+    const originalJson = res.json.bind(res);
+    const originalSend = res.send.bind(res);
+    let isHandled = false;
+
+    res.json = function (body: any): Response {
+      if (isHandled) return originalJson(body);
+      isHandled = true;
+
+      // Only auto-persist if route execution was logically successful
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        db.persist();
+        db.persist()
+          .then(() => {
+            return originalJson(body);
+          })
+          .catch((persistErr: any) => {
+            console.error(`[API Mutation Persistence Error] ${req.method} ${req.originalUrl}:`, persistErr?.message || persistErr);
+            const status = db.getSupabaseStatus();
+            res.status(500);
+            return originalJson({
+              error: 'Database persistence failed: Could not persist changes to Supabase cloud storage.',
+              details: persistErr?.message || String(persistErr),
+              diagnostic: status.diagnostic || 'Check Supabase table public.campus_hub_store and credentials in Settings.',
+              supabaseStatus: status,
+            });
+          });
+        return this;
       }
-    });
+      return originalJson(body);
+    };
   }
   next();
 });
@@ -227,23 +252,61 @@ app.get('/api/admin/supabase-live-diagnostics', async (req: Request, res: Respon
 });
 
 app.post('/api/admin/supabase/sync', requireRole('admin'), async (req: AuthenticatedRequest, res: Response) => {
+  const startTime = Date.now();
   try {
     const action = req.body?.action || 'push';
     if (action === 'pull') {
       const result = await db.pullFromSupabase();
-      return res.json({ success: result.success, message: result.message, status: db.getSupabaseStatus() });
+      const durationMs = Date.now() - startTime;
+      const status = db.getSupabaseStatus();
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.message,
+          diagnostic: result.diagnostic || status.diagnostic,
+          status,
+          durationMs,
+        });
+      }
+      return res.json({
+        success: true,
+        message: result.message,
+        status,
+        durationMs,
+      });
     } else {
       const success = await db.persistToSupabase();
+      const durationMs = Date.now() - startTime;
+      const status = db.getSupabaseStatus();
+
+      if (!success || status.error) {
+        return res.status(500).json({
+          success: false,
+          error: status.error || 'Failed to persist campus data to Supabase.',
+          diagnostic: status.diagnostic || 'Check Supabase table public.campus_hub_store and credentials in Settings.',
+          status,
+          durationMs,
+        });
+      }
+
       return res.json({
-        success,
-        message: success
-          ? 'Campus database successfully pushed and persisted to Supabase PostgreSQL!'
-          : 'Failed to push to Supabase. Check credentials or connection.',
-        status: db.getSupabaseStatus(),
+        success: true,
+        message: `Campus database successfully pushed and persisted to Supabase (${status.records.students} students, ${status.records.teachers} faculty)!`,
+        status,
+        durationMs,
       });
     }
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message || 'Supabase sync failed' });
+    const durationMs = Date.now() - startTime;
+    const status = db.getSupabaseStatus();
+    console.error('[Supabase Sync Endpoint Error]', err);
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Supabase sync failed with unhandled exception.',
+      diagnostic: status.diagnostic,
+      status,
+      durationMs,
+    });
   }
 });
 
